@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
-import { STATUS, type Membro, type Tarefa } from "@/lib/types";
+import { STATUS, UNIDADES, type Membro, type Tarefa } from "@/lib/types";
 
 export default function Atribuicoes() {
   const [tarefas, setTarefas] = useState<Tarefa[]>([]);
@@ -95,6 +95,7 @@ export default function Atribuicoes() {
                 <th className="px-3 py-2 text-left">Responsável</th>
                 <th className="px-3 py-2 text-left">Dia</th>
                 <th className="px-3 py-2 text-left">Local de entrega</th>
+                <th className="px-3 py-2 text-left">Unidade</th>
                 <th className="px-3 py-2 text-left">Status</th>
                 <th className="px-3 py-2" />
               </tr>
@@ -159,6 +160,21 @@ export default function Atribuicoes() {
                   </td>
                   <td className="px-3 py-2">
                     <select
+                      value={t.unidade}
+                      onChange={(e) => {
+                        const valor = e.target.value as Tarefa["unidade"];
+                        atualizarLocal(t.id, { unidade: valor });
+                        salvarCampo(t.id, "unidade", valor);
+                      }}
+                      className="border border-linha bg-campo px-2 py-1 font-mono text-[11px] uppercase"
+                    >
+                      {UNIDADES.map((u) => (
+                        <option key={u.id} value={u.id}>{u.nome}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="px-3 py-2">
+                    <select
                       value={t.status}
                       onChange={(e) => {
                         const valor = e.target.value as Tarefa["status"];
@@ -184,7 +200,7 @@ export default function Atribuicoes() {
               ))}
               {tarefas.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-3 py-6 text-center text-sm text-tinta/50">
+                  <td colSpan={7} className="px-3 py-6 text-center text-sm text-tinta/50">
                     Nenhuma atribuição ainda. Crie a primeira acima.
                   </td>
                 </tr>

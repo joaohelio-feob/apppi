@@ -38,6 +38,7 @@ create table if not exists tarefas (
   criador_id     uuid references membros(id) on delete set null,
   status         text not null default 'pendente',   -- pendente | fazendo | revisao | concluida
   prioridade     text not null default 'media',      -- baixa | media | alta
+  unidade        text not null default 'geral',      -- poo | modelagem | logica | bi | autoconhecimento | geral
   inicio         date,
   prazo          date,
   local_entrega  text,                               -- link onde a atividade foi/será entregue (GitHub, Drive, Forms...)
@@ -133,6 +134,11 @@ begin
               'arquivada', old.arquivada::text, new.arquivada::text);
     end if;
 
+    if new.unidade is distinct from old.unidade then
+      insert into historico (tarefa_id, autor_id, acao, campo, valor_antigo, valor_novo)
+      values (new.id, auth.uid(), 'editou', 'unidade', old.unidade, new.unidade);
+    end if;
+
     new.atualizado_em := now();
     return new;
   end if;
@@ -216,18 +222,19 @@ left join tarefas t on t.id = h.tarefa_id
 order by h.em desc;
 
 -- =====================================================================
--- MIGRAÇÃO · arquivar em vez de apagar (rode só se já executou este
--- arquivo antes de agosto/2026). Se está criando o projeto do zero,
--- ignore este bloco — as seções acima já vêm com tudo certo.
+-- MIGRAÇÃO · arquivar em vez de apagar + coluna de unidade (rode só se já
+-- executou este arquivo antes de agosto/2026). Se está criando o projeto
+-- do zero, ignore este bloco — as seções acima já vêm com tudo certo.
 -- =====================================================================
 
--- 1. Nova coluna, sem quebrar quem já tem tarefas cadastradas.
+-- 1. Novas colunas, sem quebrar quem já tem tarefas cadastradas.
 alter table tarefas add column if not exists arquivada boolean not null default false;
+alter table tarefas add column if not exists unidade text not null default 'geral';
 
 -- 2. Tira a permissão de apagar tarefa. Dali pra frente só dá pra arquivar.
 drop policy if exists "equipe apaga tarefas" on tarefas;
 
--- 3. Recria a função do trigger com a lógica de arquivar/desarquivar
+-- 3. Recria a função do trigger com a lógica de arquivar/desarquivar/unidade
 --    (mesmo corpo da seção 4 acima — rodar de novo só substitui a versão antiga).
 create or replace function public.registrar_historico()
 returns trigger
@@ -278,6 +285,11 @@ begin
       insert into historico (tarefa_id, autor_id, acao, campo, valor_antigo, valor_novo)
       values (new.id, auth.uid(), case when new.arquivada then 'arquivou' else 'desarquivou' end,
               'arquivada', old.arquivada::text, new.arquivada::text);
+    end if;
+
+    if new.unidade is distinct from old.unidade then
+      insert into historico (tarefa_id, autor_id, acao, campo, valor_antigo, valor_novo)
+      values (new.id, auth.uid(), 'editou', 'unidade', old.unidade, new.unidade);
     end if;
 
     new.atualizado_em := now();

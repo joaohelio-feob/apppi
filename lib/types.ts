@@ -23,6 +23,17 @@ export const PAPEIS: { id: Papel; nome: string }[] = [
   { id: "design", nome: "Design" },
 ];
 
+export type Unidade = "poo" | "modelagem" | "logica" | "bi" | "autoconhecimento" | "geral";
+
+export const UNIDADES: { id: Unidade; nome: string }[] = [
+  { id: "poo",              nome: "POO" },
+  { id: "modelagem",        nome: "Modelagem" },
+  { id: "logica",           nome: "Lógica" },
+  { id: "bi",               nome: "BI" },
+  { id: "autoconhecimento", nome: "Autoconhecimento" },
+  { id: "geral",            nome: "Geral" },
+];
+
 export type Membro = { id: string; nome: string; papel: string; criado_em?: string };
 
 export type Tarefa = {
@@ -33,6 +44,7 @@ export type Tarefa = {
   criador_id: string | null;
   status: Status;
   prioridade: Prioridade;
+  unidade: Unidade;
   inicio: string | null;
   prazo: string | null;
   local_entrega: string | null;

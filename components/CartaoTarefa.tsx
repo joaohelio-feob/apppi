@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { dataLocalISO, diasEntre } from "@/lib/datas";
-import { STATUS, type Tarefa, type Status } from "@/lib/types";
+import { STATUS, UNIDADES, type Tarefa, type Status } from "@/lib/types";
 import Selo from "./Selo";
 
 function diasAte(prazo: string | null) {
@@ -55,6 +55,9 @@ export default function CartaoTarefa({
 
       <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[11px] text-tinta/60">
         <span>{tarefa.membros?.nome ?? "sem responsável"}</span>
+        <span className="border border-linha px-1 py-0.5 uppercase">
+          {UNIDADES.find((u) => u.id === tarefa.unidade)?.nome ?? tarefa.unidade}
+        </span>
         {tarefa.prazo && (
           <span className={atrasada ? "font-semibold text-trigo" : ""}>
             {atrasada

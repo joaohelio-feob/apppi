@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
-import { PRIORIDADES, STATUS, type Membro, type Status, type Tarefa } from "@/lib/types";
+import { PRIORIDADES, STATUS, UNIDADES, type Membro, type Status, type Tarefa } from "@/lib/types";
 import CartaoTarefa from "@/components/CartaoTarefa";
 import { useNovaTarefa } from "@/components/NovaTarefaProvider";
 import { useToast } from "@/components/ToastProvider";
@@ -18,6 +18,7 @@ export default function Quadro() {
   const [busca, setBusca] = useState("");
   const [filtroResponsavel, setFiltroResponsavel] = useState("");
   const [filtroPrioridade, setFiltroPrioridade] = useState("");
+  const [filtroUnidade, setFiltroUnidade] = useState("");
   const [somenteMinhas, setSomenteMinhas] = useState(false);
 
   const { abrir } = useNovaTarefa();
@@ -85,10 +86,11 @@ export default function Quadro() {
       if (buscaLimpa && !t.titulo.toLowerCase().includes(buscaLimpa)) return false;
       if (filtroResponsavel && t.responsavel_id !== filtroResponsavel) return false;
       if (filtroPrioridade && t.prioridade !== filtroPrioridade) return false;
+      if (filtroUnidade && t.unidade !== filtroUnidade) return false;
       if (somenteMinhas && t.responsavel_id !== meuId) return false;
       return true;
     });
-  }, [tarefas, busca, filtroResponsavel, filtroPrioridade, somenteMinhas, meuId]);
+  }, [tarefas, busca, filtroResponsavel, filtroPrioridade, filtroUnidade, somenteMinhas, meuId]);
 
   return (
     <div>
@@ -132,6 +134,16 @@ export default function Quadro() {
           <option value="">Toda prioridade</option>
           {PRIORIDADES.map((p) => (
             <option key={p.id} value={p.id}>{p.nome}</option>
+          ))}
+        </select>
+        <select
+          value={filtroUnidade}
+          onChange={(e) => setFiltroUnidade(e.target.value)}
+          className="border border-linha bg-casca px-2 py-2 font-mono text-xs uppercase"
+        >
+          <option value="">Toda unidade</option>
+          {UNIDADES.map((u) => (
+            <option key={u.id} value={u.id}>{u.nome}</option>
           ))}
         </select>
         <button

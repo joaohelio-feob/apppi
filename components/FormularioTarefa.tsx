@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
-import type { Membro } from "@/lib/types";
+import { UNIDADES, type Membro } from "@/lib/types";
 
 export default function FormularioTarefa({
   membros,
@@ -20,6 +20,7 @@ export default function FormularioTarefa({
   const [responsavel, setResponsavel] = useState("");
   const [prazo, setPrazo] = useState("");
   const [localEntrega, setLocalEntrega] = useState("");
+  const [unidade, setUnidade] = useState("geral");
   const [anexo, setAnexo] = useState<File | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
@@ -47,6 +48,7 @@ export default function FormularioTarefa({
         criador_id: sessao.user?.id ?? null,
         prazo: prazo || null,
         local_entrega: localEntrega || null,
+        unidade,
       })
       .select("id")
       .single();
@@ -117,6 +119,18 @@ export default function FormularioTarefa({
               value={prazo}
               onChange={(e) => setPrazo(e.target.value)}
             />
+          </label>
+          <label className="block font-mono text-[11px] uppercase text-tinta/60">
+            Unidade de estudo
+            <select
+              className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-sm normal-case text-tinta"
+              value={unidade}
+              onChange={(e) => setUnidade(e.target.value)}
+            >
+              {UNIDADES.map((u) => (
+                <option key={u.id} value={u.id}>{u.nome}</option>
+              ))}
+            </select>
           </label>
           <input
             className="w-full border border-linha bg-casca px-3 py-2 text-sm"
