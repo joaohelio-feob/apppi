@@ -1,0 +1,38 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: light; }
+
+body {
+  background-color: theme('colors.campo');
+  color: theme('colors.tinta');
+  font-family: theme('fontFamily.corpo');
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Papel milimetrado discreto ao fundo — referência ao caderno de campo. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background-image:
+    linear-gradient(theme('colors.linha') 1px, transparent 1px),
+    linear-gradient(90deg, theme('colors.linha') 1px, transparent 1px);
+  background-size: 32px 32px;
+  opacity: 0.35;
+}
+
+*:focus-visible {
+  outline: 2px solid theme('colors.tinta');
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
