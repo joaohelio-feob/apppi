@@ -1,8 +1,11 @@
 import { criarClienteServidor } from "@/lib/supabase-server";
-import { dataLocalDeTimestamp } from "@/lib/datas";
+import { dataLocalDeTimestamp, dataLocalISO } from "@/lib/datas";
 import { githubConfigurado, listarCommits, type CommitGithub } from "@/lib/github";
 import type { Registro } from "@/lib/types";
-import BotaoExportar from "@/components/BotaoExportar";
+import BotaoExportarCSV from "@/components/BotaoExportarCSV";
+import BotaoExportarPDF from "@/components/BotaoExportarPDF";
+
+const COLUNAS_CSV = ["em", "autor", "papel", "acao", "campo", "valor_antigo", "valor_novo", "tarefa", "status_atual"];
 
 export const dynamic = "force-dynamic";
 
@@ -61,7 +64,7 @@ export default async function Trilha() {
 
   return (
     <div>
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className="flex flex-wrap items-end justify-between gap-4 print:block">
         <div>
           <p className="font-mono text-xs uppercase tracking-widest text-musgo">
             Trilha de atividades
@@ -74,8 +77,20 @@ export default async function Trilha() {
             digita nem edita esta página — é o registro corrido do semestre.
           </p>
         </div>
-        <BotaoExportar />
+        <div className="flex gap-2 print:hidden">
+          <BotaoExportarCSV
+            linhas={registros}
+            colunas={COLUNAS_CSV}
+            nomeArquivo={`trilha-pi-${dataLocalISO()}.csv`}
+            rotulo="Baixar CSV para o professor"
+          />
+          <BotaoExportarPDF />
+        </div>
       </div>
+
+      <p className="hidden font-display text-lg font-bold print:block">
+        Caderno de Campo · PI 2026 — Trilha de atividades
+      </p>
 
       <section className="mt-8 border border-linha bg-casca p-4">
         <h2 className="font-mono text-[11px] uppercase tracking-widest text-tinta/60">

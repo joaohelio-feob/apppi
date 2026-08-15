@@ -68,6 +68,15 @@ export type Anexo = {
   membros?: Membro | null;
 };
 
+export type Reuniao = {
+  id: number;
+  data: string;
+  pauta: string;
+  presentes: string[];
+  decisoes: string | null;
+  criado_em: string;
+};
+
 export type Registro = {
   em: string;
   autor: string | null;

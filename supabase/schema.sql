@@ -68,6 +68,27 @@ create table if not exists anexos (
 
 create index if not exists idx_anexos_tarefa on anexos(tarefa_id);
 
+-- ---------- 2c. REUNIÕES -----------------------------------------------
+-- Ata mínima: quando foi, o que pautou, quem estava e o que ficou decidido.
+-- O documento do PI cobra registro de reunião com ajustes e desafios.
+create table if not exists reunioes (
+  id         bigserial primary key,
+  data       date not null,
+  pauta      text not null,
+  presentes  uuid[] not null default '{}',
+  decisoes   text,
+  criado_em  timestamptz not null default now()
+);
+
+create index if not exists idx_reunioes_data on reunioes(data desc);
+
+alter table reunioes enable row level security;
+
+create policy "equipe le reunioes"  on reunioes for select to authenticated using (true);
+create policy "equipe cria reunioes" on reunioes for insert to authenticated with check (true);
+create policy "equipe edita reunioes" on reunioes for update to authenticated using (true);
+-- Sem policy de DELETE, mesmo raciocínio de tarefas: reunião registrada não some.
+
 -- ---------- 3. HISTÓRICO (a prova para o professor) -------------------
 -- Só recebe INSERT. Nunca apague nada daqui.
 create table if not exists historico (
@@ -101,6 +122,9 @@ begin
       insert into historico (tarefa_id, autor_id, acao, campo, valor_antigo, valor_novo)
       values (new.id, auth.uid(), 'mudou_status', 'status', old.status, new.status);
       new.concluido_em := case when new.status = 'concluida' then now() else null end;
+      if new.status = 'fazendo' and old.inicio is null then
+        new.inicio := (now() at time zone 'America/Sao_Paulo')::date;
+      end if;
     end if;
 
     if new.responsavel_id is distinct from old.responsavel_id then
@@ -260,6 +284,9 @@ begin
       insert into historico (tarefa_id, autor_id, acao, campo, valor_antigo, valor_novo)
       values (new.id, auth.uid(), 'mudou_status', 'status', old.status, new.status);
       new.concluido_em := case when new.status = 'concluida' then now() else null end;
+      if new.status = 'fazendo' and old.inicio is null then
+        new.inicio := (now() at time zone 'America/Sao_Paulo')::date;
+      end if;
     end if;
 
     if new.responsavel_id is distinct from old.responsavel_id then

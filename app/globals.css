@@ -36,3 +36,11 @@ body::before {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Exportar em PDF é imprimir: sem grade decorativa, sem sombra, cabeçalho
+   próprio de cada página assume o lugar da navegação. */
+@media print {
+  body::before { display: none; }
+  body { background-color: theme('colors.campo'); }
+  main { padding: 0 !important; max-width: none !important; }
+}

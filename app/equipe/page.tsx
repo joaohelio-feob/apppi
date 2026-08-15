@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
 import { PAPEIS, type Membro } from "@/lib/types";
 
@@ -49,10 +50,13 @@ export default function Equipe() {
         <div className="mt-8 divide-y divide-linha border border-linha bg-casca">
           {membros.map((m) => (
             <div key={m.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
-              <span className="min-w-0 flex-1 truncate text-sm font-semibold">
+              <Link
+                href={`/equipe/${m.id}`}
+                className="min-w-0 flex-1 truncate text-sm font-semibold underline-offset-4 hover:underline"
+              >
                 {m.nome}
                 {m.id === meuId && <span className="ml-2 font-mono text-[10px] text-musgo">(você)</span>}
-              </span>
+              </Link>
 
               {m.id === meuId ? (
                 <select

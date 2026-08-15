@@ -14,6 +14,8 @@ const paginas = [
   { href: "/entregas",     rotulo: "Entregas" },
   { href: "/codigo",       rotulo: "Código" },
   { href: "/relatorio",    rotulo: "Trilha" },
+  { href: "/reunioes",     rotulo: "Reuniões" },
+  { href: "/sprint",       rotulo: "Sprint Report" },
 ];
 
 export default function Navegacao() {
@@ -32,13 +34,13 @@ export default function Navegacao() {
   }
 
   return (
-    <header className="border-b border-linha bg-campo/80 backdrop-blur">
+    <header className="border-b border-linha bg-campo/80 backdrop-blur print:hidden">
       <div className="mx-auto flex max-w-6xl items-center gap-x-6 px-4 py-4 sm:px-6">
         <Link href="/" className="font-display text-lg font-extrabold tracking-tight">
           Caderno de Campo
         </Link>
 
-        <nav className="hidden gap-1 text-sm sm:flex">
+        <nav className="hidden flex-wrap gap-1 text-sm sm:flex">
           {paginas.map((p) => {
             const ativo = caminho === p.href;
             return (
