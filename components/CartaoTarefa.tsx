@@ -1,21 +1,22 @@
 "use client";
 
+import { dataLocalISO, diasEntre } from "@/lib/datas";
 import { STATUS, type Tarefa, type Status } from "@/lib/types";
 import Selo from "./Selo";
 
 function diasAte(prazo: string | null) {
   if (!prazo) return null;
-  const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
-  const alvo = new Date(prazo + "T00:00:00");
-  return Math.round((alvo.getTime() - hoje.getTime()) / 86_400_000);
+  return diasEntre(prazo, dataLocalISO());
 }
 
 export default function CartaoTarefa({
   tarefa,
   aoMudarStatus,
+  aoArquivar,
 }: {
   tarefa: Tarefa;
   aoMudarStatus?: (id: number, status: Status) => void;
+  aoArquivar?: (id: number) => void;
 }) {
   const dias = diasAte(tarefa.prazo);
   const atrasada = dias !== null && dias < 0 && tarefa.status !== "concluida";
@@ -26,7 +27,14 @@ export default function CartaoTarefa({
     >
       <div className="flex items-start justify-between gap-2">
         <h3 className="font-display text-sm font-semibold leading-snug">{tarefa.titulo}</h3>
-        <Selo status={tarefa.status} />
+        <div className="flex shrink-0 items-center gap-1">
+          {tarefa.prioridade === "alta" && (
+            <span className="bg-trigo px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-tinta">
+              alta
+            </span>
+          )}
+          <Selo status={tarefa.status} />
+        </div>
       </div>
 
       {tarefa.descricao && (
@@ -49,20 +57,32 @@ export default function CartaoTarefa({
             entrega
           </a>
         )}
+        <span className={tarefa.subiu_git ? "text-musgo" : "text-tinta/40"}>
+          {tarefa.subiu_git ? "● git" : "○ git"}
+        </span>
       </div>
 
-      {aoMudarStatus && (
-        <div className="mt-3 flex gap-1 border-t border-linha pt-2">
-          {STATUS.map((s) => (
+      {(aoMudarStatus || aoArquivar) && (
+        <div className="mt-3 flex flex-wrap items-center gap-1 border-t border-linha pt-2">
+          {aoMudarStatus &&
+            STATUS.map((s) => (
+              <button
+                key={s.id}
+                onClick={() => aoMudarStatus(tarefa.id, s.id)}
+                disabled={s.id === tarefa.status}
+                className="px-1.5 py-0.5 font-mono text-[10px] uppercase text-tinta/50 hover:bg-linha hover:text-tinta disabled:opacity-25"
+              >
+                {s.nome}
+              </button>
+            ))}
+          {aoArquivar && (
             <button
-              key={s.id}
-              onClick={() => aoMudarStatus(tarefa.id, s.id)}
-              disabled={s.id === tarefa.status}
-              className="px-1.5 py-0.5 font-mono text-[10px] uppercase text-tinta/50 hover:bg-linha hover:text-tinta disabled:opacity-25"
+              onClick={() => aoArquivar(tarefa.id)}
+              className="ml-auto px-1.5 py-0.5 font-mono text-[10px] uppercase text-tinta/40 hover:text-trigo"
             >
-              {s.nome}
+              arquivar
             </button>
-          ))}
+          )}
         </div>
       )}
     </article>

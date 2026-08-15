@@ -1,4 +1,5 @@
 import { criarClienteServidor } from "@/lib/supabase-server";
+import { dataLocalDeTimestamp } from "@/lib/datas";
 import type { Registro } from "@/lib/types";
 import BotaoExportar from "@/components/BotaoExportar";
 
@@ -32,7 +33,7 @@ export default async function Trilha() {
   }, {});
 
   const porDia = registros.reduce<Record<string, Registro[]>>((acc, r) => {
-    const dia = r.em.slice(0, 10);
+    const dia = dataLocalDeTimestamp(r.em);
     (acc[dia] ??= []).push(r);
     return acc;
   }, {});
@@ -97,7 +98,9 @@ export default async function Trilha() {
                   <span className="absolute -left-[21px] top-3.5 h-2 w-2 bg-musgo" />
                   <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                     <time className="font-mono text-[11px] text-tinta/50">
-                      {new Date(r.em).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                      {new Date(r.em).toLocaleTimeString("pt-BR", {
+                        hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo",
+                      })}
                     </time>
                     <span className="text-sm font-semibold">{r.autor ?? "—"}</span>
                     <span className="text-sm text-tinta/70">{VERBO[r.acao] ?? r.acao}</span>

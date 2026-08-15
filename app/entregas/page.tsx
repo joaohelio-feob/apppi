@@ -15,6 +15,7 @@ export default function Entregas() {
     const { data } = await supabase
       .from("tarefas")
       .select("*, membros:responsavel_id(id, nome, papel)")
+      .eq("arquivada", false)
       .order("concluido_em", { ascending: false, nullsFirst: false });
     setTarefas((data ?? []) as Tarefa[]);
     setCarregando(false);

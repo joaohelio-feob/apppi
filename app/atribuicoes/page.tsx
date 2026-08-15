@@ -18,6 +18,7 @@ export default function Atribuicoes() {
       supabase
         .from("tarefas")
         .select("*, membros:responsavel_id(id, nome, papel)")
+        .eq("arquivada", false)
         .order("prazo", { ascending: true, nullsFirst: false }),
       supabase.from("membros").select("id, nome, papel").order("nome"),
     ]);
@@ -36,10 +37,10 @@ export default function Atribuicoes() {
     await supabase.from("tarefas").update({ [campo]: valor }).eq("id", id);
   }
 
-  async function remover(id: number) {
-    if (!confirm("Remover esta atribuição? Fica registrado na trilha.")) return;
+  async function arquivar(id: number) {
+    if (!confirm("Arquivar esta atribuição? Ela some da lista, mas o histórico continua.")) return;
     setTarefas((atual) => atual.filter((t) => t.id !== id));
-    await supabase.from("tarefas").delete().eq("id", id);
+    await supabase.from("tarefas").update({ arquivada: true }).eq("id", id);
   }
 
   async function adicionar() {
@@ -173,10 +174,10 @@ export default function Atribuicoes() {
                   </td>
                   <td className="px-3 py-2 text-right">
                     <button
-                      onClick={() => remover(t.id)}
+                      onClick={() => arquivar(t.id)}
                       className="font-mono text-[11px] text-tinta/40 hover:text-trigo"
                     >
-                      remover
+                      arquivar
                     </button>
                   </td>
                 </tr>

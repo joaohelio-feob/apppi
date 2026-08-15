@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
+import { dataLocalISO } from "@/lib/datas";
 import { STATUS, type Membro, type Tarefa } from "@/lib/types";
 
 const DIAS = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
@@ -20,6 +21,7 @@ export default function Calendario() {
     supabase
       .from("tarefas")
       .select("*, membros:responsavel_id(id, nome, papel)")
+      .eq("arquivada", false)
       .not("prazo", "is", null)
       .then(({ data }) => setTarefas((data ?? []) as Tarefa[]));
     supabase.from("membros").select("id, nome, papel").order("nome")
@@ -53,7 +55,7 @@ export default function Calendario() {
   const chave = (dia: number) =>
     `${mes.getFullYear()}-${String(mes.getMonth() + 1).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
 
-  const hojeIso = new Date().toISOString().slice(0, 10);
+  const hojeIso = dataLocalISO();
 
   return (
     <div>

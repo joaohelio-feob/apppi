@@ -1,6 +1,7 @@
 "use client";
 
 import { criarClienteNavegador } from "@/lib/supabase-browser";
+import { dataLocalISO } from "@/lib/datas";
 import { useState } from "react";
 
 export default function BotaoExportar() {
@@ -26,7 +27,7 @@ export default function BotaoExportar() {
     const url = URL.createObjectURL(new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" }));
     const a = document.createElement("a");
     a.href = url;
-    a.download = `trilha-pi-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `trilha-pi-${dataLocalISO()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
     setGerando(false);

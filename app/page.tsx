@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { criarClienteServidor } from "@/lib/supabase-server";
 import CartaoTarefa from "@/components/CartaoTarefa";
+import { dataLocalISO } from "@/lib/datas";
 import type { Tarefa } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -8,26 +9,28 @@ export const dynamic = "force-dynamic";
 export default async function Semana() {
   const supabase = criarClienteServidor();
 
-  const hoje = new Date();
-  const fim = new Date(hoje);
-  fim.setDate(fim.getDate() + 7);
-  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  const agora = new Date();
+  const hojeIso = dataLocalISO(agora);
+  const fimIso = dataLocalISO(new Date(agora.getTime() + 7 * 86_400_000));
 
   const { data: tarefas } = await supabase
     .from("tarefas")
     .select("*, membros:responsavel_id(id, nome, papel)")
+    .eq("arquivada", false)
     .neq("status", "concluida")
     .order("prazo", { ascending: true, nullsFirst: false });
 
   const lista = (tarefas ?? []) as Tarefa[];
-  const atrasadas = lista.filter((t) => t.prazo && t.prazo < iso(hoje));
-  const daSemana  = lista.filter((t) => t.prazo && t.prazo >= iso(hoje) && t.prazo <= iso(fim));
-  const depois    = lista.filter((t) => !t.prazo || t.prazo > iso(fim));
+  const atrasadas = lista.filter((t) => t.prazo && t.prazo < hojeIso);
+  const daSemana  = lista.filter((t) => t.prazo && t.prazo >= hojeIso && t.prazo <= fimIso);
+  const depois    = lista.filter((t) => !t.prazo || t.prazo > fimIso);
 
   return (
     <div>
       <p className="font-mono text-xs uppercase tracking-widest text-musgo">
-        {hoje.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" })}
+        {agora.toLocaleDateString("pt-BR", {
+          weekday: "long", day: "2-digit", month: "long", timeZone: "America/Sao_Paulo",
+        })}
       </p>
       <h1 className="mt-1 font-display text-3xl font-extrabold tracking-tight sm:text-4xl">
         O que a equipe tem em mãos

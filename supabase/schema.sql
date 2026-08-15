@@ -43,6 +43,7 @@ create table if not exists tarefas (
   local_entrega  text,                               -- link onde a atividade foi/será entregue (GitHub, Drive, Forms...)
   observacoes    text,                               -- notas de quem entregou a atividade
   subiu_git      boolean not null default false,      -- a entrega já está versionada no repositório?
+  arquivada      boolean not null default false,      -- arquivada em vez de apagada: a trilha não pode sumir
   concluido_em   timestamptz,                         -- preenchido sozinho quando o status vira "concluida"
   criado_em      timestamptz not null default now(),
   atualizado_em  timestamptz not null default now()
@@ -71,7 +72,7 @@ create table if not exists historico (
   id           bigserial primary key,
   tarefa_id    bigint references tarefas(id) on delete cascade,
   autor_id     uuid references membros(id) on delete set null,
-  acao         text not null,        -- criou | mudou_status | reatribuiu | mudou_prazo | editou | mudou_git | removeu
+  acao         text not null,        -- criou | mudou_status | reatribuiu | mudou_prazo | editou | mudou_git | arquivou | desarquivou | removeu
   campo        text,
   valor_antigo text,
   valor_novo   text,
@@ -126,11 +127,20 @@ begin
       values (new.id, auth.uid(), 'mudou_git', 'subiu_git', old.subiu_git::text, new.subiu_git::text);
     end if;
 
+    if new.arquivada is distinct from old.arquivada then
+      insert into historico (tarefa_id, autor_id, acao, campo, valor_antigo, valor_novo)
+      values (new.id, auth.uid(), case when new.arquivada then 'arquivou' else 'desarquivou' end,
+              'arquivada', old.arquivada::text, new.arquivada::text);
+    end if;
+
     new.atualizado_em := now();
     return new;
   end if;
 
   if (tg_op = 'DELETE') then
+    -- Não existe mais policy de DELETE pra authenticated (ver seção 5): a equipe
+    -- arquiva, não apaga. Isso só roda se alguém excluir direto pelo SQL Editor
+    -- como administrador — fica registrado mesmo assim.
     insert into historico (tarefa_id, autor_id, acao, campo, valor_antigo)
     values (null, auth.uid(), 'removeu', 'titulo', old.titulo);
     return old;
@@ -164,7 +174,8 @@ create policy "membro edita a si"   on membros   for update to authenticated usi
 create policy "equipe le tarefas"   on tarefas   for select to authenticated using (true);
 create policy "equipe cria tarefas" on tarefas   for insert to authenticated with check (true);
 create policy "equipe edita tarefas"on tarefas   for update to authenticated using (true);
-create policy "equipe apaga tarefas"on tarefas   for delete to authenticated using (true);
+-- Sem policy de DELETE: a equipe arquiva (arquivada = true), nunca apaga.
+-- É o que mantém a trilha de histórico íntegra.
 
 create policy "equipe le historico" on historico for select to authenticated using (true);
 -- Repare: não existe policy de UPDATE nem DELETE em historico. É proposital.
@@ -203,3 +214,82 @@ from historico h
 left join membros m on m.id = h.autor_id
 left join tarefas t on t.id = h.tarefa_id
 order by h.em desc;
+
+-- =====================================================================
+-- MIGRAÇÃO · arquivar em vez de apagar (rode só se já executou este
+-- arquivo antes de agosto/2026). Se está criando o projeto do zero,
+-- ignore este bloco — as seções acima já vêm com tudo certo.
+-- =====================================================================
+
+-- 1. Nova coluna, sem quebrar quem já tem tarefas cadastradas.
+alter table tarefas add column if not exists arquivada boolean not null default false;
+
+-- 2. Tira a permissão de apagar tarefa. Dali pra frente só dá pra arquivar.
+drop policy if exists "equipe apaga tarefas" on tarefas;
+
+-- 3. Recria a função do trigger com a lógica de arquivar/desarquivar
+--    (mesmo corpo da seção 4 acima — rodar de novo só substitui a versão antiga).
+create or replace function public.registrar_historico()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  if (tg_op = 'INSERT') then
+    insert into historico (tarefa_id, autor_id, acao, campo, valor_novo)
+    values (new.id, auth.uid(), 'criou', 'titulo', new.titulo);
+    return new;
+  end if;
+
+  if (tg_op = 'UPDATE') then
+    if new.status is distinct from old.status then
+      insert into historico (tarefa_id, autor_id, acao, campo, valor_antigo, valor_novo)
+      values (new.id, auth.uid(), 'mudou_status', 'status', old.status, new.status);
+      new.concluido_em := case when new.status = 'concluida' then now() else null end;
+    end if;
+
+    if new.responsavel_id is distinct from old.responsavel_id then
+      insert into historico (tarefa_id, autor_id, acao, campo, valor_antigo, valor_novo)
+      values (new.id, auth.uid(), 'reatribuiu', 'responsavel_id',
+              old.responsavel_id::text, new.responsavel_id::text);
+    end if;
+
+    if new.prazo is distinct from old.prazo then
+      insert into historico (tarefa_id, autor_id, acao, campo, valor_antigo, valor_novo)
+      values (new.id, auth.uid(), 'mudou_prazo', 'prazo', old.prazo::text, new.prazo::text);
+    end if;
+
+    if new.titulo is distinct from old.titulo or new.descricao is distinct from old.descricao then
+      insert into historico (tarefa_id, autor_id, acao, campo, valor_antigo, valor_novo)
+      values (new.id, auth.uid(), 'editou', 'titulo', old.titulo, new.titulo);
+    end if;
+
+    if new.observacoes is distinct from old.observacoes then
+      insert into historico (tarefa_id, autor_id, acao, campo, valor_antigo, valor_novo)
+      values (new.id, auth.uid(), 'editou', 'observacoes', old.observacoes, new.observacoes);
+    end if;
+
+    if new.subiu_git is distinct from old.subiu_git then
+      insert into historico (tarefa_id, autor_id, acao, campo, valor_antigo, valor_novo)
+      values (new.id, auth.uid(), 'mudou_git', 'subiu_git', old.subiu_git::text, new.subiu_git::text);
+    end if;
+
+    if new.arquivada is distinct from old.arquivada then
+      insert into historico (tarefa_id, autor_id, acao, campo, valor_antigo, valor_novo)
+      values (new.id, auth.uid(), case when new.arquivada then 'arquivou' else 'desarquivou' end,
+              'arquivada', old.arquivada::text, new.arquivada::text);
+    end if;
+
+    new.atualizado_em := now();
+    return new;
+  end if;
+
+  if (tg_op = 'DELETE') then
+    insert into historico (tarefa_id, autor_id, acao, campo, valor_antigo)
+    values (null, auth.uid(), 'removeu', 'titulo', old.titulo);
+    return old;
+  end if;
+
+  return null;
+end;
+$$;

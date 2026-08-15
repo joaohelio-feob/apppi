@@ -18,6 +18,7 @@ export default function Quadro() {
       supabase
         .from("tarefas")
         .select("*, membros:responsavel_id(id, nome, papel)")
+        .eq("arquivada", false)
         .order("prazo", { ascending: true, nullsFirst: false }),
       supabase.from("membros").select("id, nome, papel").order("nome"),
     ]);
@@ -40,6 +41,12 @@ export default function Quadro() {
   async function mudarStatus(id: number, status: Status) {
     setTarefas((atual) => atual.map((t) => (t.id === id ? { ...t, status } : t)));
     await supabase.from("tarefas").update({ status }).eq("id", id);
+  }
+
+  async function arquivar(id: number) {
+    if (!confirm("Arquivar esta tarefa? Ela some do quadro, mas o histórico continua.")) return;
+    setTarefas((atual) => atual.filter((t) => t.id !== id));
+    await supabase.from("tarefas").update({ arquivada: true }).eq("id", id);
   }
 
   return (
@@ -75,7 +82,7 @@ export default function Quadro() {
                 </h2>
                 <div className="space-y-3">
                   {daColuna.map((t) => (
-                    <CartaoTarefa key={t.id} tarefa={t} aoMudarStatus={mudarStatus} />
+                    <CartaoTarefa key={t.id} tarefa={t} aoMudarStatus={mudarStatus} aoArquivar={arquivar} />
                   ))}
                   {daColuna.length === 0 && (
                     <p className="text-xs text-tinta/40">Coluna vazia.</p>
