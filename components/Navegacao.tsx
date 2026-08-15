@@ -12,6 +12,7 @@ const paginas = [
   { href: "/calendario",   rotulo: "Calendário" },
   { href: "/equipe",       rotulo: "Equipe" },
   { href: "/entregas",     rotulo: "Entregas" },
+  { href: "/codigo",       rotulo: "Código" },
   { href: "/relatorio",    rotulo: "Trilha" },
 ];
 

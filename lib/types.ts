@@ -48,6 +48,7 @@ export type Tarefa = {
   inicio: string | null;
   prazo: string | null;
   local_entrega: string | null;
+  issue_numero: number | null;
   observacoes: string | null;
   subiu_git: boolean;
   arquivada: boolean;

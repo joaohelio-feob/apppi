@@ -20,6 +20,7 @@ export default function FormularioTarefa({
   const [responsavel, setResponsavel] = useState("");
   const [prazo, setPrazo] = useState("");
   const [localEntrega, setLocalEntrega] = useState("");
+  const [issueNumero, setIssueNumero] = useState("");
   const [unidade, setUnidade] = useState("geral");
   const [anexo, setAnexo] = useState<File | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -48,6 +49,7 @@ export default function FormularioTarefa({
         criador_id: sessao.user?.id ?? null,
         prazo: prazo || null,
         local_entrega: localEntrega || null,
+        issue_numero: issueNumero ? Number(issueNumero) : null,
         unidade,
       })
       .select("id")
@@ -138,6 +140,17 @@ export default function FormularioTarefa({
             value={localEntrega}
             onChange={(e) => setLocalEntrega(e.target.value)}
           />
+          <label className="block font-mono text-[11px] uppercase text-tinta/60">
+            Nº da issue no GitHub (opcional)
+            <input
+              type="number"
+              min={1}
+              className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-sm normal-case text-tinta"
+              placeholder="Ex.: 42"
+              value={issueNumero}
+              onChange={(e) => setIssueNumero(e.target.value)}
+            />
+          </label>
           <label className="block font-mono text-[11px] uppercase text-tinta/60">
             Anexar documento (opcional)
             <input

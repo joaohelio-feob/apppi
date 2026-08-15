@@ -4,6 +4,7 @@ import { useState } from "react";
 import { dataLocalISO, diasEntre } from "@/lib/datas";
 import { STATUS, UNIDADES, type Tarefa, type Status } from "@/lib/types";
 import Selo from "./Selo";
+import SeloIssue from "./SeloIssue";
 
 function diasAte(prazo: string | null) {
   if (!prazo) return null;
@@ -75,6 +76,7 @@ export default function CartaoTarefa({
         <span className={tarefa.subiu_git ? "text-musgo" : "text-tinta/40"}>
           {tarefa.subiu_git ? "● git" : "○ git"}
         </span>
+        {tarefa.issue_numero && <SeloIssue numero={tarefa.issue_numero} />}
       </div>
 
       {(aoMudarStatus || aoArquivar) && (

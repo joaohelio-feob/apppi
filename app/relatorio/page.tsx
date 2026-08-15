@@ -1,5 +1,6 @@
 import { criarClienteServidor } from "@/lib/supabase-server";
 import { dataLocalDeTimestamp } from "@/lib/datas";
+import { githubConfigurado, listarCommits, type CommitGithub } from "@/lib/github";
 import type { Registro } from "@/lib/types";
 import BotaoExportar from "@/components/BotaoExportar";
 
@@ -11,6 +12,9 @@ const VERBO: Record<string, string> = {
   reatribuiu: "passou a responsabilidade",
   mudou_prazo: "remarcou o prazo para",
   editou: "reescreveu",
+  mudou_git: "marcou subiu_git como",
+  arquivou: "arquivou a tarefa",
+  desarquivou: "desarquivou a tarefa",
   removeu: "apagou a tarefa",
 };
 
@@ -37,6 +41,23 @@ export default async function Trilha() {
     (acc[dia] ??= []).push(r);
     return acc;
   }, {});
+
+  // Cruza com o GitHub: o que o painel registrou vs. o que foi commitado de fato.
+  let porDiaGithub: Record<string, CommitGithub[]> = {};
+  if (githubConfigurado()) {
+    try {
+      const commits = await listarCommits(new Date(Date.now() - 90 * 86_400_000).toISOString());
+      porDiaGithub = commits.reduce<Record<string, CommitGithub[]>>((acc, c) => {
+        const quando = c.commit.author?.date;
+        if (!quando) return acc;
+        const dia = dataLocalDeTimestamp(quando);
+        (acc[dia] ??= []).push(c);
+        return acc;
+      }, {});
+    } catch {
+      // GitHub fora do ar não pode derrubar a Trilha — ela é a prova principal.
+    }
+  }
 
   return (
     <div>
@@ -116,6 +137,23 @@ export default async function Trilha() {
                 </li>
               ))}
             </ol>
+
+            {porDiaGithub[dia]?.length > 0 && (
+              <div className="mt-3 border-l border-linha pl-4">
+                <p className="font-mono text-[10px] uppercase tracking-widest text-tinta/40">
+                  No GitHub, no mesmo dia
+                </p>
+                <ul className="mt-1 space-y-1">
+                  {porDiaGithub[dia].map((c) => (
+                    <li key={c.sha} className="text-xs text-tinta/60">
+                      <span className="font-mono">{c.author?.login ?? c.commit.author?.name ?? "—"}</span>
+                      {" · "}
+                      {c.commit.message.split("\n")[0]}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </section>
         ))}
       </div>

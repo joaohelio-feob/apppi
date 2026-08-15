@@ -36,6 +36,11 @@ cp .env.example .env.local
 
 Preencha com a URL e a chave `anon` que estão em **Project Settings → API**.
 
+`GITHUB_TOKEN`, `GITHUB_ORG` e `GITHUB_REPO` são opcionais — só alimentam a
+página **Código** (commits, Pull Requests, status do CI). Sem eles, essa
+página mostra um aviso e o resto do site funciona normal. Veja como gerar o
+token em [Integração com o GitHub](#integração-com-o-github-somente-leitura).
+
 ### 4. Subir
 
 ```bash
@@ -75,6 +80,32 @@ A tabela `historico` recebe uma linha a cada `INSERT`, `UPDATE` ou `DELETE` em
 não existe policy de `UPDATE` ou `DELETE` nessa tabela — o registro não pode ser
 reescrito depois. A página **Trilha** lê a view `relatorio_atividades` e exporta
 tudo em CSV.
+
+## Integração com o GitHub (somente leitura)
+
+A página **Código** (`/codigo`) espelha commits, Pull Requests e status do CI
+do repositório da equipe. É **decisão de projeto** que essa integração seja só
+leitura: o painel nunca cria commit. Se ele commitasse por conta própria, tudo
+apareceria sob uma única conta de serviço — e o PI é avaliado pelo histórico
+de commits como evidência de trabalho colaborativo. Isso destruiria justamente
+a prova que a Trilha existe pra preservar. Cada integrante continua commitando
+da própria máquina, com a própria conta.
+
+Como configurar:
+
+1. Em `github.com/settings/tokens` (ou nas configurações da organização), crie
+   um **fine-grained token** só de leitura (`Contents`, `Pull requests`,
+   `Issues`, `Checks`) restrito ao repositório da equipe.
+2. Defina `GITHUB_TOKEN`, `GITHUB_ORG` e `GITHUB_REPO` em `.env.local` (local)
+   e nas **Environment Variables** da Vercel (produção) — nunca em variável
+   `NEXT_PUBLIC_`, porque essas vão para o navegador. O token só é lido pelos
+   Route Handlers em `app/api/github/*`, que rodam no servidor.
+3. Sem essas variáveis, `/codigo` mostra um aviso em vez de quebrar, e o
+   `npm run build` (inclusive no CI) passa normalmente — a integração é
+   totalmente opcional.
+
+As respostas ficam em cache por 5 minutos (`revalidate`) pra não estourar o
+limite de requisições da API do GitHub.
 
 ## Convenção de commits
 

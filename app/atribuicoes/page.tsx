@@ -33,7 +33,7 @@ export default function Atribuicoes() {
     setTarefas((atual) => atual.map((t) => (t.id === id ? { ...t, ...campos } : t)));
   }
 
-  async function salvarCampo(id: number, campo: string, valor: string | null) {
+  async function salvarCampo(id: number, campo: string, valor: string | number | null) {
     await supabase.from("tarefas").update({ [campo]: valor }).eq("id", id);
   }
 
@@ -95,6 +95,7 @@ export default function Atribuicoes() {
                 <th className="px-3 py-2 text-left">Responsável</th>
                 <th className="px-3 py-2 text-left">Dia</th>
                 <th className="px-3 py-2 text-left">Local de entrega</th>
+                <th className="px-3 py-2 text-left">Issue</th>
                 <th className="px-3 py-2 text-left">Unidade</th>
                 <th className="px-3 py-2 text-left">Status</th>
                 <th className="px-3 py-2" />
@@ -159,6 +160,22 @@ export default function Atribuicoes() {
                     />
                   </td>
                   <td className="px-3 py-2">
+                    <input
+                      type="number"
+                      min={1}
+                      defaultValue={t.issue_numero ?? ""}
+                      placeholder="nº"
+                      onBlur={(e) => {
+                        const valor = e.target.value ? Number(e.target.value) : null;
+                        if (valor !== t.issue_numero) {
+                          atualizarLocal(t.id, { issue_numero: valor });
+                          salvarCampo(t.id, "issue_numero", valor);
+                        }
+                      }}
+                      className="w-16 border border-transparent bg-transparent px-1 py-1 font-mono hover:border-linha focus:border-linha focus:outline-none"
+                    />
+                  </td>
+                  <td className="px-3 py-2">
                     <select
                       value={t.unidade}
                       onChange={(e) => {
@@ -200,7 +217,7 @@ export default function Atribuicoes() {
               ))}
               {tarefas.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-3 py-6 text-center text-sm text-tinta/50">
+                  <td colSpan={8} className="px-3 py-6 text-center text-sm text-tinta/50">
                     Nenhuma atribuição ainda. Crie a primeira acima.
                   </td>
                 </tr>

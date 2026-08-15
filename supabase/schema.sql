@@ -42,6 +42,7 @@ create table if not exists tarefas (
   inicio         date,
   prazo          date,
   local_entrega  text,                               -- link onde a atividade foi/será entregue (GitHub, Drive, Forms...)
+  issue_numero   integer,                            -- número da issue no repositório (só leitura via API do GitHub)
   observacoes    text,                               -- notas de quem entregou a atividade
   subiu_git      boolean not null default false,      -- a entrega já está versionada no repositório?
   arquivada      boolean not null default false,      -- arquivada em vez de apagada: a trilha não pode sumir
@@ -139,6 +140,11 @@ begin
       values (new.id, auth.uid(), 'editou', 'unidade', old.unidade, new.unidade);
     end if;
 
+    if new.issue_numero is distinct from old.issue_numero then
+      insert into historico (tarefa_id, autor_id, acao, campo, valor_antigo, valor_novo)
+      values (new.id, auth.uid(), 'editou', 'issue_numero', old.issue_numero::text, new.issue_numero::text);
+    end if;
+
     new.atualizado_em := now();
     return new;
   end if;
@@ -230,6 +236,7 @@ order by h.em desc;
 -- 1. Novas colunas, sem quebrar quem já tem tarefas cadastradas.
 alter table tarefas add column if not exists arquivada boolean not null default false;
 alter table tarefas add column if not exists unidade text not null default 'geral';
+alter table tarefas add column if not exists issue_numero integer;
 
 -- 2. Tira a permissão de apagar tarefa. Dali pra frente só dá pra arquivar.
 drop policy if exists "equipe apaga tarefas" on tarefas;
@@ -290,6 +297,11 @@ begin
     if new.unidade is distinct from old.unidade then
       insert into historico (tarefa_id, autor_id, acao, campo, valor_antigo, valor_novo)
       values (new.id, auth.uid(), 'editou', 'unidade', old.unidade, new.unidade);
+    end if;
+
+    if new.issue_numero is distinct from old.issue_numero then
+      insert into historico (tarefa_id, autor_id, acao, campo, valor_antigo, valor_novo)
+      values (new.id, auth.uid(), 'editou', 'issue_numero', old.issue_numero::text, new.issue_numero::text);
     end if;
 
     new.atualizado_em := now();
