@@ -8,7 +8,16 @@ export const STATUS: { id: Status; nome: string; cor: string }[] = [
   { id: "concluida", nome: "Concluída",  cor: "bg-musgo text-campo" },
 ];
 
-export type Membro = { id: string; nome: string; papel: string };
+export type Papel = "dev" | "doc" | "scrum" | "design";
+
+export const PAPEIS: { id: Papel; nome: string }[] = [
+  { id: "dev",    nome: "Desenvolvimento" },
+  { id: "doc",    nome: "Documentação" },
+  { id: "scrum",  nome: "Scrum Master" },
+  { id: "design", nome: "Design" },
+];
+
+export type Membro = { id: string; nome: string; papel: string; criado_em?: string };
 
 export type Tarefa = {
   id: number;
@@ -20,9 +29,22 @@ export type Tarefa = {
   prioridade: Prioridade;
   inicio: string | null;
   prazo: string | null;
-  issue_url: string | null;
+  local_entrega: string | null;
+  observacoes: string | null;
+  subiu_git: boolean;
+  concluido_em: string | null;
   criado_em: string;
   atualizado_em: string;
+  membros?: Membro | null;
+};
+
+export type Anexo = {
+  id: number;
+  tarefa_id: number;
+  autor_id: string | null;
+  nome: string;
+  caminho: string;
+  criado_em: string;
   membros?: Membro | null;
 };
 

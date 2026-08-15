@@ -2,12 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
-import { STATUS, type Tarefa } from "@/lib/types";
+import { STATUS, type Membro, type Tarefa } from "@/lib/types";
 
 const DIAS = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
 
 export default function Calendario() {
   const [tarefas, setTarefas] = useState<Tarefa[]>([]);
+  const [membros, setMembros] = useState<Membro[]>([]);
+  const [responsavel, setResponsavel] = useState("");
   const [mes, setMes] = useState(() => {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
@@ -20,7 +22,14 @@ export default function Calendario() {
       .select("*, membros:responsavel_id(id, nome, papel)")
       .not("prazo", "is", null)
       .then(({ data }) => setTarefas((data ?? []) as Tarefa[]));
+    supabase.from("membros").select("id, nome, papel").order("nome")
+      .then(({ data }) => setMembros((data ?? []) as Membro[]));
   }, []);
+
+  const visiveis = useMemo(
+    () => (responsavel ? tarefas.filter((t) => t.responsavel_id === responsavel) : tarefas),
+    [tarefas, responsavel]
+  );
 
   const celulas = useMemo(() => {
     const primeiro = new Date(mes.getFullYear(), mes.getMonth(), 1);
@@ -34,12 +43,12 @@ export default function Calendario() {
 
   const porDia = useMemo(() => {
     const mapa: Record<string, Tarefa[]> = {};
-    tarefas.forEach((t) => {
+    visiveis.forEach((t) => {
       if (!t.prazo) return;
       (mapa[t.prazo] ??= []).push(t);
     });
     return mapa;
-  }, [tarefas]);
+  }, [visiveis]);
 
   const chave = (dia: number) =>
     `${mes.getFullYear()}-${String(mes.getMonth() + 1).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
@@ -50,12 +59,26 @@ export default function Calendario() {
     <div>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="font-mono text-xs uppercase tracking-widest text-musgo">Calendário</p>
+          <p className="font-mono text-xs uppercase tracking-widest text-musgo">
+            {responsavel
+              ? `Calendário pessoal · ${membros.find((m) => m.id === responsavel)?.nome ?? ""}`
+              : "Calendário geral"}
+          </p>
           <h1 className="mt-1 font-display text-3xl font-extrabold capitalize tracking-tight">
             {mes.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}
           </h1>
         </div>
-        <div className="flex gap-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            value={responsavel}
+            onChange={(e) => setResponsavel(e.target.value)}
+            className="border border-linha bg-casca px-3 py-1.5 font-mono text-xs uppercase"
+          >
+            <option value="">Todo mundo</option>
+            {membros.map((m) => (
+              <option key={m.id} value={m.id}>{m.nome}</option>
+            ))}
+          </select>
           <button
             onClick={() => setMes(new Date(mes.getFullYear(), mes.getMonth() - 1, 1))}
             className="border border-linha px-3 py-1.5 font-mono text-xs hover:bg-casca"

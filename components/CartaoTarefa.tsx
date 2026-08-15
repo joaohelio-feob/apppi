@@ -44,9 +44,9 @@ export default function CartaoTarefa({
               : `faltam ${dias}d`}
           </span>
         )}
-        {tarefa.issue_url && (
-          <a href={tarefa.issue_url} target="_blank" rel="noreferrer" className="underline">
-            issue
+        {tarefa.local_entrega && (
+          <a href={tarefa.local_entrega} target="_blank" rel="noreferrer" className="underline">
+            entrega
           </a>
         )}
       </div>

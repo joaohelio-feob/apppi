@@ -5,10 +5,13 @@ import { usePathname, useRouter } from "next/navigation";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
 
 const paginas = [
-  { href: "/",           rotulo: "Semana" },
-  { href: "/tarefas",    rotulo: "Quadro" },
-  { href: "/calendario", rotulo: "Calendário" },
-  { href: "/relatorio",  rotulo: "Trilha" },
+  { href: "/",             rotulo: "Semana" },
+  { href: "/tarefas",      rotulo: "Quadro" },
+  { href: "/atribuicoes",  rotulo: "Atribuições" },
+  { href: "/calendario",   rotulo: "Calendário" },
+  { href: "/equipe",       rotulo: "Equipe" },
+  { href: "/entregas",     rotulo: "Entregas" },
+  { href: "/relatorio",    rotulo: "Trilha" },
 ];
 
 export default function Navegacao() {

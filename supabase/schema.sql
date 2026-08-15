@@ -40,7 +40,10 @@ create table if not exists tarefas (
   prioridade     text not null default 'media',      -- baixa | media | alta
   inicio         date,
   prazo          date,
-  issue_url      text,                               -- link da issue/PR no GitHub
+  local_entrega  text,                               -- link onde a atividade foi/será entregue (GitHub, Drive, Forms...)
+  observacoes    text,                               -- notas de quem entregou a atividade
+  subiu_git      boolean not null default false,      -- a entrega já está versionada no repositório?
+  concluido_em   timestamptz,                         -- preenchido sozinho quando o status vira "concluida"
   criado_em      timestamptz not null default now(),
   atualizado_em  timestamptz not null default now()
 );
@@ -48,13 +51,27 @@ create table if not exists tarefas (
 create index if not exists idx_tarefas_prazo on tarefas(prazo);
 create index if not exists idx_tarefas_responsavel on tarefas(responsavel_id);
 
+-- ---------- 2b. ANEXOS -------------------------------------------------
+-- Documentos anexados na entrega de uma tarefa. Os arquivos em si ficam
+-- no Storage (bucket "entregas"); aqui só fica a referência.
+create table if not exists anexos (
+  id         bigserial primary key,
+  tarefa_id  bigint not null references tarefas(id) on delete cascade,
+  autor_id   uuid references membros(id) on delete set null,
+  nome       text not null,
+  caminho    text not null,   -- caminho do arquivo no bucket "entregas"
+  criado_em  timestamptz not null default now()
+);
+
+create index if not exists idx_anexos_tarefa on anexos(tarefa_id);
+
 -- ---------- 3. HISTÓRICO (a prova para o professor) -------------------
 -- Só recebe INSERT. Nunca apague nada daqui.
 create table if not exists historico (
   id           bigserial primary key,
   tarefa_id    bigint references tarefas(id) on delete cascade,
   autor_id     uuid references membros(id) on delete set null,
-  acao         text not null,        -- criou | mudou_status | reatribuiu | mudou_prazo | editou | removeu
+  acao         text not null,        -- criou | mudou_status | reatribuiu | mudou_prazo | editou | mudou_git | removeu
   campo        text,
   valor_antigo text,
   valor_novo   text,
@@ -80,6 +97,7 @@ begin
     if new.status is distinct from old.status then
       insert into historico (tarefa_id, autor_id, acao, campo, valor_antigo, valor_novo)
       values (new.id, auth.uid(), 'mudou_status', 'status', old.status, new.status);
+      new.concluido_em := case when new.status = 'concluida' then now() else null end;
     end if;
 
     if new.responsavel_id is distinct from old.responsavel_id then
@@ -96,6 +114,16 @@ begin
     if new.titulo is distinct from old.titulo or new.descricao is distinct from old.descricao then
       insert into historico (tarefa_id, autor_id, acao, campo, valor_antigo, valor_novo)
       values (new.id, auth.uid(), 'editou', 'titulo', old.titulo, new.titulo);
+    end if;
+
+    if new.observacoes is distinct from old.observacoes then
+      insert into historico (tarefa_id, autor_id, acao, campo, valor_antigo, valor_novo)
+      values (new.id, auth.uid(), 'editou', 'observacoes', old.observacoes, new.observacoes);
+    end if;
+
+    if new.subiu_git is distinct from old.subiu_git then
+      insert into historico (tarefa_id, autor_id, acao, campo, valor_antigo, valor_novo)
+      values (new.id, auth.uid(), 'mudou_git', 'subiu_git', old.subiu_git::text, new.subiu_git::text);
     end if;
 
     new.atualizado_em := now();
@@ -128,6 +156,7 @@ create trigger trg_hist_del before delete on tarefas
 alter table membros   enable row level security;
 alter table tarefas   enable row level security;
 alter table historico enable row level security;
+alter table anexos    enable row level security;
 
 create policy "equipe le membros"   on membros   for select to authenticated using (true);
 create policy "membro edita a si"   on membros   for update to authenticated using (auth.uid() = id);
@@ -139,6 +168,24 @@ create policy "equipe apaga tarefas"on tarefas   for delete to authenticated usi
 
 create policy "equipe le historico" on historico for select to authenticated using (true);
 -- Repare: não existe policy de UPDATE nem DELETE em historico. É proposital.
+
+create policy "equipe le anexos"      on anexos for select to authenticated using (true);
+create policy "equipe anexa"          on anexos for insert to authenticated with check (true);
+create policy "autor apaga seu anexo" on anexos for delete to authenticated using (auth.uid() = autor_id);
+
+-- ---------- 5b. STORAGE: bucket privado para os documentos anexados ---
+insert into storage.buckets (id, name, public)
+values ('entregas', 'entregas', false)
+on conflict (id) do nothing;
+
+create policy "equipe le arquivos de entregas" on storage.objects
+  for select to authenticated using (bucket_id = 'entregas');
+
+create policy "equipe sobe arquivos de entregas" on storage.objects
+  for insert to authenticated with check (bucket_id = 'entregas');
+
+create policy "autor apaga seu arquivo" on storage.objects
+  for delete to authenticated using (bucket_id = 'entregas' and owner = auth.uid());
 
 -- ---------- 6. VIEW pronta para o relatório final ---------------------
 create or replace view relatorio_atividades as

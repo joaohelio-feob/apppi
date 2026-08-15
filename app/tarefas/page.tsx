@@ -111,7 +111,8 @@ function FormularioTarefa({
   const [descricao, setDescricao] = useState("");
   const [responsavel, setResponsavel] = useState("");
   const [prazo, setPrazo] = useState("");
-  const [issue, setIssue] = useState("");
+  const [localEntrega, setLocalEntrega] = useState("");
+  const [anexo, setAnexo] = useState<File | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
 
@@ -124,17 +125,39 @@ function FormularioTarefa({
     const supabase = criarClienteNavegador();
     const { data: sessao } = await supabase.auth.getUser();
 
-    const { error } = await supabase.from("tarefas").insert({
-      titulo,
-      descricao: descricao || null,
-      responsavel_id: responsavel || null,
-      criador_id: sessao.user?.id ?? null,
-      prazo: prazo || null,
-      issue_url: issue || null,
-    });
+    const { data: tarefa, error } = await supabase
+      .from("tarefas")
+      .insert({
+        titulo,
+        descricao: descricao || null,
+        responsavel_id: responsavel || null,
+        criador_id: sessao.user?.id ?? null,
+        prazo: prazo || null,
+        local_entrega: localEntrega || null,
+      })
+      .select("id")
+      .single();
+
+    if (error || !tarefa) {
+      setSalvando(false);
+      setErro(error?.message ?? "Não deu pra criar a tarefa.");
+      return;
+    }
+
+    if (anexo) {
+      const caminho = `${tarefa.id}/${Date.now()}-${anexo.name}`;
+      const { error: erroUpload } = await supabase.storage.from("entregas").upload(caminho, anexo);
+      if (!erroUpload) {
+        await supabase.from("anexos").insert({
+          tarefa_id: tarefa.id,
+          autor_id: sessao.user?.id ?? null,
+          nome: anexo.name,
+          caminho,
+        });
+      }
+    }
 
     setSalvando(false);
-    if (error) { setErro(error.message); return; }
     aoSalvar();
     aoFechar();
   }
@@ -182,10 +205,18 @@ function FormularioTarefa({
           </label>
           <input
             className="w-full border border-linha bg-casca px-3 py-2 text-sm"
-            placeholder="Link da issue no GitHub (opcional)"
-            value={issue}
-            onChange={(e) => setIssue(e.target.value)}
+            placeholder="Local de entrega: link do Drive, Forms, GitHub… (opcional)"
+            value={localEntrega}
+            onChange={(e) => setLocalEntrega(e.target.value)}
           />
+          <label className="block font-mono text-[11px] uppercase text-tinta/60">
+            Anexar documento (opcional)
+            <input
+              type="file"
+              onChange={(e) => setAnexo(e.target.files?.[0] ?? null)}
+              className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-xs normal-case text-tinta file:mr-2 file:border-0 file:bg-tinta file:px-2 file:py-1 file:text-xs file:text-campo"
+            />
+          </label>
 
           {erro && <p className="font-mono text-xs text-trigo">{erro}</p>}
         </div>
