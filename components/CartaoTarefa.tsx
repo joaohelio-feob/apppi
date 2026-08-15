@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { dataLocalISO, diasEntre } from "@/lib/datas";
 import { STATUS, type Tarefa, type Status } from "@/lib/types";
 import Selo from "./Selo";
@@ -13,17 +14,28 @@ export default function CartaoTarefa({
   tarefa,
   aoMudarStatus,
   aoArquivar,
+  arrastavel,
 }: {
   tarefa: Tarefa;
   aoMudarStatus?: (id: number, status: Status) => void;
   aoArquivar?: (id: number) => void;
+  arrastavel?: boolean;
 }) {
   const dias = diasAte(tarefa.prazo);
   const atrasada = dias !== null && dias < 0 && tarefa.status !== "concluida";
+  const [arrastando, setArrastando] = useState(false);
 
   return (
     <article
-      className={`border bg-casca p-3 ${atrasada ? "border-trigo" : "border-linha"}`}
+      draggable={arrastavel}
+      onDragStart={(e) => {
+        e.dataTransfer.setData("text/plain", String(tarefa.id));
+        setArrastando(true);
+      }}
+      onDragEnd={() => setArrastando(false)}
+      className={`border bg-casca p-3 ${atrasada ? "border-trigo" : "border-linha"} ${
+        arrastando ? "opacity-40" : ""
+      } ${arrastavel ? "cursor-grab active:cursor-grabbing" : ""}`}
     >
       <div className="flex items-start justify-between gap-2">
         <h3 className="font-display text-sm font-semibold leading-snug">{tarefa.titulo}</h3>

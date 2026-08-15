@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
@@ -17,6 +18,9 @@ const paginas = [
 export default function Navegacao() {
   const caminho = usePathname();
   const router = useRouter();
+  const [aberto, setAberto] = useState(false);
+
+  useEffect(() => { setAberto(false); }, [caminho]);
 
   if (caminho === "/login") return null;
 
@@ -28,12 +32,12 @@ export default function Navegacao() {
 
   return (
     <header className="border-b border-linha bg-campo/80 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-3 px-4 py-4 sm:px-6">
+      <div className="mx-auto flex max-w-6xl items-center gap-x-6 px-4 py-4 sm:px-6">
         <Link href="/" className="font-display text-lg font-extrabold tracking-tight">
           Caderno de Campo
         </Link>
 
-        <nav className="flex gap-1 text-sm">
+        <nav className="hidden gap-1 text-sm sm:flex">
           {paginas.map((p) => {
             const ativo = caminho === p.href;
             return (
@@ -54,11 +58,45 @@ export default function Navegacao() {
 
         <button
           onClick={sair}
-          className="ml-auto font-mono text-xs text-tinta/60 underline underline-offset-4 hover:text-tinta"
+          className="ml-auto hidden font-mono text-xs text-tinta/60 underline underline-offset-4 hover:text-tinta sm:block"
         >
           sair
         </button>
+
+        <button
+          onClick={() => setAberto((a) => !a)}
+          aria-expanded={aberto}
+          aria-label="Abrir menu"
+          className="ml-auto flex h-9 w-9 flex-col items-center justify-center gap-1 border border-linha sm:hidden"
+        >
+          <span className={`h-px w-5 bg-tinta transition-transform ${aberto ? "translate-y-[3px] rotate-45" : ""}`} />
+          <span className={`h-px w-5 bg-tinta transition-opacity ${aberto ? "opacity-0" : ""}`} />
+          <span className={`h-px w-5 bg-tinta transition-transform ${aberto ? "-translate-y-[3px] -rotate-45" : ""}`} />
+        </button>
       </div>
+
+      {aberto && (
+        <nav className="flex flex-col border-t border-linha px-4 py-2 text-sm sm:hidden">
+          {paginas.map((p) => {
+            const ativo = caminho === p.href;
+            return (
+              <Link
+                key={p.href}
+                href={p.href}
+                className={`px-2 py-2.5 ${ativo ? "font-semibold text-tinta" : "text-tinta/70"}`}
+              >
+                {p.rotulo}
+              </Link>
+            );
+          })}
+          <button
+            onClick={sair}
+            className="mt-1 border-t border-linha px-2 py-2.5 text-left font-mono text-xs text-tinta/60"
+          >
+            sair
+          </button>
+        </nav>
+      )}
     </header>
   );
 }

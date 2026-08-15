@@ -1,29 +1,54 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
-import { STATUS, type Membro, type Status, type Tarefa } from "@/lib/types";
+import { PRIORIDADES, STATUS, type Membro, type Status, type Tarefa } from "@/lib/types";
 import CartaoTarefa from "@/components/CartaoTarefa";
+import { useNovaTarefa } from "@/components/NovaTarefaProvider";
+import { useToast } from "@/components/ToastProvider";
+
+const CHAVE_MINHAS = "pi-quadro-somente-minhas";
 
 export default function Quadro() {
   const [tarefas, setTarefas] = useState<Tarefa[]>([]);
   const [membros, setMembros] = useState<Membro[]>([]);
+  const [meuId, setMeuId] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
-  const [abrindo, setAbrindo] = useState(false);
 
+  const [busca, setBusca] = useState("");
+  const [filtroResponsavel, setFiltroResponsavel] = useState("");
+  const [filtroPrioridade, setFiltroPrioridade] = useState("");
+  const [somenteMinhas, setSomenteMinhas] = useState(false);
+
+  const { abrir } = useNovaTarefa();
+  const { avisar } = useToast();
   const supabase = criarClienteNavegador();
 
+  useEffect(() => {
+    setSomenteMinhas(localStorage.getItem(CHAVE_MINHAS) === "1");
+  }, []);
+
+  function alternarMinhas() {
+    setSomenteMinhas((atual) => {
+      const novo = !atual;
+      localStorage.setItem(CHAVE_MINHAS, novo ? "1" : "0");
+      return novo;
+    });
+  }
+
   const carregar = useCallback(async () => {
-    const [t, m] = await Promise.all([
+    const [t, m, sessao] = await Promise.all([
       supabase
         .from("tarefas")
         .select("*, membros:responsavel_id(id, nome, papel)")
         .eq("arquivada", false)
         .order("prazo", { ascending: true, nullsFirst: false }),
       supabase.from("membros").select("id, nome, papel").order("nome"),
+      supabase.auth.getUser(),
     ]);
     setTarefas((t.data ?? []) as Tarefa[]);
     setMembros((m.data ?? []) as Membro[]);
+    setMeuId(sessao.data.user?.id ?? null);
     setCarregando(false);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -39,8 +64,13 @@ export default function Quadro() {
   }, [carregar]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function mudarStatus(id: number, status: Status) {
+    const anterior = tarefas.find((t) => t.id === id)?.status;
     setTarefas((atual) => atual.map((t) => (t.id === id ? { ...t, status } : t)));
-    await supabase.from("tarefas").update({ status }).eq("id", id);
+    const { error } = await supabase.from("tarefas").update({ status }).eq("id", id);
+    if (error && anterior) {
+      setTarefas((atual) => atual.map((t) => (t.id === id ? { ...t, status: anterior } : t)));
+      avisar("Não deu pra mudar o status. Tenta de novo.");
+    }
   }
 
   async function arquivar(id: number) {
@@ -48,6 +78,17 @@ export default function Quadro() {
     setTarefas((atual) => atual.filter((t) => t.id !== id));
     await supabase.from("tarefas").update({ arquivada: true }).eq("id", id);
   }
+
+  const visiveis = useMemo(() => {
+    const buscaLimpa = busca.trim().toLowerCase();
+    return tarefas.filter((t) => {
+      if (buscaLimpa && !t.titulo.toLowerCase().includes(buscaLimpa)) return false;
+      if (filtroResponsavel && t.responsavel_id !== filtroResponsavel) return false;
+      if (filtroPrioridade && t.prioridade !== filtroPrioridade) return false;
+      if (somenteMinhas && t.responsavel_id !== meuId) return false;
+      return true;
+    });
+  }, [tarefas, busca, filtroResponsavel, filtroPrioridade, somenteMinhas, meuId]);
 
   return (
     <div>
@@ -59,10 +100,47 @@ export default function Quadro() {
           </h1>
         </div>
         <button
-          onClick={() => setAbrindo(true)}
+          onClick={abrir}
           className="bg-tinta px-4 py-2 text-sm font-semibold text-campo hover:bg-musgo"
         >
-          Nova tarefa
+          Nova tarefa <span className="font-mono text-xs opacity-60">(n)</span>
+        </button>
+      </div>
+
+      <div className="mt-6 flex flex-wrap items-center gap-2">
+        <input
+          value={busca}
+          onChange={(e) => setBusca(e.target.value)}
+          placeholder="Buscar por título…"
+          className="min-w-[200px] flex-1 border border-linha bg-casca px-3 py-2 text-sm"
+        />
+        <select
+          value={filtroResponsavel}
+          onChange={(e) => setFiltroResponsavel(e.target.value)}
+          className="border border-linha bg-casca px-2 py-2 font-mono text-xs uppercase"
+        >
+          <option value="">Todo mundo</option>
+          {membros.map((m) => (
+            <option key={m.id} value={m.id}>{m.nome}</option>
+          ))}
+        </select>
+        <select
+          value={filtroPrioridade}
+          onChange={(e) => setFiltroPrioridade(e.target.value)}
+          className="border border-linha bg-casca px-2 py-2 font-mono text-xs uppercase"
+        >
+          <option value="">Toda prioridade</option>
+          {PRIORIDADES.map((p) => (
+            <option key={p.id} value={p.id}>{p.nome}</option>
+          ))}
+        </select>
+        <button
+          onClick={alternarMinhas}
+          className={`border px-3 py-2 font-mono text-xs uppercase ${
+            somenteMinhas ? "border-tinta bg-tinta text-campo" : "border-linha text-tinta/70 hover:bg-casca"
+          }`}
+        >
+          minhas tarefas
         </button>
       </div>
 
@@ -71,9 +149,17 @@ export default function Quadro() {
       ) : (
         <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {STATUS.map((coluna) => {
-            const daColuna = tarefas.filter((t) => t.status === coluna.id);
+            const daColuna = visiveis.filter((t) => t.status === coluna.id);
             return (
-              <div key={coluna.id}>
+              <div
+                key={coluna.id}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const id = Number(e.dataTransfer.getData("text/plain"));
+                  if (id) mudarStatus(id, coluna.id);
+                }}
+              >
                 <h2 className="mb-3 flex items-baseline gap-2 border-b border-linha pb-1 font-display text-sm font-semibold uppercase tracking-wide">
                   {coluna.nome}
                   <span className="font-mono text-xs font-normal text-tinta/50">
@@ -82,7 +168,7 @@ export default function Quadro() {
                 </h2>
                 <div className="space-y-3">
                   {daColuna.map((t) => (
-                    <CartaoTarefa key={t.id} tarefa={t} aoMudarStatus={mudarStatus} aoArquivar={arquivar} />
+                    <CartaoTarefa key={t.id} tarefa={t} aoMudarStatus={mudarStatus} aoArquivar={arquivar} arrastavel />
                   ))}
                   {daColuna.length === 0 && (
                     <p className="text-xs text-tinta/40">Coluna vazia.</p>
@@ -93,154 +179,6 @@ export default function Quadro() {
           })}
         </div>
       )}
-
-      {abrindo && (
-        <FormularioTarefa
-          membros={membros}
-          aoFechar={() => setAbrindo(false)}
-          aoSalvar={carregar}
-        />
-      )}
-    </div>
-  );
-}
-
-function FormularioTarefa({
-  membros,
-  aoFechar,
-  aoSalvar,
-}: {
-  membros: Membro[];
-  aoFechar: () => void;
-  aoSalvar: () => void;
-}) {
-  const [titulo, setTitulo] = useState("");
-  const [descricao, setDescricao] = useState("");
-  const [responsavel, setResponsavel] = useState("");
-  const [prazo, setPrazo] = useState("");
-  const [localEntrega, setLocalEntrega] = useState("");
-  const [anexo, setAnexo] = useState<File | null>(null);
-  const [erro, setErro] = useState<string | null>(null);
-  const [salvando, setSalvando] = useState(false);
-
-  async function salvar() {
-    if (!titulo.trim()) {
-      setErro("Dê um título à tarefa para poder salvar.");
-      return;
-    }
-    setSalvando(true);
-    const supabase = criarClienteNavegador();
-    const { data: sessao } = await supabase.auth.getUser();
-
-    const { data: tarefa, error } = await supabase
-      .from("tarefas")
-      .insert({
-        titulo,
-        descricao: descricao || null,
-        responsavel_id: responsavel || null,
-        criador_id: sessao.user?.id ?? null,
-        prazo: prazo || null,
-        local_entrega: localEntrega || null,
-      })
-      .select("id")
-      .single();
-
-    if (error || !tarefa) {
-      setSalvando(false);
-      setErro(error?.message ?? "Não deu pra criar a tarefa.");
-      return;
-    }
-
-    if (anexo) {
-      const caminho = `${tarefa.id}/${Date.now()}-${anexo.name}`;
-      const { error: erroUpload } = await supabase.storage.from("entregas").upload(caminho, anexo);
-      if (!erroUpload) {
-        await supabase.from("anexos").insert({
-          tarefa_id: tarefa.id,
-          autor_id: sessao.user?.id ?? null,
-          nome: anexo.name,
-          caminho,
-        });
-      }
-    }
-
-    setSalvando(false);
-    aoSalvar();
-    aoFechar();
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-tinta/40 p-4 sm:items-center">
-      <div className="w-full max-w-md border border-linha bg-campo p-5">
-        <h2 className="font-display text-xl font-bold">Nova tarefa</h2>
-
-        <div className="mt-4 space-y-3">
-          <input
-            className="w-full border border-linha bg-casca px-3 py-2 text-sm"
-            placeholder="O que precisa ser feito"
-            value={titulo}
-            onChange={(e) => setTitulo(e.target.value)}
-          />
-          <textarea
-            className="w-full border border-linha bg-casca px-3 py-2 text-sm"
-            rows={3}
-            placeholder="Detalhes, critérios de aceite…"
-            value={descricao}
-            onChange={(e) => setDescricao(e.target.value)}
-          />
-          <label className="block font-mono text-[11px] uppercase text-tinta/60">
-            Responsável
-            <select
-              className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-sm normal-case text-tinta"
-              value={responsavel}
-              onChange={(e) => setResponsavel(e.target.value)}
-            >
-              <option value="">Ainda sem dono</option>
-              {membros.map((m) => (
-                <option key={m.id} value={m.id}>{m.nome} · {m.papel}</option>
-              ))}
-            </select>
-          </label>
-          <label className="block font-mono text-[11px] uppercase text-tinta/60">
-            Prazo
-            <input
-              type="date"
-              className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-sm text-tinta"
-              value={prazo}
-              onChange={(e) => setPrazo(e.target.value)}
-            />
-          </label>
-          <input
-            className="w-full border border-linha bg-casca px-3 py-2 text-sm"
-            placeholder="Local de entrega: link do Drive, Forms, GitHub… (opcional)"
-            value={localEntrega}
-            onChange={(e) => setLocalEntrega(e.target.value)}
-          />
-          <label className="block font-mono text-[11px] uppercase text-tinta/60">
-            Anexar documento (opcional)
-            <input
-              type="file"
-              onChange={(e) => setAnexo(e.target.files?.[0] ?? null)}
-              className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-xs normal-case text-tinta file:mr-2 file:border-0 file:bg-tinta file:px-2 file:py-1 file:text-xs file:text-campo"
-            />
-          </label>
-
-          {erro && <p className="font-mono text-xs text-trigo">{erro}</p>}
-        </div>
-
-        <div className="mt-5 flex gap-2">
-          <button
-            onClick={salvar}
-            disabled={salvando}
-            className="bg-tinta px-4 py-2 text-sm font-semibold text-campo hover:bg-musgo disabled:opacity-50"
-          >
-            {salvando ? "Salvando…" : "Criar tarefa"}
-          </button>
-          <button onClick={aoFechar} className="px-4 py-2 text-sm text-tinta/60 hover:text-tinta">
-            Cancelar
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

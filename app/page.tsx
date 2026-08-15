@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { criarClienteServidor } from "@/lib/supabase-server";
-import CartaoTarefa from "@/components/CartaoTarefa";
+import PainelSemana from "@/components/PainelSemana";
 import { dataLocalISO } from "@/lib/datas";
 import type { Tarefa } from "@/lib/types";
 
@@ -13,12 +13,15 @@ export default async function Semana() {
   const hojeIso = dataLocalISO(agora);
   const fimIso = dataLocalISO(new Date(agora.getTime() + 7 * 86_400_000));
 
-  const { data: tarefas } = await supabase
-    .from("tarefas")
-    .select("*, membros:responsavel_id(id, nome, papel)")
-    .eq("arquivada", false)
-    .neq("status", "concluida")
-    .order("prazo", { ascending: true, nullsFirst: false });
+  const [{ data: tarefas }, { data: sessao }] = await Promise.all([
+    supabase
+      .from("tarefas")
+      .select("*, membros:responsavel_id(id, nome, papel)")
+      .eq("arquivada", false)
+      .neq("status", "concluida")
+      .order("prazo", { ascending: true, nullsFirst: false }),
+    supabase.auth.getUser(),
+  ]);
 
   const lista = (tarefas ?? []) as Tarefa[];
   const atrasadas = lista.filter((t) => t.prazo && t.prazo < hojeIso);
@@ -36,10 +39,13 @@ export default async function Semana() {
         O que a equipe tem em mãos
       </h1>
 
-      <div className="mt-8 space-y-10">
-        <Secao titulo="Passou do prazo" itens={atrasadas} vazio="Nada atrasado. Bom sinal." />
-        <Secao titulo="Próximos 7 dias" itens={daSemana} vazio="A semana está livre — hora de puxar algo da fila." />
-        <Secao titulo="Mais adiante" itens={depois} vazio="Sem tarefas na fila." />
+      <div className="mt-8">
+        <PainelSemana
+          atrasadas={atrasadas}
+          daSemana={daSemana}
+          depois={depois}
+          meuId={sessao.user?.id ?? null}
+        />
       </div>
 
       <Link
@@ -49,23 +55,5 @@ export default async function Semana() {
         Abrir o quadro
       </Link>
     </div>
-  );
-}
-
-function Secao({ titulo, itens, vazio }: { titulo: string; itens: Tarefa[]; vazio: string }) {
-  return (
-    <section>
-      <h2 className="mb-3 flex items-baseline gap-2 border-b border-linha pb-1 font-display text-lg font-semibold">
-        {titulo}
-        <span className="font-mono text-xs font-normal text-tinta/50">{itens.length}</span>
-      </h2>
-      {itens.length === 0 ? (
-        <p className="text-sm text-tinta/50">{vazio}</p>
-      ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {itens.map((t) => <CartaoTarefa key={t.id} tarefa={t} />)}
-        </div>
-      )}
-    </section>
   );
 }

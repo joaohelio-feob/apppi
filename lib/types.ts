@@ -8,6 +8,12 @@ export const STATUS: { id: Status; nome: string; cor: string }[] = [
   { id: "concluida", nome: "Concluída",  cor: "bg-musgo text-campo" },
 ];
 
+export const PRIORIDADES: { id: Prioridade; nome: string }[] = [
+  { id: "baixa",  nome: "Baixa" },
+  { id: "media",  nome: "Média" },
+  { id: "alta",   nome: "Alta" },
+];
+
 export type Papel = "dev" | "doc" | "scrum" | "design";
 
 export const PAPEIS: { id: Papel; nome: string }[] = [
