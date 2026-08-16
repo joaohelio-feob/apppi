@@ -38,6 +38,14 @@ de frentes/integrantes e trilha de atividades para a entrega final.
   colaborativo que o PI é avaliado.
 - Tailwind: use os tokens do tema (`campo`, `casca`, `linha`, `tinta`, `musgo`,
   `broto`, `trigo`, `ferro`). Não invente cores soltas.
+- **`frentes.unidade` é a única fonte de verdade da unidade de estudo — não
+  existe mais `tarefas.unidade`.** A unidade de estudo do PI (POO,
+  Modelagem, Lógica, BI, Autoconhecimento) é propriedade da frente; uma
+  tarefa a alcança pelo `frente_id`, que agora é opcional em tarefa
+  `individual` (tema/matéria da tarefa, sem afetar quem é responsável) e
+  obrigatório em tarefa `frente`. Não recrie uma coluna de unidade em
+  `tarefas` — se precisar filtrar/agrupar por unidade, sempre passe pelo
+  `frente_id` embutido (`frentes(id, nome, cor, unidade)`).
 - `frentes.cor` guarda o **nome de um token do tema** (`musgo` | `trigo` |
   `broto` | `ferro`), nunca hexadecimal. As classes completas ficam mapeadas
   em `CLASSES_COR_FRENTE` / `CLASSES_COR_FRENTE_PREENCHIDA` (`lib/types.ts`)

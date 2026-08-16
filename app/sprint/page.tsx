@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
 import { dataLocalISO } from "@/lib/datas";
-import { UNIDADES, UNIDADES_FRENTE, responsaveisDe, type Frente, type Membro, type Reuniao, type Tarefa } from "@/lib/types";
+import { UNIDADES_FRENTE, responsaveisDe, type Frente, type Membro, type Reuniao, type Tarefa } from "@/lib/types";
 import BotaoExportarCSV from "@/components/BotaoExportarCSV";
 import BotaoExportarPDF from "@/components/BotaoExportarPDF";
 
@@ -13,7 +13,6 @@ type Movimentacao = {
   acao: string;
   tarefa: string | null;
   escopo: string | null;
-  unidade: string | null;
   frente: string | null;
   frente_unidade: string | null;
 };
@@ -58,7 +57,7 @@ export default function SprintReport() {
       supabase.from("reunioes").select("*").gte("data", inicio).lte("data", fim).order("data"),
       supabase
         .from("relatorio_atividades")
-        .select("em, autor, acao, tarefa, escopo, unidade, frente, frente_unidade")
+        .select("em, autor, acao, tarefa, escopo, frente, frente_unidade")
         .gte("em", inicio)
         .lte("em", fimFechado)
         .order("em", { ascending: false })
@@ -99,7 +98,9 @@ export default function SprintReport() {
   }, {});
 
   const porUnidade = concluidas.reduce<Record<string, number>>((acc, t) => {
-    const nome = UNIDADES.find((u) => u.id === t.unidade)?.nome ?? t.unidade;
+    const nome = t.frentes?.unidade
+      ? UNIDADES_FRENTE.find((u) => u.id === t.frentes!.unidade)?.nome ?? t.frentes.unidade
+      : "sem frente";
     acc[nome] = (acc[nome] ?? 0) + 1;
     return acc;
   }, {});
@@ -118,7 +119,14 @@ export default function SprintReport() {
     const dela = concluidas.filter((t) => responsaveisDe(t).some((r) => r.id === m.id));
     const individuais = dela.filter((t) => t.escopo === "individual");
     const deFrente = dela.filter((t) => t.escopo === "frente");
-    const unidades = Array.from(new Set(dela.map((t) => UNIDADES.find((u) => u.id === t.unidade)?.nome ?? t.unidade)));
+    const unidades = Array.from(
+      new Set(
+        dela
+          .map((t) => t.frentes?.unidade)
+          .filter((u): u is NonNullable<typeof u> => !!u)
+          .map((u) => UNIDADES_FRENTE.find((x) => x.id === u)?.nome ?? u)
+      )
+    );
     const frenteDela = frentes.find((f) => f.id === m.frente_id);
     return {
       nome: m.nome,
@@ -149,11 +157,10 @@ export default function SprintReport() {
                 escopo: t.escopo,
                 frente: t.frentes?.nome ?? "",
                 frente_unidade: t.frentes?.unidade ?? "",
-                unidade: t.unidade,
                 concluido_em: t.concluido_em,
                 prazo: t.prazo,
               }))}
-              colunas={["tarefa", "responsavel", "escopo", "frente", "frente_unidade", "unidade", "concluido_em", "prazo"]}
+              colunas={["tarefa", "responsavel", "escopo", "frente", "frente_unidade", "concluido_em", "prazo"]}
               nomeArquivo={`sprint-report-${inicio}-a-${fim}.csv`}
               rotulo="Baixar CSV"
             />
@@ -325,9 +332,10 @@ export default function SprintReport() {
                 <li key={i} className="font-mono text-xs text-tinta/60">
                   {new Date(m.em).toLocaleDateString("pt-BR")} · {m.autor ?? "—"} · {m.acao}
                   {m.tarefa ? ` · ${m.tarefa}` : ""}
-                  {m.unidade ? ` · ${UNIDADES.find((u) => u.id === m.unidade)?.nome ?? m.unidade}` : ""}
-                  {m.escopo === "frente" && m.frente
-                    ? ` · frente: ${m.frente}${m.frente_unidade ? ` (${UNIDADES.find((u) => u.id === m.frente_unidade)?.nome ?? m.frente_unidade})` : ""}`
+                  {m.frente
+                    ? ` · ${m.escopo === "frente" ? "frente" : "tema"}: ${m.frente}${
+                        m.frente_unidade ? ` (${UNIDADES_FRENTE.find((u) => u.id === m.frente_unidade)?.nome ?? m.frente_unidade})` : ""
+                      }`
                     : ""}
                 </li>
               ))}

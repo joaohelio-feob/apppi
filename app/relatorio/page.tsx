@@ -1,13 +1,13 @@
 import { criarClienteServidor } from "@/lib/supabase-server";
 import { dataLocalDeTimestamp, dataLocalISO } from "@/lib/datas";
 import { githubConfigurado, listarCommits, type CommitGithub } from "@/lib/github";
-import { UNIDADES, UNIDADES_FRENTE, responsaveisDe, type Frente, type Membro, type Registro, type Tarefa } from "@/lib/types";
+import { UNIDADES_FRENTE, responsaveisDe, type Frente, type Membro, type Registro, type Tarefa } from "@/lib/types";
 import BotaoExportarCSV from "@/components/BotaoExportarCSV";
 import BotaoExportarPDF from "@/components/BotaoExportarPDF";
 
 const COLUNAS_CSV = [
   "em", "autor", "papel", "acao", "campo", "valor_antigo", "valor_novo",
-  "tarefa", "status_atual", "escopo", "unidade", "frente", "frente_unidade",
+  "tarefa", "status_atual", "escopo", "frente", "frente_unidade",
 ];
 
 export const dynamic = "force-dynamic";
@@ -54,7 +54,14 @@ export default async function Trilha() {
     const dela = concluidas.filter((t) => responsaveisDe(t).some((r) => r.id === m.id));
     const individuais = dela.filter((t) => t.escopo === "individual");
     const deFrente = dela.filter((t) => t.escopo === "frente");
-    const unidades = Array.from(new Set(dela.map((t) => UNIDADES.find((u) => u.id === t.unidade)?.nome ?? t.unidade)));
+    const unidades = Array.from(
+      new Set(
+        dela
+          .map((t) => t.frentes?.unidade)
+          .filter((u): u is NonNullable<typeof u> => !!u)
+          .map((u) => UNIDADES_FRENTE.find((x) => x.id === u)?.nome ?? u)
+      )
+    );
     const frenteDela = frentes.find((f) => f.id === m.frente_id);
     return {
       nome: m.nome,
@@ -223,15 +230,10 @@ export default async function Trilha() {
                         em <strong className="font-semibold">{r.tarefa}</strong>
                       </span>
                     )}
-                    {r.unidade && (
-                      <span className="border border-linha px-1 py-0.5 font-mono text-[10px] uppercase text-tinta/50">
-                        {UNIDADES.find((u) => u.id === r.unidade)?.nome ?? r.unidade}
-                      </span>
-                    )}
-                    {r.escopo === "frente" && r.frente && (
+                    {r.frente && (
                       <span className="border border-musgo px-1 py-0.5 font-mono text-[10px] uppercase text-musgo">
-                        frente · {r.frente}
-                        {r.frente_unidade && ` (${UNIDADES.find((u) => u.id === r.frente_unidade)?.nome ?? r.frente_unidade})`}
+                        {r.escopo === "frente" ? "frente" : "tema"} · {r.frente}
+                        {r.frente_unidade && ` (${UNIDADES_FRENTE.find((u) => u.id === r.frente_unidade)?.nome ?? r.frente_unidade})`}
                       </span>
                     )}
                   </div>

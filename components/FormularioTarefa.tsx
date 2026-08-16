@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
-import { UNIDADES, type Escopo, type Frente, type Membro } from "@/lib/types";
+import { type Escopo, type Frente, type Membro } from "@/lib/types";
 
 export default function FormularioTarefa({
   membros,
@@ -25,7 +25,6 @@ export default function FormularioTarefa({
   const [prazo, setPrazo] = useState("");
   const [localEntrega, setLocalEntrega] = useState("");
   const [issueNumero, setIssueNumero] = useState("");
-  const [unidade, setUnidade] = useState("geral");
   const [anexo, setAnexo] = useState<File | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
@@ -65,11 +64,10 @@ export default function FormularioTarefa({
         descricao: descricao || null,
         criador_id: sessao.user?.id ?? null,
         escopo,
-        frente_id: escopo === "frente" ? Number(frenteId) : null,
+        frente_id: frenteId ? Number(frenteId) : null,
         prazo: prazo || null,
         local_entrega: localEntrega || null,
         issue_numero: issueNumero ? Number(issueNumero) : null,
-        unidade,
       })
       .select("id")
       .single();
@@ -148,19 +146,34 @@ export default function FormularioTarefa({
           </div>
 
           {escopo === "individual" ? (
-            <label className="block font-mono text-[11px] uppercase text-tinta/60">
-              Responsável
-              <select
-                className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-sm normal-case text-tinta"
-                value={responsavel}
-                onChange={(e) => setResponsavel(e.target.value)}
-              >
-                <option value="">Ainda sem dono</option>
-                {membros.map((m) => (
-                  <option key={m.id} value={m.id}>{m.nome} · {m.papel}</option>
-                ))}
-              </select>
-            </label>
+            <>
+              <label className="block font-mono text-[11px] uppercase text-tinta/60">
+                Responsável
+                <select
+                  className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-sm normal-case text-tinta"
+                  value={responsavel}
+                  onChange={(e) => setResponsavel(e.target.value)}
+                >
+                  <option value="">Ainda sem dono</option>
+                  {membros.map((m) => (
+                    <option key={m.id} value={m.id}>{m.nome} · {m.papel}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="block font-mono text-[11px] uppercase text-tinta/60">
+                Frente (opcional)
+                <select
+                  className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-sm normal-case text-tinta"
+                  value={frenteId}
+                  onChange={(e) => setFrenteId(e.target.value)}
+                >
+                  <option value="">Sem frente</option>
+                  {frentes.map((f) => (
+                    <option key={f.id} value={f.id}>{f.nome}</option>
+                  ))}
+                </select>
+              </label>
+            </>
           ) : (
             <label className="block font-mono text-[11px] uppercase text-tinta/60">
               Frente
@@ -192,18 +205,6 @@ export default function FormularioTarefa({
               value={prazo}
               onChange={(e) => setPrazo(e.target.value)}
             />
-          </label>
-          <label className="block font-mono text-[11px] uppercase text-tinta/60">
-            Unidade de estudo
-            <select
-              className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-sm normal-case text-tinta"
-              value={unidade}
-              onChange={(e) => setUnidade(e.target.value)}
-            >
-              {UNIDADES.map((u) => (
-                <option key={u.id} value={u.id}>{u.nome}</option>
-              ))}
-            </select>
           </label>
           <input
             className="w-full border border-linha bg-casca px-3 py-2 text-sm"

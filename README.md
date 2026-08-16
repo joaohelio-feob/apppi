@@ -65,7 +65,7 @@ própria, então dá para testar antes de mergear.
 app/
   page.tsx             painel da semana (atrasadas / 7 dias / fila)
   tarefas/              quadro kanban — visões "Individuais" e "Da frente"
-  atribuicoes/          tabela editável de tarefa, responsável, dia, unidade...
+  atribuicoes/          tabela editável de tarefa, responsável, dia, frente...
   calendario/           grade mensal por prazo, com filtro por responsável
   equipe/                 lista de integrantes (papel, frente)
   equipe/[id]/             painel de um integrante — individual x frente, separado
@@ -90,8 +90,8 @@ cada `INSERT`/`UPDATE`/`DELETE` em `tarefa_responsaveis`, via trigger no
 Postgres. Ninguém precisa lembrar de registrar nada, e não existe policy de
 `UPDATE` ou `DELETE` em `historico` — o registro não pode ser reescrito depois.
 A página **Trilha** lê a view `relatorio_atividades` (que já cruza histórico,
-tarefa, unidade, escopo e frente), mostra um resumo por pessoa e exporta tudo
-em CSV ou PDF.
+tarefa, escopo e frente — com a unidade de estudo da frente), mostra um resumo
+por pessoa e exporta tudo em CSV ou PDF.
 
 ## Frentes e tarefas individuais
 
@@ -104,9 +104,13 @@ aparece no painel dos 3.
   trigger no banco atribui automaticamente todo mundo que já está naquela
   frente (`membros.frente_id`). Não é retroativo — quem entra na frente
   depois não ganha as tarefas antigas dela.
-- **Tarefa individual**: escolhe uma pessoa só no formulário. A frente dela é
-  derivada de quem é o responsável (`membros.frente_id`), não fica guardada
-  na tarefa.
+- **Tarefa individual**: escolhe uma pessoa só no formulário. Pode opcionalmente
+  marcar uma frente (`tarefas.frente_id`), como tema/matéria da tarefa — não
+  muda quem é responsável, só de onde vem a unidade de estudo mostrada nos
+  relatórios.
+- A unidade de estudo do PI (POO, Modelagem, Lógica, BI, Autoconhecimento) é
+  propriedade da frente (`frentes.unidade`), não da tarefa. Uma tarefa a
+  alcança pelo `frente_id`, tenha ela escopo `frente` ou `individual`.
 - Cada integrante pertence a uma frente só (`/equipe`, seletor "sua frente").
   Frentes de uma pessoa só funcionam igual às outras — não tem caso especial.
 - O banco garante (`verificar_responsaveis`) que tarefa `individual` tem no

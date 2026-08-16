@@ -94,7 +94,6 @@ export type Tarefa = {
   frente_id: number | null;
   status: Status;
   prioridade: Prioridade;
-  unidade: Unidade;
   inicio: string | null;
   prazo: string | null;
   local_entrega: string | null;
@@ -144,7 +143,6 @@ export type Registro = {
   tarefa: string | null;
   status_atual: Status | null;
   escopo: Escopo | null;
-  unidade: Unidade | null;
   frente: string | null;
   frente_unidade: Unidade | null;
 };

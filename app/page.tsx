@@ -16,7 +16,7 @@ export default async function Semana() {
   const [{ data: tarefas }, { data: sessao }] = await Promise.all([
     supabase
       .from("tarefas")
-      .select("*, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel)), frentes(id, nome, cor)")
+      .select("*, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel)), frentes(id, nome, cor, unidade)")
       .eq("arquivada", false)
       .neq("status", "concluida")
       .order("prazo", { ascending: true, nullsFirst: false }),

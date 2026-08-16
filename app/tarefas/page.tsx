@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
 import {
-  PRIORIDADES, STATUS, UNIDADES, responsaveisDe,
+  PRIORIDADES, STATUS, responsaveisDe,
   type Frente, type Membro, type Status, type Tarefa,
 } from "@/lib/types";
 import CartaoTarefa from "@/components/CartaoTarefa";
@@ -26,7 +26,7 @@ export default function Quadro() {
   const [busca, setBusca] = useState("");
   const [filtroResponsavel, setFiltroResponsavel] = useState("");
   const [filtroPrioridade, setFiltroPrioridade] = useState("");
-  const [filtroUnidade, setFiltroUnidade] = useState("");
+  const [filtroFrente, setFiltroFrente] = useState("");
   const [somenteMinhas, setSomenteMinhas] = useState(false);
 
   const { abrir } = useNovaTarefa();
@@ -56,7 +56,7 @@ export default function Quadro() {
     const [t, m, f, sessao] = await Promise.all([
       supabase
         .from("tarefas")
-        .select("*, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel)), frentes(id, nome, cor)")
+        .select("*, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel)), frentes(id, nome, cor, unidade)")
         .eq("arquivada", false)
         .order("prazo", { ascending: true, nullsFirst: false }),
       supabase.from("membros").select("id, nome, papel, frente_id").order("nome"),
@@ -105,11 +105,11 @@ export default function Quadro() {
       if (buscaLimpa && !t.titulo.toLowerCase().includes(buscaLimpa)) return false;
       if (filtroResponsavel && !responsaveis.some((m) => m.id === filtroResponsavel)) return false;
       if (filtroPrioridade && t.prioridade !== filtroPrioridade) return false;
-      if (filtroUnidade && t.unidade !== filtroUnidade) return false;
+      if (filtroFrente && String(t.frente_id ?? "") !== filtroFrente) return false;
       if (somenteMinhas && !responsaveis.some((m) => m.id === meuId)) return false;
       return true;
     });
-  }, [tarefas, visao, busca, filtroResponsavel, filtroPrioridade, filtroUnidade, somenteMinhas, meuId]);
+  }, [tarefas, visao, busca, filtroResponsavel, filtroPrioridade, filtroFrente, somenteMinhas, meuId]);
 
   const grupos = useMemo(() => {
     if (visao === "frente") {
@@ -192,13 +192,13 @@ export default function Quadro() {
           ))}
         </select>
         <select
-          value={filtroUnidade}
-          onChange={(e) => setFiltroUnidade(e.target.value)}
+          value={filtroFrente}
+          onChange={(e) => setFiltroFrente(e.target.value)}
           className="border border-linha bg-casca px-2 py-2 font-mono text-xs uppercase"
         >
-          <option value="">Toda unidade</option>
-          {UNIDADES.map((u) => (
-            <option key={u.id} value={u.id}>{u.nome}</option>
+          <option value="">Toda frente</option>
+          {frentes.map((f) => (
+            <option key={f.id} value={f.id}>{f.nome}</option>
           ))}
         </select>
         <button

@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
-import { STATUS, UNIDADES, responsaveisDe, type Membro, type Tarefa } from "@/lib/types";
+import { STATUS, responsaveisDe, type Frente, type Membro, type Tarefa } from "@/lib/types";
 
 export default function Atribuicoes() {
   const [tarefas, setTarefas] = useState<Tarefa[]>([]);
   const [membros, setMembros] = useState<Membro[]>([]);
+  const [frentes, setFrentes] = useState<Frente[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [criando, setCriando] = useState(false);
   const [novoTitulo, setNovoTitulo] = useState("");
@@ -14,16 +15,18 @@ export default function Atribuicoes() {
   const supabase = criarClienteNavegador();
 
   async function carregar() {
-    const [{ data: t }, { data: m }] = await Promise.all([
+    const [{ data: t }, { data: m }, { data: f }] = await Promise.all([
       supabase
         .from("tarefas")
-        .select("*, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel))")
+        .select("*, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel)), frentes(id, nome)")
         .eq("arquivada", false)
         .order("prazo", { ascending: true, nullsFirst: false }),
       supabase.from("membros").select("id, nome, papel").order("nome"),
+      supabase.from("frentes").select("id, nome").order("nome"),
     ]);
     setTarefas((t ?? []) as Tarefa[]);
     setMembros((m ?? []) as Membro[]);
+    setFrentes((f ?? []) as Frente[]);
     setCarregando(false);
   }
 
@@ -66,7 +69,7 @@ export default function Atribuicoes() {
     const { data } = await supabase
       .from("tarefas")
       .insert({ titulo: novoTitulo, criador_id: sessao.user?.id ?? null })
-      .select("*, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel))")
+      .select("*, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel)), frentes(id, nome)")
       .single();
     if (data) setTarefas((atual) => [data as Tarefa, ...atual]);
     setNovoTitulo("");
@@ -112,7 +115,7 @@ export default function Atribuicoes() {
                 <th className="px-3 py-2 text-left">Dia</th>
                 <th className="px-3 py-2 text-left">Local de entrega</th>
                 <th className="px-3 py-2 text-left">Issue</th>
-                <th className="px-3 py-2 text-left">Unidade</th>
+                <th className="px-3 py-2 text-left">Frente</th>
                 <th className="px-3 py-2 text-left">Status</th>
                 <th className="px-3 py-2" />
               </tr>
@@ -133,16 +136,22 @@ export default function Atribuicoes() {
                     />
                   </td>
                   <td className="px-3 py-2">
-                    <select
-                      value={responsaveisDe(t)[0]?.id ?? ""}
-                      onChange={(e) => salvarResponsavel(t.id, e.target.value)}
-                      className="border border-linha bg-campo px-2 py-1 font-corpo text-sm"
-                    >
-                      <option value="">sem dono</option>
-                      {membros.map((m) => (
-                        <option key={m.id} value={m.id}>{m.nome}</option>
-                      ))}
-                    </select>
+                    {t.escopo === "frente" ? (
+                      <span className="text-xs text-tinta/70">
+                        {responsaveisDe(t).map((m) => m.nome).join(", ") || "sem responsável"}
+                      </span>
+                    ) : (
+                      <select
+                        value={responsaveisDe(t)[0]?.id ?? ""}
+                        onChange={(e) => salvarResponsavel(t.id, e.target.value)}
+                        className="border border-linha bg-campo px-2 py-1 font-corpo text-sm"
+                      >
+                        <option value="">sem dono</option>
+                        {membros.map((m) => (
+                          <option key={m.id} value={m.id}>{m.nome}</option>
+                        ))}
+                      </select>
+                    )}
                   </td>
                   <td className="px-3 py-2">
                     <input
@@ -187,19 +196,27 @@ export default function Atribuicoes() {
                     />
                   </td>
                   <td className="px-3 py-2">
-                    <select
-                      value={t.unidade}
-                      onChange={(e) => {
-                        const valor = e.target.value as Tarefa["unidade"];
-                        atualizarLocal(t.id, { unidade: valor });
-                        salvarCampo(t.id, "unidade", valor);
-                      }}
-                      className="border border-linha bg-campo px-2 py-1 font-mono text-[11px] uppercase"
-                    >
-                      {UNIDADES.map((u) => (
-                        <option key={u.id} value={u.id}>{u.nome}</option>
-                      ))}
-                    </select>
+                    {t.escopo === "frente" ? (
+                      <span className="font-mono text-[11px] uppercase text-tinta/70">
+                        {t.frentes?.nome ?? "—"}
+                      </span>
+                    ) : (
+                      <select
+                        value={t.frente_id ?? ""}
+                        onChange={(e) => {
+                          const valor = e.target.value ? Number(e.target.value) : null;
+                          const frente = frentes.find((f) => f.id === valor) ?? null;
+                          atualizarLocal(t.id, { frente_id: valor, frentes: frente });
+                          salvarCampo(t.id, "frente_id", valor);
+                        }}
+                        className="border border-linha bg-campo px-2 py-1 font-mono text-[11px] uppercase"
+                      >
+                        <option value="">sem frente</option>
+                        {frentes.map((f) => (
+                          <option key={f.id} value={f.id}>{f.nome}</option>
+                        ))}
+                      </select>
+                    )}
                   </td>
                   <td className="px-3 py-2">
                     <select

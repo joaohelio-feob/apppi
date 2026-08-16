@@ -55,10 +55,12 @@ create table if not exists tarefas (
   escopo         text not null default 'individual' check (escopo in ('frente', 'individual')),
   frente_id      bigint references frentes(id) on delete restrict,
                  -- obrigatório quando escopo = 'frente' (ver constraint abaixo); numa
-                 -- individual fica null — a frente dela é derivada do responsável.
+                 -- individual é opcional — marca a frente/matéria a que a tarefa se
+                 -- relaciona, mesmo sem envolver o time todo. A unidade de estudo da
+                 -- tarefa não é mais coluna daqui: é frentes.unidade, alcançada por
+                 -- este frente_id.
   status         text not null default 'pendente',   -- pendente | fazendo | revisao | concluida
   prioridade     text not null default 'media',      -- baixa | media | alta
-  unidade        text not null default 'geral',      -- poo | modelagem | logica | bi | autoconhecimento | geral
   inicio         date,
   prazo          date,
   local_entrega  text,                               -- link onde a atividade foi/será entregue (GitHub, Drive, Forms...)
@@ -326,9 +328,9 @@ begin
               'arquivada', old.arquivada::text, new.arquivada::text);
     end if;
 
-    if new.unidade is distinct from old.unidade then
+    if new.frente_id is distinct from old.frente_id then
       insert into historico (tarefa_id, autor_id, acao, campo, valor_antigo, valor_novo)
-      values (new.id, auth.uid(), 'editou', 'unidade', old.unidade, new.unidade);
+      values (new.id, auth.uid(), 'editou', 'frente_id', old.frente_id::text, new.frente_id::text);
     end if;
 
     if new.issue_numero is distinct from old.issue_numero then
@@ -426,7 +428,6 @@ select
   t.titulo  as tarefa,
   t.status  as status_atual,
   t.escopo  as escopo,
-  t.unidade as unidade,
   f.nome    as frente,
   f.unidade as frente_unidade
 from historico h
@@ -447,7 +448,6 @@ order by h.em desc;
 
 -- 1. Novas colunas, sem quebrar quem já tem tarefas cadastradas.
 alter table tarefas add column if not exists arquivada boolean not null default false;
-alter table tarefas add column if not exists unidade text not null default 'geral';
 alter table tarefas add column if not exists issue_numero integer;
 
 -- 2. Tira a permissão de apagar tarefa. Dali pra frente só dá pra arquivar.
@@ -555,3 +555,38 @@ create policy "equipe desatribui"      on tarefa_responsaveis for delete to auth
 --    antiga (e o índice que só fazia sentido com ela).
 alter table tarefas drop column if exists responsavel_id;
 drop index if exists idx_tarefas_responsavel;
+
+-- =====================================================================
+-- MIGRAÇÃO · unidade sai de tarefas, mora só em frentes (rode só se o
+-- banco ainda tem a coluna tarefas.unidade — ou seja, rodou este arquivo
+-- antes desta mudança). Se está criando o projeto do zero, ignore: a
+-- tabela tarefas na seção 2 já vem sem essa coluna.
+--
+-- A unidade de estudo não desaparece do produto, só de tarefas: passa a
+-- viver em frentes.unidade e a tarefa a alcança por frente_id.
+-- =====================================================================
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_name = 'tarefas' and column_name = 'unidade'
+  ) then
+    -- De-para: cada tarefa herda a frente cuja unidade bate com o valor
+    -- que estava em tarefas.unidade. Não mexe em quem já tem frente_id
+    -- (tarefa de frente já chegou aqui com o valor certo). Quando mais de
+    -- uma frente compartilha a mesma unidade, fica com a de menor "ordem"
+    -- (empate: menor id) — escolha determinística, não aleatória.
+    update tarefas t
+    set frente_id = f.id
+    from (
+      select distinct on (unidade) id, unidade
+      from frentes
+      where unidade is not null
+      order by unidade, ordem, id
+    ) f
+    where t.frente_id is null
+      and t.unidade = f.unidade;
+
+    alter table tarefas drop column unidade;
+  end if;
+end $$;

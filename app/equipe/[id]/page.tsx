@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
 import { dataLocalISO, diasEntre } from "@/lib/datas";
-import { UNIDADES, type Membro, type Tarefa } from "@/lib/types";
+import { UNIDADES_FRENTE, type Membro, type Tarefa } from "@/lib/types";
 
 export default function PainelMembro() {
   const { id } = useParams<{ id: string }>();
@@ -16,7 +16,8 @@ export default function PainelMembro() {
 
   useEffect(() => {
     const supabase = criarClienteNavegador();
-    const selecao = "*, responsaveis:tarefa_responsaveis!inner(membro:membros(id, nome, papel))";
+    const selecao =
+      "*, responsaveis:tarefa_responsaveis!inner(membro:membros(id, nome, papel)), frentes(id, nome, cor, unidade)";
 
     Promise.all([
       supabase.from("membros").select("id, nome, papel, criado_em").eq("id", id).single(),
@@ -77,7 +78,9 @@ function BlocoTarefas({ titulo, tarefas }: { titulo: string; tarefas: Tarefa[] }
   });
 
   const porUnidade = concluidas.reduce<Record<string, number>>((acc, t) => {
-    const nome = UNIDADES.find((u) => u.id === t.unidade)?.nome ?? t.unidade;
+    const nome = t.frentes?.unidade
+      ? UNIDADES_FRENTE.find((u) => u.id === t.frentes!.unidade)?.nome ?? t.frentes.unidade
+      : "sem frente";
     acc[nome] = (acc[nome] ?? 0) + 1;
     return acc;
   }, {});

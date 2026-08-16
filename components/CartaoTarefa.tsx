@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { dataLocalISO, diasEntre } from "@/lib/datas";
-import { CLASSES_COR_FRENTE, STATUS, UNIDADES, responsaveisDe, type Tarefa, type Status } from "@/lib/types";
+import { CLASSES_COR_FRENTE, STATUS, UNIDADES_FRENTE, responsaveisDe, type Tarefa, type Status } from "@/lib/types";
 import Selo from "./Selo";
 import SeloIssue from "./SeloIssue";
 
@@ -72,9 +72,11 @@ export default function CartaoTarefa({
 
       <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[11px] text-tinta/60">
         <span>{nomesResponsaveis(responsaveis.map((m) => m.nome))}</span>
-        <span className="border border-linha px-1 py-0.5 uppercase">
-          {UNIDADES.find((u) => u.id === tarefa.unidade)?.nome ?? tarefa.unidade}
-        </span>
+        {tarefa.frentes?.unidade && (
+          <span className="border border-linha px-1 py-0.5 uppercase">
+            {UNIDADES_FRENTE.find((u) => u.id === tarefa.frentes!.unidade)?.nome ?? tarefa.frentes.unidade}
+          </span>
+        )}
         {tarefa.prazo && (
           <span className={atrasada ? "font-semibold text-trigo" : ""}>
             {atrasada

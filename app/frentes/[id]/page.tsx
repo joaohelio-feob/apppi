@@ -27,7 +27,7 @@ export default function PainelFrente() {
         supabase.from("membros").select("id, nome, papel, frente_id").eq("frente_id", frenteId).order("nome"),
         supabase
           .from("tarefas")
-          .select("*, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel)), frentes(id, nome, cor)")
+          .select("*, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel)), frentes(id, nome, cor, unidade)")
           .eq("escopo", "frente")
           .eq("frente_id", frenteId)
           .eq("arquivada", false)
@@ -42,7 +42,7 @@ export default function PainelFrente() {
       if (integrantesDaFrente.length > 0) {
         const { data: ti } = await supabase
           .from("tarefas")
-          .select("*, responsaveis:tarefa_responsaveis!inner(membro:membros(id, nome, papel))")
+          .select("*, responsaveis:tarefa_responsaveis!inner(membro:membros(id, nome, papel)), frentes(id, nome, cor, unidade)")
           .eq("escopo", "individual")
           .eq("arquivada", false)
           .in("tarefa_responsaveis.membro_id", integrantesDaFrente.map((m) => m.id))
