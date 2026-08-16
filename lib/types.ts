@@ -14,6 +14,18 @@ export const PRIORIDADES: { id: Prioridade; nome: string }[] = [
   { id: "alta",   nome: "Alta" },
 ];
 
+// Prioridade no calendário: forma/glifo é o sinal principal (funciona sem
+// depender de cor, pra quem tem daltonismo); a cor é reforço, só pra alta,
+// porque os outros 3 tokens do tema já estão tomados pelo status
+// (pendente=linha, fazendo=trigo, revisão=ferro, concluída=musgo) — usar
+// um deles aqui criaria ambiguidade com o status. `broto` é o único token
+// que sobrou livre. Ver hierarquia atraso > prioridade > status no CLAUDE.md.
+export const CLASSES_PRIORIDADE: Record<Prioridade, { borda: string; glifo: string }> = {
+  alta:  { borda: "border-l-4 border-broto", glifo: "▲" },
+  media: { borda: "border-l-4 border-linha", glifo: "●" },
+  baixa: { borda: "border-l-4 border-transparent", glifo: "▽" },
+};
+
 export type Papel = "dev" | "doc" | "scrum" | "design";
 
 export const PAPEIS: { id: Papel; nome: string }[] = [

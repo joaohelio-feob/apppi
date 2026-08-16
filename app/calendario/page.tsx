@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
 import { dataLocalISO } from "@/lib/datas";
-import { STATUS, responsaveisDe, type Membro, type Tarefa } from "@/lib/types";
+import { CLASSES_PRIORIDADE, PRIORIDADES, STATUS, responsaveisDe, type Membro, type Tarefa } from "@/lib/types";
 
 const DIAS = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
 
@@ -20,7 +20,7 @@ export default function Calendario() {
     const supabase = criarClienteNavegador();
     supabase
       .from("tarefas")
-      .select("id, titulo, status, prazo, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel))")
+      .select("id, titulo, status, prioridade, prazo, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel))")
       .eq("arquivada", false)
       .not("prazo", "is", null)
       .then(({ data }) => setTarefas((data ?? []) as unknown as Tarefa[]));
@@ -117,13 +117,19 @@ export default function Calendario() {
               <div className="mt-1 space-y-1">
                 {doDia.slice(0, 3).map((t) => {
                   const cor = STATUS.find((s) => s.id === t.status)?.cor ?? "";
+                  const prio = CLASSES_PRIORIDADE[t.prioridade];
+                  const nomePrio = PRIORIDADES.find((p) => p.id === t.prioridade)?.nome ?? t.prioridade;
+                  const atrasada = t.status !== "concluida" && !!t.prazo && t.prazo < hojeIso;
                   return (
                     <div
                       key={t.id}
-                      title={`${t.titulo} · ${responsaveisDe(t).map((m) => m.nome).join(", ") || "sem responsável"}`}
-                      className={`truncate px-1 py-0.5 text-xs leading-tight ${cor}`}
+                      title={`${t.titulo} · ${responsaveisDe(t).map((m) => m.nome).join(", ") || "sem responsável"} · prioridade ${nomePrio}${atrasada ? " · atrasada" : ""}`}
+                      className={`truncate px-1 py-0.5 text-xs leading-tight ${cor} ${prio.borda} ${
+                        atrasada ? "font-semibold ring-1 ring-inset ring-trigo" : ""
+                      }`}
                     >
-                      {t.titulo}
+                      {atrasada ? "! " : ""}
+                      {prio.glifo} {t.titulo}
                     </div>
                   );
                 })}
@@ -143,6 +149,16 @@ export default function Calendario() {
             {s.nome}
           </span>
         ))}
+      </div>
+      <div className="mt-2 flex flex-wrap gap-3 font-mono text-xs text-tinta/70">
+        {PRIORIDADES.map((p) => (
+          <span key={p.id} className="flex items-center gap-1.5">
+            {CLASSES_PRIORIDADE[p.id].glifo} prioridade {p.nome.toLowerCase()}
+          </span>
+        ))}
+        <span className="flex items-center gap-1.5 font-semibold text-trigo">
+          ! atrasada
+        </span>
       </div>
     </div>
   );

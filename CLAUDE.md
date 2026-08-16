@@ -58,6 +58,18 @@ de frentes/integrantes e trilha de atividades para a entrega final.
   bate 4.5:1 (WCAG AA) tanto sobre `campo` quanto sobre `casca`; `/50` e `/60`
   ficam abaixo disso (medido: ~3.2:1 e ~4.2:1 sobre `campo`). Tamanho de texto
   nunca abaixo de `text-xs` (12px) — não use `text-[10px]`/`text-[11px]`.
+- **Hierarquia visual no calendário: atraso > prioridade > status.** Os três
+  sinais são camadas que se somam, nunca se substituem. Status é a base (cor
+  de fundo do chip — já usa os 4 tokens do tema, um por status). Prioridade é
+  forma (glifo ▲/●/▽, `CLASSES_PRIORIDADE` em `lib/types.ts`) mais borda
+  esquerda — só `alta` ganha cor (`broto`, o único token que sobrou livre
+  depois do status já ter tomado os outros 3), pra não ambiguar com status.
+  Atraso soma um `ring-trigo` + `!` no início do texto por cima de tudo isso,
+  **sem esconder o glifo de prioridade** — uma tarefa atrasada de prioridade
+  baixa continua mostrando "▽" (baixa) e o anel de atraso ao mesmo tempo. É
+  assim que os dois sinais não se anulam: nenhum precisa ceder lugar ao
+  outro porque não competem pelo mesmo canal visual (forma vs. anel/glifo
+  de texto).
 
 ## Comandos
 

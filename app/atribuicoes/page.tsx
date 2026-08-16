@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
-import { STATUS, responsaveisDe, type Frente, type Membro, type Tarefa } from "@/lib/types";
+import { PRIORIDADES, STATUS, responsaveisDe, type Frente, type Membro, type Tarefa } from "@/lib/types";
+import SeloIssue from "@/components/SeloIssue";
 
 export default function Atribuicoes() {
   const [tarefas, setTarefas] = useState<Tarefa[]>([]);
@@ -18,7 +19,7 @@ export default function Atribuicoes() {
     const [{ data: t }, { data: m }, { data: f }] = await Promise.all([
       supabase
         .from("tarefas")
-        .select("id, titulo, escopo, frente_id, status, prazo, local_entrega, issue_numero, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel)), frentes(id, nome)")
+        .select("id, titulo, escopo, frente_id, status, prioridade, prazo, local_entrega, issue_numero, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel)), frentes(id, nome)")
         .eq("arquivada", false)
         .order("prazo", { ascending: true, nullsFirst: false }),
       supabase.from("membros").select("id, nome, papel").order("nome"),
@@ -107,17 +108,18 @@ export default function Atribuicoes() {
         <p className="mt-10 font-mono text-sm text-tinta/70">carregando…</p>
       ) : (
         <div className="mt-6 overflow-x-auto border border-linha">
-          <table className="w-full min-w-[820px] border-collapse text-sm">
+          <table className="w-full min-w-[960px] border-collapse text-sm">
             <thead>
               <tr className="border-b border-linha bg-casca font-mono text-xs uppercase tracking-wide text-tinta/70">
                 <th className="px-3 py-2 text-left">Tarefa</th>
                 <th className="px-3 py-2 text-left">Responsável</th>
                 <th className="px-3 py-2 text-left">Dia</th>
                 <th className="px-3 py-2 text-left">Local de entrega</th>
-                <th className="px-3 py-2 text-left">Issue</th>
+                <th className="px-3 py-2 text-left">GitHub</th>
                 <th className="px-3 py-2 text-left">Frente</th>
+                <th className="px-3 py-2 text-left">Prioridade</th>
                 <th className="px-3 py-2 text-left">Status</th>
-                <th className="px-3 py-2" />
+                <th className="sticky right-0 bg-casca px-3 py-2" />
               </tr>
             </thead>
             <tbody className="divide-y divide-linha">
@@ -180,20 +182,23 @@ export default function Atribuicoes() {
                     />
                   </td>
                   <td className="px-3 py-2">
-                    <input
-                      type="number"
-                      min={1}
-                      defaultValue={t.issue_numero ?? ""}
-                      placeholder="nº"
-                      onBlur={(e) => {
-                        const valor = e.target.value ? Number(e.target.value) : null;
-                        if (valor !== t.issue_numero) {
-                          atualizarLocal(t.id, { issue_numero: valor });
-                          salvarCampo(t.id, "issue_numero", valor);
-                        }
-                      }}
-                      className="w-16 border border-transparent bg-transparent px-1 py-1 font-mono hover:border-linha focus:border-linha focus:outline-none"
-                    />
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min={1}
+                        defaultValue={t.issue_numero ?? ""}
+                        placeholder="nº"
+                        onBlur={(e) => {
+                          const valor = e.target.value ? Number(e.target.value) : null;
+                          if (valor !== t.issue_numero) {
+                            atualizarLocal(t.id, { issue_numero: valor });
+                            salvarCampo(t.id, "issue_numero", valor);
+                          }
+                        }}
+                        className="w-14 border border-transparent bg-transparent px-1 py-1 font-mono hover:border-linha focus:border-linha focus:outline-none"
+                      />
+                      {t.issue_numero && <SeloIssue numero={t.issue_numero} />}
+                    </div>
                   </td>
                   <td className="px-3 py-2">
                     {t.escopo === "frente" ? (
@@ -220,6 +225,21 @@ export default function Atribuicoes() {
                   </td>
                   <td className="px-3 py-2">
                     <select
+                      value={t.prioridade}
+                      onChange={(e) => {
+                        const valor = e.target.value as Tarefa["prioridade"];
+                        atualizarLocal(t.id, { prioridade: valor });
+                        salvarCampo(t.id, "prioridade", valor);
+                      }}
+                      className="border border-linha bg-campo px-2 py-1 font-mono text-xs uppercase"
+                    >
+                      {PRIORIDADES.map((p) => (
+                        <option key={p.id} value={p.id}>{p.nome}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="px-3 py-2">
+                    <select
                       value={t.status}
                       onChange={(e) => {
                         const valor = e.target.value as Tarefa["status"];
@@ -233,7 +253,7 @@ export default function Atribuicoes() {
                       ))}
                     </select>
                   </td>
-                  <td className="px-3 py-2 text-right">
+                  <td className="sticky right-0 bg-campo px-3 py-2 text-right">
                     <button
                       onClick={() => arquivar(t.id)}
                       className="font-mono text-xs text-tinta/70 hover:text-trigo"
@@ -245,7 +265,7 @@ export default function Atribuicoes() {
               ))}
               {tarefas.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-3 py-6 text-center text-sm text-tinta/70">
+                  <td colSpan={9} className="px-3 py-6 text-center text-sm text-tinta/70">
                     Nenhuma atribuição ainda. Crie a primeira acima.
                   </td>
                 </tr>
