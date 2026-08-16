@@ -67,6 +67,17 @@ create table if not exists tarefas (
   issue_numero   integer,                            -- número da issue no repositório (só leitura via API do GitHub)
   observacoes    text,                               -- notas de quem entregou a atividade
   subiu_git      boolean not null default false,      -- a entrega já está versionada no repositório?
+  revisor_id     uuid references membros(id) on delete set null,
+                 -- opcional: quem vai revisar a entrega (ver 2d. REVISÕES). Sem
+                 -- revisor, a tarefa conclui direto ao ser entregue — não é
+                 -- validado aqui que revisor ≠ responsável porque responsável é
+                 -- tarefa_responsaveis (N pessoas numa tarefa de frente), não dá
+                 -- pra expressar isso num check nesta tabela; a policy de INSERT
+                 -- em revisoes é quem barra de verdade.
+  commit_confirmado_em timestamptz,
+                 -- preenchido ao confirmar que o commit da última entrega subiu;
+                 -- zerado de novo a cada reentrega que precisar de commit (ver
+                 -- trigger em 2d. ENTREGAS).
   arquivada      boolean not null default false,      -- arquivada em vez de apagada: a trilha não pode sumir
   concluido_em   timestamptz,                         -- preenchido sozinho quando o status vira "concluida"
   criado_em      timestamptz not null default now(),
@@ -76,6 +87,7 @@ create table if not exists tarefas (
 
 create index if not exists idx_tarefas_prazo on tarefas(prazo);
 create index if not exists idx_tarefas_frente on tarefas(frente_id);
+create index if not exists idx_tarefas_revisor on tarefas(revisor_id);
 
 -- ---------- 2a. RESPONSÁVEIS -------------------------------------------
 -- Quem executa a tarefa. Uma linha por pessoa: tarefa individual tem uma
@@ -229,6 +241,146 @@ create trigger trg_atribuir_responsaveis_frente
   after insert or update of escopo, frente_id on tarefas
   for each row execute function public.atribuir_responsaveis_frente();
 
+-- ---------- 2d. ENTREGAS -------------------------------------------------
+-- Histórico append-only de entregas. Uma tarefa pode ter várias linhas (cada
+-- reentrega cria uma nova) — a mais recente é a que vale; nada é sobrescrito.
+create table if not exists entregas (
+  id              bigserial primary key,
+  tarefa_id       bigint not null references tarefas(id) on delete cascade,
+  autor_id        uuid not null references membros(id) on delete restrict,
+  arquivo_drive   text not null,
+  precisa_commit  boolean not null default false,
+  commit_nome     text,
+  o_que_mudou     text not null,
+  criado_em       timestamptz not null default now(),
+  constraint entregas_arquivo_drive_preenchido check (char_length(trim(arquivo_drive)) > 0),
+  constraint entregas_o_que_mudou_minimo check (char_length(trim(o_que_mudou)) >= 10),
+  constraint entregas_commit_nome_obrigatorio check (not precisa_commit or commit_nome is not null)
+);
+
+create index if not exists idx_entregas_tarefa on entregas(tarefa_id, criado_em desc);
+
+-- Toda entrega nova invalida a confirmação de commit anterior — se a entrega
+-- não precisar de commit o campo não importa, mas zera do mesmo jeito: uma
+-- reentrega é sempre um novo estado, não uma continuação da anterior.
+create or replace function public.reabrir_pendencia_de_commit()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  update tarefas set commit_confirmado_em = null where id = new.tarefa_id;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_reabrir_pendencia_commit on entregas;
+create trigger trg_reabrir_pendencia_commit
+  after insert on entregas
+  for each row execute function public.reabrir_pendencia_de_commit();
+
+-- Status não ganhou coluna nova: "pendente no git" é badge derivado (ver
+-- view tarefas_estado_entrega em 2f), não trava a coluna do quadro. Ao
+-- entregar, a tarefa já cai direto em "revisao" (se tiver revisor) ou
+-- "concluida" (se não tiver) — precisar de commit só soma o badge por cima,
+-- não segura a transição.
+create or replace function public.aplicar_estado_pos_entrega()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  v_tem_revisor boolean;
+begin
+  select revisor_id is not null into v_tem_revisor from tarefas where id = new.tarefa_id;
+  update tarefas
+  set status = case when v_tem_revisor then 'revisao' else 'concluida' end
+  where id = new.tarefa_id;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_estado_pos_entrega on entregas;
+create trigger trg_estado_pos_entrega
+  after insert on entregas
+  for each row execute function public.aplicar_estado_pos_entrega();
+
+-- Entrega é evidência — registrada na trilha igual toda mudança em tarefas,
+-- mesmo padrão de registrar_atribuicao() em 2a.
+create or replace function public.registrar_entrega()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  insert into historico (tarefa_id, autor_id, acao, campo, valor_novo)
+  values (new.tarefa_id, auth.uid(), 'entregou', 'arquivo_drive', new.arquivo_drive);
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_hist_entrega on entregas;
+create trigger trg_hist_entrega
+  after insert on entregas
+  for each row execute function public.registrar_entrega();
+
+-- ---------- 2e. REVISÕES ------------------------------------------------
+-- Histórico append-only de revisões. entrega_id amarra a revisão à entrega
+-- específica que foi revisada (não só à tarefa) — se a tarefa for reentregue
+-- e revisada de novo, cada rodada fica rastreável.
+create table if not exists revisoes (
+  id           bigserial primary key,
+  tarefa_id    bigint not null references tarefas(id) on delete cascade,
+  entrega_id   bigint not null references entregas(id) on delete restrict,
+  revisor_id   uuid not null references membros(id) on delete restrict,
+  resultado    text not null check (resultado in ('concluido', 'observacao', 'falta_algo')),
+  comentario   text,
+  criado_em    timestamptz not null default now(),
+  constraint revisoes_comentario_obrigatorio
+    check (resultado = 'concluido' or char_length(trim(coalesce(comentario, ''))) > 0)
+);
+
+create index if not exists idx_revisoes_tarefa on revisoes(tarefa_id, criado_em desc);
+
+-- Concluído ou Observações -> concluida; Falta algo -> fazendo (volta pro
+-- calendário do responsável). revisor_id não muda — a mesma pessoa revisa
+-- de novo se a tarefa voltar por "falta algo" e for reentregue.
+create or replace function public.aplicar_resultado_revisao()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  update tarefas
+  set status = case when new.resultado = 'falta_algo' then 'fazendo' else 'concluida' end
+  where id = new.tarefa_id;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_estado_pos_revisao on revisoes;
+create trigger trg_estado_pos_revisao
+  after insert on revisoes
+  for each row execute function public.aplicar_resultado_revisao();
+
+-- Revisão é evidência — mesmo padrão de registrar_entrega() acima.
+create or replace function public.registrar_revisao()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  insert into historico (tarefa_id, autor_id, acao, campo, valor_novo)
+  values (new.tarefa_id, auth.uid(), 'revisou', 'resultado', new.resultado);
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_hist_revisao on revisoes;
+create trigger trg_hist_revisao
+  after insert on revisoes
+  for each row execute function public.registrar_revisao();
+
 -- ---------- 2b. ANEXOS -------------------------------------------------
 -- Documentos anexados na entrega de uma tarefa. Os arquivos em si ficam
 -- no Storage (bucket "entregas"); aqui só fica a referência.
@@ -270,7 +422,7 @@ create table if not exists historico (
   id           bigserial primary key,
   tarefa_id    bigint references tarefas(id) on delete cascade,
   autor_id     uuid references membros(id) on delete set null,
-  acao         text not null,        -- criou | mudou_status | atribuiu | reatribuiu | desatribuiu | mudou_prazo | editou | mudou_git | arquivou | desarquivou | removeu
+  acao         text not null,        -- criou | mudou_status | atribuiu | reatribuiu | desatribuiu | mudou_prazo | editou | mudou_git | arquivou | desarquivou | removeu | entregou | revisou | confirmou_commit
   campo        text,
   valor_antigo text,
   valor_novo   text,
@@ -349,6 +501,19 @@ begin
       values (new.id, auth.uid(), 'editou', 'issue_numero', old.issue_numero::text, new.issue_numero::text);
     end if;
 
+    if new.revisor_id is distinct from old.revisor_id then
+      insert into historico (tarefa_id, autor_id, acao, campo, valor_antigo, valor_novo)
+      values (new.id, auth.uid(), 'editou', 'revisor_id', old.revisor_id::text, new.revisor_id::text);
+    end if;
+
+    -- Só registra o momento em que confirmou (null -> preenchido). O reset
+    -- pra null a cada reentrega (trg_reabrir_pendencia_commit) é
+    -- bookkeeping automático, não uma ação de alguém — não polui a trilha.
+    if new.commit_confirmado_em is not null and old.commit_confirmado_em is null then
+      insert into historico (tarefa_id, autor_id, acao, campo, valor_novo)
+      values (new.id, auth.uid(), 'confirmou_commit', 'commit_confirmado_em', new.commit_confirmado_em::text);
+    end if;
+
     new.atualizado_em := now();
     return new;
   end if;
@@ -385,6 +550,8 @@ alter table tarefas              enable row level security;
 alter table tarefa_responsaveis  enable row level security;
 alter table historico            enable row level security;
 alter table anexos               enable row level security;
+alter table entregas             enable row level security;
+alter table revisoes             enable row level security;
 
 create policy "equipe le frentes"   on frentes for select to authenticated using (true);
 create policy "equipe cria frentes" on frentes for insert to authenticated with check (true);
@@ -407,6 +574,31 @@ create policy "equipe desatribui"        on tarefa_responsaveis for delete to au
 
 create policy "equipe le historico" on historico for select to authenticated using (true);
 -- Repare: não existe policy de UPDATE nem DELETE em historico. É proposital.
+
+create policy "equipe le entregas" on entregas for select to authenticated using (true);
+create policy "responsavel entrega" on entregas for insert to authenticated with check (
+  exists (
+    select 1 from tarefa_responsaveis tr
+    where tr.tarefa_id = entregas.tarefa_id and tr.membro_id = auth.uid()
+  )
+);
+-- Sem policy de UPDATE/DELETE: entrega é histórico, reentrega é linha nova.
+
+create policy "equipe le revisoes" on revisoes for select to authenticated using (true);
+create policy "revisor designado revisa" on revisoes for insert to authenticated with check (
+  revisor_id = auth.uid()
+  and exists (
+    select 1 from tarefas t where t.id = revisoes.tarefa_id and t.revisor_id = auth.uid()
+  )
+  and not exists (
+    -- Ninguém revisa a própria tarefa — mesmo que tenha virado responsável
+    -- depois de designado revisor (ex.: entrou na frente), a policy barra
+    -- na hora de revisar, que é quando isso realmente importa.
+    select 1 from tarefa_responsaveis tr
+    where tr.tarefa_id = revisoes.tarefa_id and tr.membro_id = auth.uid()
+  )
+);
+-- Sem policy de UPDATE/DELETE: revisão é histórico, nova rodada é linha nova.
 
 create policy "equipe le anexos"      on anexos for select to authenticated using (true);
 create policy "equipe anexa"          on anexos for insert to authenticated with check (true);
@@ -462,6 +654,45 @@ left join membros m on m.id = h.autor_id
 left join tarefas t on t.id = h.tarefa_id
 left join frentes f on f.id = t.frente_id
 order by h.em desc;
+
+-- ---------- 6b. VIEW: estado derivado de entrega/revisão --------------
+-- Única fonte de verdade pro estado calculado (pendente_git etc.) — quem
+-- precisar mostrar isso (cartão, detalhe, calendário, /revisoes) lê daqui
+-- em vez de recalcular cada um do seu jeito. security_invoker: mesma razão
+-- de relatorio_atividades (ver 6) — sem isso a view ignora o RLS das
+-- tabelas de base.
+create or replace view tarefas_estado_entrega
+with (security_invoker = on)
+as
+select
+  t.id as tarefa_id,
+  t.revisor_id,
+  mr.nome as revisor_nome,
+  t.commit_confirmado_em,
+  ue.id as ultima_entrega_id,
+  ue.autor_id as entrega_autor_id,
+  ma.nome as entrega_autor_nome,
+  ue.arquivo_drive,
+  ue.precisa_commit,
+  ue.commit_nome,
+  ue.o_que_mudou,
+  ue.criado_em as entregue_em,
+  (ue.precisa_commit and t.commit_confirmado_em is null) as pendente_git,
+  ur.id as ultima_revisao_id,
+  ur.resultado as ultimo_resultado,
+  ur.comentario as ultimo_comentario,
+  ur.criado_em as revisado_em,
+  mv.nome as ultimo_revisor_nome
+from tarefas t
+left join membros mr on mr.id = t.revisor_id
+left join lateral (
+  select * from entregas e where e.tarefa_id = t.id order by e.criado_em desc limit 1
+) ue on true
+left join membros ma on ma.id = ue.autor_id
+left join lateral (
+  select * from revisoes r where r.tarefa_id = t.id order by r.criado_em desc limit 1
+) ur on true
+left join membros mv on mv.id = ur.revisor_id;
 
 -- =====================================================================
 -- MIGRAÇÃO · arquivar em vez de apagar + coluna de unidade (rode só se já

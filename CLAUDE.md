@@ -70,6 +70,20 @@ de frentes/integrantes e trilha de atividades para a entrega final.
   assim que os dois sinais não se anulam: nenhum precisa ceder lugar ao
   outro porque não competem pelo mesmo canal visual (forma vs. anel/glifo
   de texto).
+- **Fluxo de entrega/revisão não criou status novo.** `tarefas.status`
+  continua só `pendente | fazendo | revisao | concluida` — "pendente no
+  git" é um **badge derivado**, calculado num lugar só: a view
+  `tarefas_estado_entrega` (`pendente_git = precisa_commit and
+  commit_confirmado_em is null`), nunca recalculado componente a
+  componente. `entregas` e `revisoes` são histórico append-only (sem
+  policy de `UPDATE`/`DELETE`, mesma regra de `historico`); cada
+  reentrega e cada revisão é uma linha nova, nada é sobrescrito. Quem
+  revisa é `tarefas.revisor_id` (opcional, 1 pessoa) — sem revisor, a
+  entrega já conclui a tarefa direto. Revisor nunca pode estar em
+  `tarefa_responsaveis` da mesma tarefa — vale na policy de `insert` em
+  `revisoes`, não dá pra expressar como `check` em `tarefas` porque
+  responsável é tabela à parte (pode ter N pessoas numa tarefa de
+  frente).
 
 ## Comandos
 

@@ -112,6 +112,8 @@ export type Tarefa = {
   issue_numero: number | null;
   observacoes: string | null;
   subiu_git: boolean;
+  revisor_id: string | null;
+  commit_confirmado_em: string | null;
   arquivada: boolean;
   concluido_em: string | null;
   criado_em: string;
@@ -133,6 +135,60 @@ export type Anexo = {
   caminho: string;
   criado_em: string;
   membros?: Membro | null;
+};
+
+export type Entrega = {
+  id: number;
+  tarefa_id: number;
+  autor_id: string;
+  arquivo_drive: string;
+  precisa_commit: boolean;
+  commit_nome: string | null;
+  o_que_mudou: string;
+  criado_em: string;
+};
+
+export type ResultadoRevisao = "concluido" | "observacao" | "falta_algo";
+
+export const RESULTADOS_REVISAO: { id: ResultadoRevisao; nome: string }[] = [
+  { id: "concluido",  nome: "Concluído" },
+  { id: "observacao", nome: "Observações" },
+  { id: "falta_algo", nome: "Falta algo" },
+];
+
+export type Revisao = {
+  id: number;
+  tarefa_id: number;
+  entrega_id: number;
+  revisor_id: string;
+  resultado: ResultadoRevisao;
+  comentario: string | null;
+  criado_em: string;
+};
+
+/**
+ * Estado derivado de entrega/revisão — espelha a view tarefas_estado_entrega,
+ * fonte única desse cálculo (não recalcule isso componente por componente).
+ */
+export type EstadoEntrega = {
+  tarefa_id: number;
+  revisor_id: string | null;
+  revisor_nome: string | null;
+  commit_confirmado_em: string | null;
+  ultima_entrega_id: number | null;
+  entrega_autor_id: string | null;
+  entrega_autor_nome: string | null;
+  arquivo_drive: string | null;
+  precisa_commit: boolean | null;
+  commit_nome: string | null;
+  o_que_mudou: string | null;
+  entregue_em: string | null;
+  pendente_git: boolean | null;
+  ultima_revisao_id: number | null;
+  ultimo_resultado: ResultadoRevisao | null;
+  ultimo_comentario: string | null;
+  revisado_em: string | null;
+  ultimo_revisor_nome: string | null;
 };
 
 export type Reuniao = {
