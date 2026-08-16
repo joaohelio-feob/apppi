@@ -20,19 +20,26 @@ export default function DetalheTarefa({
   tarefa,
   aoFechar,
   aoAtualizar,
+  membrosIniciais,
+  frentesIniciais,
 }: {
   tarefa: Tarefa;
   aoFechar: () => void;
   aoAtualizar?: () => void;
+  /** Se a página que abriu o painel já tem essas listas carregadas (ex.: Quadro),
+   *  passa aqui pra não duplicar a consulta — só id/nome são usados nos selects. */
+  membrosIniciais?: Membro[];
+  frentesIniciais?: Frente[];
 }) {
   const [t, setT] = useState(tarefa);
-  const [membros, setMembros] = useState<Membro[]>([]);
-  const [frentes, setFrentes] = useState<Frente[]>([]);
+  const [membros, setMembros] = useState<Membro[]>(membrosIniciais ?? []);
+  const [frentes, setFrentes] = useState<Frente[]>(frentesIniciais ?? []);
   const [arquivando, setArquivando] = useState(false);
   const { avisar } = useToast();
   const supabase = criarClienteNavegador();
 
   useEffect(() => {
+    if (membrosIniciais && frentesIniciais) return; // já veio pronto da página que abriu
     Promise.all([
       supabase.from("membros").select("id, nome, papel, frente_id").order("nome"),
       supabase.from("frentes").select("id, nome, cor, unidade").order("nome"),
@@ -106,7 +113,7 @@ export default function DetalheTarefa({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-tinta/40 p-4 sm:items-center">
-      <div className="max-h-[85vh] w-full max-w-lg overflow-y-auto border border-linha bg-campo p-5">
+      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto border border-linha bg-campo p-6">
         <div className="flex items-start justify-between gap-3">
           <p className="font-mono text-xs uppercase tracking-widest text-musgo">
             {t.escopo === "frente" ? (
@@ -138,7 +145,7 @@ export default function DetalheTarefa({
           className="mt-2 w-full border border-linha bg-casca px-3 py-2 text-sm"
         />
 
-        <div className="mt-4 grid grid-cols-2 gap-2">
+        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
           <label className="block font-mono text-xs uppercase text-tinta/70">
             Status
             <select

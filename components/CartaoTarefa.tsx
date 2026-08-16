@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { dataLocalISO, diasEntre } from "@/lib/datas";
-import { CLASSES_COR_FRENTE, STATUS, UNIDADES_FRENTE, responsaveisDe, type Tarefa, type Status } from "@/lib/types";
+import { CLASSES_COR_FRENTE, STATUS, UNIDADES_FRENTE, responsaveisDe, type Frente, type Membro, type Tarefa, type Status } from "@/lib/types";
 import DetalheTarefa from "./DetalheTarefa";
 import Selo from "./Selo";
 import SeloIssue from "./SeloIssue";
@@ -24,12 +24,17 @@ export default function CartaoTarefa({
   aoArquivar,
   aoAtualizar,
   arrastavel,
+  membros,
+  frentes,
 }: {
   tarefa: Tarefa;
   aoMudarStatus?: (id: number, status: Status) => void;
   aoArquivar?: (id: number) => void;
   aoAtualizar?: () => void;
   arrastavel?: boolean;
+  /** Repassados ao painel de detalhe pra não duplicar a consulta quando a página já tem essas listas. */
+  membros?: Membro[];
+  frentes?: Frente[];
 }) {
   const dias = diasAte(tarefa.prazo);
   const atrasada = dias !== null && dias < 0 && tarefa.status !== "concluida";
@@ -52,6 +57,7 @@ export default function CartaoTarefa({
       <div
         role="button"
         tabIndex={0}
+        aria-label={`Abrir detalhes de ${tarefa.titulo}`}
         onClick={() => setDetalheAberto(true)}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
@@ -153,6 +159,8 @@ export default function CartaoTarefa({
           tarefa={tarefa}
           aoFechar={() => setDetalheAberto(false)}
           aoAtualizar={aoAtualizar}
+          membrosIniciais={membros}
+          frentesIniciais={frentes}
         />
       )}
     </article>

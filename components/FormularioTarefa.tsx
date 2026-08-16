@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
-import { type Escopo, type Frente, type Membro } from "@/lib/types";
+import { PRIORIDADES, type Escopo, type Frente, type Membro, type Prioridade } from "@/lib/types";
 
 export default function FormularioTarefa({
   membros,
@@ -22,6 +22,8 @@ export default function FormularioTarefa({
   const [escopo, setEscopo] = useState<Escopo>("individual");
   const [frenteId, setFrenteId] = useState("");
   const [responsavel, setResponsavel] = useState("");
+  const [prioridade, setPrioridade] = useState<Prioridade>("media");
+  const [inicio, setInicio] = useState("");
   const [prazo, setPrazo] = useState("");
   const [localEntrega, setLocalEntrega] = useState("");
   const [issueNumero, setIssueNumero] = useState("");
@@ -65,6 +67,8 @@ export default function FormularioTarefa({
         criador_id: sessao.user?.id ?? null,
         escopo,
         frente_id: frenteId ? Number(frenteId) : null,
+        prioridade,
+        inicio: inicio || null,
         prazo: prazo || null,
         local_entrega: localEntrega || null,
         issue_numero: issueNumero ? Number(issueNumero) : null,
@@ -198,14 +202,37 @@ export default function FormularioTarefa({
           )}
 
           <label className="block font-mono text-xs uppercase text-tinta/70">
-            Prazo
-            <input
-              type="date"
-              className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-sm text-tinta"
-              value={prazo}
-              onChange={(e) => setPrazo(e.target.value)}
-            />
+            Prioridade
+            <select
+              className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-sm normal-case text-tinta"
+              value={prioridade}
+              onChange={(e) => setPrioridade(e.target.value as Prioridade)}
+            >
+              {PRIORIDADES.map((p) => (
+                <option key={p.id} value={p.id}>{p.nome}</option>
+              ))}
+            </select>
           </label>
+          <div className="grid grid-cols-2 gap-2">
+            <label className="block font-mono text-xs uppercase text-tinta/70">
+              Início
+              <input
+                type="date"
+                className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-sm text-tinta"
+                value={inicio}
+                onChange={(e) => setInicio(e.target.value)}
+              />
+            </label>
+            <label className="block font-mono text-xs uppercase text-tinta/70">
+              Prazo
+              <input
+                type="date"
+                className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-sm text-tinta"
+                value={prazo}
+                onChange={(e) => setPrazo(e.target.value)}
+              />
+            </label>
+          </div>
           <input
             className="w-full border border-linha bg-casca px-3 py-2 text-sm"
             placeholder="Local de entrega: link do Drive, Forms, GitHub… (opcional)"

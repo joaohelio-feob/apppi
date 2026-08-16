@@ -230,6 +230,8 @@ export default function Quadro() {
                 aoMudarStatus={mudarStatus}
                 aoArquivar={arquivar}
                 aoAtualizar={carregar}
+                membros={membros}
+                frentes={frentes}
               />
             </section>
           ))}
@@ -244,11 +246,15 @@ function MiniQuadro({
   aoMudarStatus,
   aoArquivar,
   aoAtualizar,
+  membros,
+  frentes,
 }: {
   tarefas: Tarefa[];
   aoMudarStatus: (id: number, status: Status) => void;
   aoArquivar: (id: number) => void;
   aoAtualizar: () => void;
+  membros: Membro[];
+  frentes: Frente[];
 }) {
   return (
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -270,7 +276,16 @@ function MiniQuadro({
             </h3>
             <div className="space-y-3">
               {daColuna.map((t) => (
-                <CartaoTarefa key={t.id} tarefa={t} aoMudarStatus={aoMudarStatus} aoArquivar={aoArquivar} aoAtualizar={aoAtualizar} arrastavel />
+                <CartaoTarefa
+                  key={t.id}
+                  tarefa={t}
+                  aoMudarStatus={aoMudarStatus}
+                  aoArquivar={aoArquivar}
+                  aoAtualizar={aoAtualizar}
+                  membros={membros}
+                  frentes={frentes}
+                  arrastavel
+                />
               ))}
               {daColuna.length === 0 && <p className="text-xs text-tinta/70">Coluna vazia.</p>}
             </div>
