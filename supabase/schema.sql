@@ -3,11 +3,22 @@
 -- Rode este arquivo inteiro no SQL Editor do Supabase (uma vez só).
 -- =====================================================================
 
+-- ---------- 0. FRENTES -------------------------------------------------
+-- Sub-time do projeto (ex.: Frontend, Backend, Design...). Cada integrante
+-- pertence a uma frente só; uma frente de uma pessoa só é só uma frente
+-- com um membro — não tem caso especial pra isso.
+create table if not exists frentes (
+  id         bigserial primary key,
+  nome       text not null,
+  criado_em  timestamptz not null default now()
+);
+
 -- ---------- 1. MEMBROS ------------------------------------------------
 create table if not exists membros (
   id         uuid primary key references auth.users(id) on delete cascade,
   nome       text not null,
   papel      text not null default 'dev',   -- dev | doc | scrum | design
+  frente_id  bigint references frentes(id) on delete set null,
   criado_em  timestamptz not null default now()
 );
 
@@ -34,8 +45,11 @@ create table if not exists tarefas (
   id             bigserial primary key,
   titulo         text not null,
   descricao      text,
-  responsavel_id uuid references membros(id) on delete set null,
   criador_id     uuid references membros(id) on delete set null,
+  escopo         text not null default 'individual' check (escopo in ('frente', 'individual')),
+  frente_id      bigint references frentes(id) on delete restrict,
+                 -- obrigatório quando escopo = 'frente' (ver constraint abaixo); numa
+                 -- individual fica null — a frente dela é derivada do responsável.
   status         text not null default 'pendente',   -- pendente | fazendo | revisao | concluida
   prioridade     text not null default 'media',      -- baixa | media | alta
   unidade        text not null default 'geral',      -- poo | modelagem | logica | bi | autoconhecimento | geral
@@ -48,11 +62,144 @@ create table if not exists tarefas (
   arquivada      boolean not null default false,      -- arquivada em vez de apagada: a trilha não pode sumir
   concluido_em   timestamptz,                         -- preenchido sozinho quando o status vira "concluida"
   criado_em      timestamptz not null default now(),
-  atualizado_em  timestamptz not null default now()
+  atualizado_em  timestamptz not null default now(),
+  constraint tarefa_de_frente_tem_frente check (escopo <> 'frente' or frente_id is not null)
 );
 
 create index if not exists idx_tarefas_prazo on tarefas(prazo);
-create index if not exists idx_tarefas_responsavel on tarefas(responsavel_id);
+create index if not exists idx_tarefas_frente on tarefas(frente_id);
+
+-- ---------- 2a. RESPONSÁVEIS -------------------------------------------
+-- Quem executa a tarefa. Uma linha por pessoa: tarefa individual tem uma
+-- linha só, tarefa de frente tem uma por integrante da frente.
+create table if not exists tarefa_responsaveis (
+  tarefa_id  bigint not null references tarefas(id) on delete cascade,
+  membro_id  uuid   not null references membros(id) on delete cascade,
+  primary key (tarefa_id, membro_id)
+);
+
+create index if not exists idx_tarefa_responsaveis_membro on tarefa_responsaveis(membro_id);
+
+-- Garante em nível de banco que individual tem no máximo 1 responsável e
+-- frente tem pelo menos 1 — não importa por qual caminho a escrita veio.
+create or replace function public.verificar_responsaveis()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  v_tarefa_id bigint := coalesce(new.tarefa_id, old.tarefa_id);
+  v_escopo    text;
+  v_qtd       int;
+begin
+  select escopo into v_escopo from tarefas where id = v_tarefa_id;
+  if v_escopo is null then
+    return coalesce(new, old); -- tarefa já foi removida em cascata, nada a validar
+  end if;
+
+  select count(*) into v_qtd from tarefa_responsaveis where tarefa_id = v_tarefa_id;
+
+  if v_escopo = 'individual' and v_qtd > 1 then
+    raise exception 'Tarefa individual não pode ter mais de um responsável (tarefa %).', v_tarefa_id;
+  end if;
+
+  if v_escopo = 'frente' and v_qtd = 0 then
+    raise exception 'Tarefa de frente não pode ficar sem responsável (tarefa %).', v_tarefa_id;
+  end if;
+
+  return coalesce(new, old);
+end;
+$$;
+
+drop trigger if exists trg_verificar_responsaveis on tarefa_responsaveis;
+create trigger trg_verificar_responsaveis
+  after insert or update or delete on tarefa_responsaveis
+  for each row execute function public.verificar_responsaveis();
+
+-- Registra atribuição/reatribuição/desatribuição na trilha — substitui o
+-- antigo bloco de "reatribuiu" que observava tarefas.responsavel_id.
+create or replace function public.registrar_atribuicao()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  if tg_op = 'INSERT' then
+    insert into historico (tarefa_id, autor_id, acao, campo, valor_novo)
+    values (new.tarefa_id, auth.uid(), 'atribuiu', 'responsavel', new.membro_id::text);
+    return new;
+  end if;
+
+  if tg_op = 'UPDATE' then
+    if new.membro_id is distinct from old.membro_id then
+      insert into historico (tarefa_id, autor_id, acao, campo, valor_antigo, valor_novo)
+      values (new.tarefa_id, auth.uid(), 'reatribuiu', 'responsavel', old.membro_id::text, new.membro_id::text);
+    end if;
+    return new;
+  end if;
+
+  if tg_op = 'DELETE' then
+    insert into historico (tarefa_id, autor_id, acao, campo, valor_antigo)
+    values (old.tarefa_id, auth.uid(), 'desatribuiu', 'responsavel', old.membro_id::text);
+    return old;
+  end if;
+
+  return null;
+end;
+$$;
+
+drop trigger if exists trg_hist_atribuicao on tarefa_responsaveis;
+create trigger trg_hist_atribuicao
+  after insert or update or delete on tarefa_responsaveis
+  for each row execute function public.registrar_atribuicao();
+
+-- Tarefa de frente: ao criar (ou quando o escopo passa a ser "frente"),
+-- atribui todo mundo que está na frente, de uma vez. Não é retroativo: quem
+-- entra na frente depois não ganha as tarefas antigas dela — só valeria
+-- pra atribuições futuras, e isso já acontece naturalmente porque este
+-- trigger só roda no INSERT ou na mudança de escopo, nunca por tabela
+-- membros mudar.
+create or replace function public.atribuir_responsaveis_frente()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  v_qtd_membros      int;
+  v_qtd_responsaveis int;
+begin
+  if new.escopo = 'frente' and (tg_op = 'INSERT' or old.escopo is distinct from 'frente') then
+    if new.frente_id is null then
+      raise exception 'Tarefa de frente precisa de uma frente.';
+    end if;
+
+    select count(*) into v_qtd_membros from membros where frente_id = new.frente_id;
+    if v_qtd_membros = 0 then
+      raise exception 'A frente % não tem nenhum integrante — não dá pra criar tarefa de frente sem responsável.', new.frente_id;
+    end if;
+
+    insert into tarefa_responsaveis (tarefa_id, membro_id)
+    select new.id, m.id from membros m where m.frente_id = new.frente_id
+    on conflict do nothing;
+  end if;
+
+  -- Virou individual: garante que não sobrou mais de um responsável (se
+  -- sobrou, quem está mexendo precisa tirar os extras antes).
+  if tg_op = 'UPDATE' and new.escopo is distinct from old.escopo and new.escopo = 'individual' then
+    select count(*) into v_qtd_responsaveis from tarefa_responsaveis where tarefa_id = new.id;
+    if v_qtd_responsaveis > 1 then
+      raise exception 'Tarefa tem % responsáveis — tire os extras antes de virar individual.', v_qtd_responsaveis;
+    end if;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_atribuir_responsaveis_frente on tarefas;
+create trigger trg_atribuir_responsaveis_frente
+  after insert or update of escopo, frente_id on tarefas
+  for each row execute function public.atribuir_responsaveis_frente();
 
 -- ---------- 2b. ANEXOS -------------------------------------------------
 -- Documentos anexados na entrega de uma tarefa. Os arquivos em si ficam
@@ -95,7 +242,7 @@ create table if not exists historico (
   id           bigserial primary key,
   tarefa_id    bigint references tarefas(id) on delete cascade,
   autor_id     uuid references membros(id) on delete set null,
-  acao         text not null,        -- criou | mudou_status | reatribuiu | mudou_prazo | editou | mudou_git | arquivou | desarquivou | removeu
+  acao         text not null,        -- criou | mudou_status | atribuiu | reatribuiu | desatribuiu | mudou_prazo | editou | mudou_git | arquivou | desarquivou | removeu
   campo        text,
   valor_antigo text,
   valor_novo   text,
@@ -125,12 +272,6 @@ begin
       if new.status = 'fazendo' and old.inicio is null then
         new.inicio := (now() at time zone 'America/Sao_Paulo')::date;
       end if;
-    end if;
-
-    if new.responsavel_id is distinct from old.responsavel_id then
-      insert into historico (tarefa_id, autor_id, acao, campo, valor_antigo, valor_novo)
-      values (new.id, auth.uid(), 'reatribuiu', 'responsavel_id',
-              old.responsavel_id::text, new.responsavel_id::text);
     end if;
 
     if new.prazo is distinct from old.prazo then
@@ -199,10 +340,17 @@ create trigger trg_hist_del before delete on tarefas
   for each row execute function public.registrar_historico();
 
 -- ---------- 5. RLS: só a equipe logada enxerga -------------------------
-alter table membros   enable row level security;
-alter table tarefas   enable row level security;
-alter table historico enable row level security;
-alter table anexos    enable row level security;
+alter table frentes              enable row level security;
+alter table membros              enable row level security;
+alter table tarefas              enable row level security;
+alter table tarefa_responsaveis  enable row level security;
+alter table historico            enable row level security;
+alter table anexos               enable row level security;
+
+create policy "equipe le frentes"   on frentes for select to authenticated using (true);
+create policy "equipe cria frentes" on frentes for insert to authenticated with check (true);
+create policy "equipe edita frentes"on frentes for update to authenticated using (true);
+create policy "equipe apaga frentes"on frentes for delete to authenticated using (true);
 
 create policy "equipe le membros"   on membros   for select to authenticated using (true);
 create policy "membro edita a si"   on membros   for update to authenticated using (auth.uid() = id);
@@ -212,6 +360,11 @@ create policy "equipe cria tarefas" on tarefas   for insert to authenticated wit
 create policy "equipe edita tarefas"on tarefas   for update to authenticated using (true);
 -- Sem policy de DELETE: a equipe arquiva (arquivada = true), nunca apaga.
 -- É o que mantém a trilha de histórico íntegra.
+
+create policy "equipe le responsaveis"   on tarefa_responsaveis for select to authenticated using (true);
+create policy "equipe atribui"           on tarefa_responsaveis for insert to authenticated with check (true);
+create policy "equipe reatribui"         on tarefa_responsaveis for update to authenticated using (true);
+create policy "equipe desatribui"        on tarefa_responsaveis for delete to authenticated using (true);
 
 create policy "equipe le historico" on historico for select to authenticated using (true);
 -- Repare: não existe policy de UPDATE nem DELETE em historico. É proposital.
@@ -238,23 +391,31 @@ create policy "autor apaga seu arquivo" on storage.objects
 create or replace view relatorio_atividades as
 select
   h.em,
-  m.nome  as autor,
+  m.nome    as autor,
   m.papel,
   h.acao,
   h.campo,
   h.valor_antigo,
   h.valor_novo,
-  t.titulo as tarefa,
-  t.status as status_atual
+  t.titulo  as tarefa,
+  t.status  as status_atual,
+  t.escopo  as escopo,
+  t.unidade as unidade,
+  f.nome    as frente
 from historico h
 left join membros m on m.id = h.autor_id
 left join tarefas t on t.id = h.tarefa_id
+left join frentes f on f.id = t.frente_id
 order by h.em desc;
 
 -- =====================================================================
 -- MIGRAÇÃO · arquivar em vez de apagar + coluna de unidade (rode só se já
 -- executou este arquivo antes de agosto/2026). Se está criando o projeto
 -- do zero, ignore este bloco — as seções acima já vêm com tudo certo.
+--
+-- A função registrar_historico() já foi redefinida na seção 4 acima com
+-- "create or replace" — rodar o arquivo inteiro já atualiza quem tinha a
+-- versão antiga. Não precisa copiar o corpo da função de novo aqui.
 -- =====================================================================
 
 -- 1. Novas colunas, sem quebrar quem já tem tarefas cadastradas.
@@ -265,82 +426,92 @@ alter table tarefas add column if not exists issue_numero integer;
 -- 2. Tira a permissão de apagar tarefa. Dali pra frente só dá pra arquivar.
 drop policy if exists "equipe apaga tarefas" on tarefas;
 
--- 3. Recria a função do trigger com a lógica de arquivar/desarquivar/unidade
---    (mesmo corpo da seção 4 acima — rodar de novo só substitui a versão antiga).
-create or replace function public.registrar_historico()
-returns trigger
-language plpgsql
-security definer set search_path = public
-as $$
+-- =====================================================================
+-- MIGRAÇÃO · tarefa de frente vs. individual (rode só se o banco ainda
+-- tem a coluna tarefas.responsavel_id — ou seja, rodou este arquivo antes
+-- desta mudança). Se está criando o projeto do zero, ignore este bloco.
+--
+-- Ordem importa:
+--   1. cria a estrutura nova (frentes, tarefa_responsaveis, colunas)
+--   2. migra os dados de responsavel_id pra tarefa_responsaveis
+--   3. os triggers (verificar_responsaveis, registrar_atribuicao,
+--      atribuir_responsaveis_frente) já foram criados mais acima no
+--      arquivo — rodar o arquivo inteiro já deixa isso pronto antes de
+--      chegar aqui, não precisa repetir
+--   4. só então apaga responsavel_id, depois que os dados já estão a
+--      salvo em tarefa_responsaveis
+-- =====================================================================
+
+-- 1. Estrutura nova.
+create table if not exists frentes (
+  id         bigserial primary key,
+  nome       text not null,
+  criado_em  timestamptz not null default now()
+);
+
+alter table membros add column if not exists frente_id bigint references frentes(id) on delete set null;
+
+alter table tarefas add column if not exists escopo text not null default 'individual';
+alter table tarefas add column if not exists frente_id bigint references frentes(id) on delete restrict;
+
+do $$
 begin
-  if (tg_op = 'INSERT') then
-    insert into historico (tarefa_id, autor_id, acao, campo, valor_novo)
-    values (new.id, auth.uid(), 'criou', 'titulo', new.titulo);
-    return new;
+  if not exists (select 1 from pg_constraint where conname = 'tarefas_escopo_check') then
+    alter table tarefas add constraint tarefas_escopo_check check (escopo in ('frente', 'individual'));
   end if;
-
-  if (tg_op = 'UPDATE') then
-    if new.status is distinct from old.status then
-      insert into historico (tarefa_id, autor_id, acao, campo, valor_antigo, valor_novo)
-      values (new.id, auth.uid(), 'mudou_status', 'status', old.status, new.status);
-      new.concluido_em := case when new.status = 'concluida' then now() else null end;
-      if new.status = 'fazendo' and old.inicio is null then
-        new.inicio := (now() at time zone 'America/Sao_Paulo')::date;
-      end if;
-    end if;
-
-    if new.responsavel_id is distinct from old.responsavel_id then
-      insert into historico (tarefa_id, autor_id, acao, campo, valor_antigo, valor_novo)
-      values (new.id, auth.uid(), 'reatribuiu', 'responsavel_id',
-              old.responsavel_id::text, new.responsavel_id::text);
-    end if;
-
-    if new.prazo is distinct from old.prazo then
-      insert into historico (tarefa_id, autor_id, acao, campo, valor_antigo, valor_novo)
-      values (new.id, auth.uid(), 'mudou_prazo', 'prazo', old.prazo::text, new.prazo::text);
-    end if;
-
-    if new.titulo is distinct from old.titulo or new.descricao is distinct from old.descricao then
-      insert into historico (tarefa_id, autor_id, acao, campo, valor_antigo, valor_novo)
-      values (new.id, auth.uid(), 'editou', 'titulo', old.titulo, new.titulo);
-    end if;
-
-    if new.observacoes is distinct from old.observacoes then
-      insert into historico (tarefa_id, autor_id, acao, campo, valor_antigo, valor_novo)
-      values (new.id, auth.uid(), 'editou', 'observacoes', old.observacoes, new.observacoes);
-    end if;
-
-    if new.subiu_git is distinct from old.subiu_git then
-      insert into historico (tarefa_id, autor_id, acao, campo, valor_antigo, valor_novo)
-      values (new.id, auth.uid(), 'mudou_git', 'subiu_git', old.subiu_git::text, new.subiu_git::text);
-    end if;
-
-    if new.arquivada is distinct from old.arquivada then
-      insert into historico (tarefa_id, autor_id, acao, campo, valor_antigo, valor_novo)
-      values (new.id, auth.uid(), case when new.arquivada then 'arquivou' else 'desarquivou' end,
-              'arquivada', old.arquivada::text, new.arquivada::text);
-    end if;
-
-    if new.unidade is distinct from old.unidade then
-      insert into historico (tarefa_id, autor_id, acao, campo, valor_antigo, valor_novo)
-      values (new.id, auth.uid(), 'editou', 'unidade', old.unidade, new.unidade);
-    end if;
-
-    if new.issue_numero is distinct from old.issue_numero then
-      insert into historico (tarefa_id, autor_id, acao, campo, valor_antigo, valor_novo)
-      values (new.id, auth.uid(), 'editou', 'issue_numero', old.issue_numero::text, new.issue_numero::text);
-    end if;
-
-    new.atualizado_em := now();
-    return new;
+  if not exists (select 1 from pg_constraint where conname = 'tarefa_de_frente_tem_frente') then
+    alter table tarefas add constraint tarefa_de_frente_tem_frente
+      check (escopo <> 'frente' or frente_id is not null);
   end if;
+end $$;
 
-  if (tg_op = 'DELETE') then
-    insert into historico (tarefa_id, autor_id, acao, campo, valor_antigo)
-    values (null, auth.uid(), 'removeu', 'titulo', old.titulo);
-    return old;
+create table if not exists tarefa_responsaveis (
+  tarefa_id  bigint not null references tarefas(id) on delete cascade,
+  membro_id  uuid   not null references membros(id) on delete cascade,
+  primary key (tarefa_id, membro_id)
+);
+
+create index if not exists idx_tarefa_responsaveis_membro on tarefa_responsaveis(membro_id);
+create index if not exists idx_tarefas_frente on tarefas(frente_id);
+
+-- 2. Migra quem já tinha responsavel_id preenchido. Só faz sentido se a
+--    coluna antiga ainda existir (senão essa migração já rodou antes).
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_name = 'tarefas' and column_name = 'responsavel_id'
+  ) then
+    insert into tarefa_responsaveis (tarefa_id, membro_id)
+    select id, responsavel_id from tarefas where responsavel_id is not null
+    on conflict do nothing;
   end if;
+end $$;
 
-  return null;
-end;
-$$;
+-- 3. RLS das tabelas novas, pra quem já tinha o banco rodando sem elas
+--    (quem está criando do zero já ganhou isso na seção 5 acima).
+alter table frentes             enable row level security;
+alter table tarefa_responsaveis enable row level security;
+
+drop policy if exists "equipe le frentes"    on frentes;
+drop policy if exists "equipe cria frentes"  on frentes;
+drop policy if exists "equipe edita frentes" on frentes;
+drop policy if exists "equipe apaga frentes" on frentes;
+create policy "equipe le frentes"   on frentes for select to authenticated using (true);
+create policy "equipe cria frentes" on frentes for insert to authenticated with check (true);
+create policy "equipe edita frentes"on frentes for update to authenticated using (true);
+create policy "equipe apaga frentes"on frentes for delete to authenticated using (true);
+
+drop policy if exists "equipe le responsaveis" on tarefa_responsaveis;
+drop policy if exists "equipe atribui"         on tarefa_responsaveis;
+drop policy if exists "equipe reatribui"       on tarefa_responsaveis;
+drop policy if exists "equipe desatribui"      on tarefa_responsaveis;
+create policy "equipe le responsaveis" on tarefa_responsaveis for select to authenticated using (true);
+create policy "equipe atribui"         on tarefa_responsaveis for insert to authenticated with check (true);
+create policy "equipe reatribui"       on tarefa_responsaveis for update to authenticated using (true);
+create policy "equipe desatribui"      on tarefa_responsaveis for delete to authenticated using (true);
+
+-- 4. Só agora, com os dados replicados e os triggers no ar, tira a coluna
+--    antiga (e o índice que só fazia sentido com ela).
+alter table tarefas drop column if exists responsavel_id;
+drop index if exists idx_tarefas_responsavel;

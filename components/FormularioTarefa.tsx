@@ -1,22 +1,26 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
-import { UNIDADES, type Membro } from "@/lib/types";
+import { UNIDADES, type Escopo, type Frente, type Membro } from "@/lib/types";
 
 export default function FormularioTarefa({
   membros,
+  frentes,
   aoFechar,
   aoSalvar,
   autoFoco,
 }: {
   membros: Membro[];
+  frentes: Frente[];
   aoFechar: () => void;
   aoSalvar: () => void;
   autoFoco?: boolean;
 }) {
   const [titulo, setTitulo] = useState("");
   const [descricao, setDescricao] = useState("");
+  const [escopo, setEscopo] = useState<Escopo>("individual");
+  const [frenteId, setFrenteId] = useState("");
   const [responsavel, setResponsavel] = useState("");
   const [prazo, setPrazo] = useState("");
   const [localEntrega, setLocalEntrega] = useState("");
@@ -31,11 +35,25 @@ export default function FormularioTarefa({
     if (autoFoco) campoTitulo.current?.focus();
   }, [autoFoco]);
 
+  const membrosDaFrente = useMemo(
+    () => membros.filter((m) => String(m.frente_id ?? "") === frenteId),
+    [membros, frenteId]
+  );
+
   async function salvar() {
     if (!titulo.trim()) {
       setErro("Dê um título à tarefa para poder salvar.");
       return;
     }
+    if (escopo === "frente" && !frenteId) {
+      setErro("Escolha a frente dona da tarefa.");
+      return;
+    }
+    if (escopo === "frente" && membrosDaFrente.length === 0) {
+      setErro("Essa frente ainda não tem ninguém — não dá pra criar tarefa de frente sem responsável.");
+      return;
+    }
+
     setSalvando(true);
     const supabase = criarClienteNavegador();
     const { data: sessao } = await supabase.auth.getUser();
@@ -45,8 +63,9 @@ export default function FormularioTarefa({
       .insert({
         titulo,
         descricao: descricao || null,
-        responsavel_id: responsavel || null,
         criador_id: sessao.user?.id ?? null,
+        escopo,
+        frente_id: escopo === "frente" ? Number(frenteId) : null,
         prazo: prazo || null,
         local_entrega: localEntrega || null,
         issue_numero: issueNumero ? Number(issueNumero) : null,
@@ -59,6 +78,12 @@ export default function FormularioTarefa({
       setSalvando(false);
       setErro(error?.message ?? "Não deu pra criar a tarefa.");
       return;
+    }
+
+    // Tarefa de frente: o trigger no banco já atribui todo mundo da frente
+    // sozinho. Individual: quem cria escolhe a pessoa (ou deixa sem dono).
+    if (escopo === "individual" && responsavel) {
+      await supabase.from("tarefa_responsaveis").insert({ tarefa_id: tarefa.id, membro_id: responsavel });
     }
 
     if (anexo) {
@@ -100,19 +125,65 @@ export default function FormularioTarefa({
             value={descricao}
             onChange={(e) => setDescricao(e.target.value)}
           />
-          <label className="block font-mono text-[11px] uppercase text-tinta/60">
-            Responsável
-            <select
-              className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-sm normal-case text-tinta"
-              value={responsavel}
-              onChange={(e) => setResponsavel(e.target.value)}
+
+          <div className="flex gap-1 border border-linha p-1">
+            <button
+              type="button"
+              onClick={() => setEscopo("individual")}
+              className={`flex-1 py-1.5 font-mono text-xs uppercase ${
+                escopo === "individual" ? "bg-tinta text-campo" : "text-tinta/60 hover:bg-casca"
+              }`}
             >
-              <option value="">Ainda sem dono</option>
-              {membros.map((m) => (
-                <option key={m.id} value={m.id}>{m.nome} · {m.papel}</option>
-              ))}
-            </select>
-          </label>
+              Individual
+            </button>
+            <button
+              type="button"
+              onClick={() => setEscopo("frente")}
+              className={`flex-1 py-1.5 font-mono text-xs uppercase ${
+                escopo === "frente" ? "bg-tinta text-campo" : "text-tinta/60 hover:bg-casca"
+              }`}
+            >
+              Da frente
+            </button>
+          </div>
+
+          {escopo === "individual" ? (
+            <label className="block font-mono text-[11px] uppercase text-tinta/60">
+              Responsável
+              <select
+                className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-sm normal-case text-tinta"
+                value={responsavel}
+                onChange={(e) => setResponsavel(e.target.value)}
+              >
+                <option value="">Ainda sem dono</option>
+                {membros.map((m) => (
+                  <option key={m.id} value={m.id}>{m.nome} · {m.papel}</option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <label className="block font-mono text-[11px] uppercase text-tinta/60">
+              Frente
+              <select
+                className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-sm normal-case text-tinta"
+                value={frenteId}
+                onChange={(e) => setFrenteId(e.target.value)}
+              >
+                <option value="">Escolha a frente</option>
+                {frentes.map((f) => (
+                  <option key={f.id} value={f.id}>{f.nome}</option>
+                ))}
+              </select>
+              {frenteId && (
+                <span className="mt-1 block font-corpo text-xs normal-case text-tinta/60">
+                  {membrosDaFrente.length > 0
+                    ? `Será atribuída a: ${membrosDaFrente.map((m) => m.nome).join(", ")}`
+                    : "Essa frente ainda não tem ninguém."}
+                </span>
+              )}
+            </label>
+          )}
+
           <label className="block font-mono text-[11px] uppercase text-tinta/60">
             Prazo
             <input

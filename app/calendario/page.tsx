@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
 import { dataLocalISO } from "@/lib/datas";
-import { STATUS, type Membro, type Tarefa } from "@/lib/types";
+import { STATUS, responsaveisDe, type Membro, type Tarefa } from "@/lib/types";
 
 const DIAS = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
 
@@ -20,7 +20,7 @@ export default function Calendario() {
     const supabase = criarClienteNavegador();
     supabase
       .from("tarefas")
-      .select("*, membros:responsavel_id(id, nome, papel)")
+      .select("*, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel))")
       .eq("arquivada", false)
       .not("prazo", "is", null)
       .then(({ data }) => setTarefas((data ?? []) as Tarefa[]));
@@ -29,7 +29,7 @@ export default function Calendario() {
   }, []);
 
   const visiveis = useMemo(
-    () => (responsavel ? tarefas.filter((t) => t.responsavel_id === responsavel) : tarefas),
+    () => (responsavel ? tarefas.filter((t) => responsaveisDe(t).some((m) => m.id === responsavel)) : tarefas),
     [tarefas, responsavel]
   );
 
@@ -120,7 +120,7 @@ export default function Calendario() {
                   return (
                     <div
                       key={t.id}
-                      title={`${t.titulo} · ${t.membros?.nome ?? "sem responsável"}`}
+                      title={`${t.titulo} · ${responsaveisDe(t).map((m) => m.nome).join(", ") || "sem responsável"}`}
                       className={`truncate px-1 py-0.5 text-[10px] leading-tight ${cor}`}
                     >
                       {t.titulo}

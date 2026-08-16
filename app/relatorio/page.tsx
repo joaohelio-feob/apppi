@@ -1,11 +1,14 @@
 import { criarClienteServidor } from "@/lib/supabase-server";
 import { dataLocalDeTimestamp, dataLocalISO } from "@/lib/datas";
 import { githubConfigurado, listarCommits, type CommitGithub } from "@/lib/github";
-import type { Registro } from "@/lib/types";
+import { UNIDADES, responsaveisDe, type Frente, type Membro, type Registro, type Tarefa } from "@/lib/types";
 import BotaoExportarCSV from "@/components/BotaoExportarCSV";
 import BotaoExportarPDF from "@/components/BotaoExportarPDF";
 
-const COLUNAS_CSV = ["em", "autor", "papel", "acao", "campo", "valor_antigo", "valor_novo", "tarefa", "status_atual"];
+const COLUNAS_CSV = [
+  "em", "autor", "papel", "acao", "campo", "valor_antigo", "valor_novo",
+  "tarefa", "status_atual", "escopo", "unidade", "frente",
+];
 
 export const dynamic = "force-dynamic";
 
@@ -24,13 +27,43 @@ const VERBO: Record<string, string> = {
 export default async function Trilha() {
   const supabase = criarClienteServidor();
 
-  const { data } = await supabase
-    .from("relatorio_atividades")
-    .select("*")
-    .order("em", { ascending: false })
-    .limit(500);
+  const [{ data }, { data: membrosData }, { data: frentesData }, { data: concluidasData }, { data: historicoTotal }] =
+    await Promise.all([
+      supabase.from("relatorio_atividades").select("*").order("em", { ascending: false }).limit(500),
+      supabase.from("membros").select("id, nome, papel, frente_id"),
+      supabase.from("frentes").select("id, nome"),
+      supabase
+        .from("tarefas")
+        .select("*, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel)), frentes(id, nome)")
+        .eq("status", "concluida"),
+      supabase.from("historico").select("autor_id").limit(10000),
+    ]);
 
   const registros = (data ?? []) as Registro[];
+  const membros = (membrosData ?? []) as Membro[];
+  const frentes = (frentesData ?? []) as Frente[];
+  const concluidas = (concluidasData ?? []) as Tarefa[];
+
+  const participacaoPorAutor = (historicoTotal ?? []).reduce<Record<string, number>>((acc, h) => {
+    if (!h.autor_id) return acc;
+    acc[h.autor_id] = (acc[h.autor_id] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  const resumoPorPessoa = membros.map((m) => {
+    const dela = concluidas.filter((t) => responsaveisDe(t).some((r) => r.id === m.id));
+    const individuais = dela.filter((t) => t.escopo === "individual");
+    const deFrente = dela.filter((t) => t.escopo === "frente");
+    const unidades = Array.from(new Set(dela.map((t) => UNIDADES.find((u) => u.id === t.unidade)?.nome ?? t.unidade)));
+    return {
+      nome: m.nome,
+      frente: frentes.find((f) => f.id === m.frente_id)?.nome ?? "sem frente",
+      individuais: individuais.length,
+      deFrente: deFrente.length,
+      unidades,
+      participacao: participacaoPorAutor[m.id] ?? 0,
+    };
+  });
 
   // Quantos registros cada pessoa gerou — a divisão de trabalho, em números.
   const porPessoa = registros.reduce<Record<string, number>>((acc, r) => {
@@ -119,6 +152,43 @@ export default async function Trilha() {
         </div>
       </section>
 
+      <section className="mt-8 overflow-x-auto border border-linha">
+        <h2 className="border-b border-linha bg-casca px-4 py-2 font-mono text-[11px] uppercase tracking-widest text-tinta/60">
+          Resumo por pessoa
+        </h2>
+        <table className="w-full min-w-[640px] border-collapse text-sm">
+          <thead>
+            <tr className="border-b border-linha bg-casca font-mono text-[11px] uppercase tracking-wide text-tinta/60">
+              <th className="px-3 py-2 text-left">Pessoa</th>
+              <th className="px-3 py-2 text-left">Frente</th>
+              <th className="px-3 py-2 text-left">Concluídas individuais</th>
+              <th className="px-3 py-2 text-left">Concluídas de frente</th>
+              <th className="px-3 py-2 text-left">Unidades trabalhadas</th>
+              <th className="px-3 py-2 text-left">Participação na trilha</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-linha">
+            {resumoPorPessoa.map((p) => (
+              <tr key={p.nome}>
+                <td className="px-3 py-2 font-semibold">{p.nome}</td>
+                <td className="px-3 py-2 text-tinta/70">{p.frente}</td>
+                <td className="px-3 py-2 font-mono text-xs">{p.individuais}</td>
+                <td className="px-3 py-2 font-mono text-xs">{p.deFrente}</td>
+                <td className="px-3 py-2 text-xs text-tinta/70">{p.unidades.join(", ") || "—"}</td>
+                <td className="px-3 py-2 font-mono text-xs">{p.participacao}</td>
+              </tr>
+            ))}
+            {resumoPorPessoa.length === 0 && (
+              <tr>
+                <td colSpan={6} className="px-3 py-6 text-center text-sm text-tinta/50">
+                  Ninguém cadastrado ainda.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </section>
+
       <div className="mt-10 space-y-8">
         {Object.entries(porDia).map(([dia, itens]) => (
           <section key={dia}>
@@ -146,6 +216,16 @@ export default async function Trilha() {
                     {r.tarefa && (
                       <span className="text-sm">
                         em <strong className="font-semibold">{r.tarefa}</strong>
+                      </span>
+                    )}
+                    {r.unidade && (
+                      <span className="border border-linha px-1 py-0.5 font-mono text-[10px] uppercase text-tinta/50">
+                        {UNIDADES.find((u) => u.id === r.unidade)?.nome ?? r.unidade}
+                      </span>
+                    )}
+                    {r.escopo === "frente" && r.frente && (
+                      <span className="border border-musgo px-1 py-0.5 font-mono text-[10px] uppercase text-musgo">
+                        frente · {r.frente}
                       </span>
                     )}
                   </div>

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import CartaoTarefa from "@/components/CartaoTarefa";
-import type { Tarefa } from "@/lib/types";
+import { responsaveisDe, type Tarefa } from "@/lib/types";
 
 const CHAVE_MINHAS = "pi-semana-somente-minhas";
 
@@ -32,7 +32,7 @@ export default function PainelSemana({
   }
 
   const filtrar = (lista: Tarefa[]) =>
-    somenteMinhas ? lista.filter((t) => t.responsavel_id === meuId) : lista;
+    somenteMinhas ? lista.filter((t) => responsaveisDe(t).some((m) => m.id === meuId)) : lista;
 
   return (
     <div>

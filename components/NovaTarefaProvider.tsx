@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
-import type { Membro } from "@/lib/types";
+import type { Frente, Membro } from "@/lib/types";
 import FormularioTarefa from "./FormularioTarefa";
 import { useToast } from "./ToastProvider";
 
@@ -20,6 +20,7 @@ export function useNovaTarefa() {
 export default function NovaTarefaProvider({ children }: { children: ReactNode }) {
   const [aberta, setAberta] = useState(false);
   const [membros, setMembros] = useState<Membro[]>([]);
+  const [frentes, setFrentes] = useState<Frente[]>([]);
   const { avisar } = useToast();
   const caminho = usePathname();
   const emLogin = caminho === "/login";
@@ -28,11 +29,11 @@ export default function NovaTarefaProvider({ children }: { children: ReactNode }
 
   useEffect(() => {
     if (!aberta) return;
-    criarClienteNavegador()
-      .from("membros")
-      .select("id, nome, papel")
-      .order("nome")
+    const supabase = criarClienteNavegador();
+    supabase.from("membros").select("id, nome, papel, frente_id").order("nome")
       .then(({ data }) => setMembros((data ?? []) as Membro[]));
+    supabase.from("frentes").select("id, nome").order("nome")
+      .then(({ data }) => setFrentes((data ?? []) as Frente[]));
   }, [aberta]);
 
   // Atalho "n" abre o formulário de qualquer página, exceto quando o usuário
@@ -57,6 +58,7 @@ export default function NovaTarefaProvider({ children }: { children: ReactNode }
       {aberta && !emLogin && (
         <FormularioTarefa
           membros={membros}
+          frentes={frentes}
           autoFoco
           aoFechar={() => setAberta(false)}
           aoSalvar={() => avisar("Tarefa criada.", "info")}

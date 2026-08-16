@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
-import { PAPEIS, type Membro } from "@/lib/types";
+import { PAPEIS, type Frente, type Membro } from "@/lib/types";
 
 export default function Equipe() {
   const [membros, setMembros] = useState<Membro[]>([]);
+  const [frentes, setFrentes] = useState<Frente[]>([]);
   const [meuId, setMeuId] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [salvandoId, setSalvandoId] = useState<string | null>(null);
@@ -15,12 +16,14 @@ export default function Equipe() {
     const supabase = criarClienteNavegador();
 
     async function carregar() {
-      const [{ data: sessao }, { data: lista }] = await Promise.all([
+      const [{ data: sessao }, { data: lista }, { data: listaFrentes }] = await Promise.all([
         supabase.auth.getUser(),
-        supabase.from("membros").select("id, nome, papel, criado_em").order("nome"),
+        supabase.from("membros").select("id, nome, papel, frente_id, criado_em").order("nome"),
+        supabase.from("frentes").select("id, nome").order("nome"),
       ]);
       setMeuId(sessao.user?.id ?? null);
       setMembros((lista ?? []) as Membro[]);
+      setFrentes((listaFrentes ?? []) as Frente[]);
       setCarregando(false);
     }
     carregar();
@@ -30,6 +33,14 @@ export default function Equipe() {
     setSalvandoId(id);
     setMembros((atual) => atual.map((m) => (m.id === id ? { ...m, papel } : m)));
     await criarClienteNavegador().from("membros").update({ papel }).eq("id", id);
+    setSalvandoId(null);
+  }
+
+  async function mudarFrente(id: string, frenteId: string) {
+    setSalvandoId(id);
+    const valor = frenteId ? Number(frenteId) : null;
+    setMembros((atual) => atual.map((m) => (m.id === id ? { ...m, frente_id: valor } : m)));
+    await criarClienteNavegador().from("membros").update({ frente_id: valor }).eq("id", id);
     setSalvandoId(null);
   }
 
@@ -59,20 +70,38 @@ export default function Equipe() {
               </Link>
 
               {m.id === meuId ? (
-                <select
-                  value={m.papel}
-                  disabled={salvandoId === m.id}
-                  onChange={(e) => mudarPapel(m.id, e.target.value)}
-                  className="border border-linha bg-campo px-2 py-1 font-mono text-xs uppercase disabled:opacity-50"
-                >
-                  {PAPEIS.map((p) => (
-                    <option key={p.id} value={p.id}>{p.nome}</option>
-                  ))}
-                </select>
+                <>
+                  <select
+                    value={m.papel}
+                    disabled={salvandoId === m.id}
+                    onChange={(e) => mudarPapel(m.id, e.target.value)}
+                    className="border border-linha bg-campo px-2 py-1 font-mono text-xs uppercase disabled:opacity-50"
+                  >
+                    {PAPEIS.map((p) => (
+                      <option key={p.id} value={p.id}>{p.nome}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={m.frente_id ?? ""}
+                    disabled={salvandoId === m.id}
+                    onChange={(e) => mudarFrente(m.id, e.target.value)}
+                    className="border border-linha bg-campo px-2 py-1 font-mono text-xs uppercase disabled:opacity-50"
+                  >
+                    <option value="">sem frente</option>
+                    {frentes.map((f) => (
+                      <option key={f.id} value={f.id}>{f.nome}</option>
+                    ))}
+                  </select>
+                </>
               ) : (
-                <span className="bg-linha px-2 py-0.5 font-mono text-[11px] uppercase tracking-wide text-tinta">
-                  {PAPEIS.find((p) => p.id === m.papel)?.nome ?? m.papel}
-                </span>
+                <>
+                  <span className="bg-linha px-2 py-0.5 font-mono text-[11px] uppercase tracking-wide text-tinta">
+                    {PAPEIS.find((p) => p.id === m.papel)?.nome ?? m.papel}
+                  </span>
+                  <span className="font-mono text-[11px] text-tinta/50">
+                    {frentes.find((f) => f.id === m.frente_id)?.nome ?? "sem frente"}
+                  </span>
+                </>
               )}
 
               {m.criado_em && (

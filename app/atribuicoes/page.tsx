@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
-import { STATUS, UNIDADES, type Membro, type Tarefa } from "@/lib/types";
+import { STATUS, UNIDADES, responsaveisDe, type Membro, type Tarefa } from "@/lib/types";
 
 export default function Atribuicoes() {
   const [tarefas, setTarefas] = useState<Tarefa[]>([]);
@@ -17,7 +17,7 @@ export default function Atribuicoes() {
     const [{ data: t }, { data: m }] = await Promise.all([
       supabase
         .from("tarefas")
-        .select("*, membros:responsavel_id(id, nome, papel)")
+        .select("*, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel))")
         .eq("arquivada", false)
         .order("prazo", { ascending: true, nullsFirst: false }),
       supabase.from("membros").select("id, nome, papel").order("nome"),
@@ -37,6 +37,22 @@ export default function Atribuicoes() {
     await supabase.from("tarefas").update({ [campo]: valor }).eq("id", id);
   }
 
+  async function salvarResponsavel(tarefaId: number, membroId: string) {
+    const tarefa = tarefas.find((t) => t.id === tarefaId);
+    const atual = tarefa ? responsaveisDe(tarefa)[0] : undefined;
+    const membro = membroId ? membros.find((m) => m.id === membroId) ?? null : null;
+
+    atualizarLocal(tarefaId, { responsaveis: membro ? [{ membro }] : [] });
+
+    if (!membroId) {
+      if (atual) await supabase.from("tarefa_responsaveis").delete().eq("tarefa_id", tarefaId).eq("membro_id", atual.id);
+    } else if (atual) {
+      await supabase.from("tarefa_responsaveis").update({ membro_id: membroId }).eq("tarefa_id", tarefaId).eq("membro_id", atual.id);
+    } else {
+      await supabase.from("tarefa_responsaveis").insert({ tarefa_id: tarefaId, membro_id: membroId });
+    }
+  }
+
   async function arquivar(id: number) {
     if (!confirm("Arquivar esta atribuição? Ela some da lista, mas o histórico continua.")) return;
     setTarefas((atual) => atual.filter((t) => t.id !== id));
@@ -50,7 +66,7 @@ export default function Atribuicoes() {
     const { data } = await supabase
       .from("tarefas")
       .insert({ titulo: novoTitulo, criador_id: sessao.user?.id ?? null })
-      .select("*, membros:responsavel_id(id, nome, papel)")
+      .select("*, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel))")
       .single();
     if (data) setTarefas((atual) => [data as Tarefa, ...atual]);
     setNovoTitulo("");
@@ -118,13 +134,8 @@ export default function Atribuicoes() {
                   </td>
                   <td className="px-3 py-2">
                     <select
-                      value={t.responsavel_id ?? ""}
-                      onChange={(e) => {
-                        const id = e.target.value || null;
-                        const membro = membros.find((m) => m.id === id) ?? null;
-                        atualizarLocal(t.id, { responsavel_id: id, membros: membro });
-                        salvarCampo(t.id, "responsavel_id", id);
-                      }}
+                      value={responsaveisDe(t)[0]?.id ?? ""}
+                      onChange={(e) => salvarResponsavel(t.id, e.target.value)}
                       className="border border-linha bg-campo px-2 py-1 font-corpo text-sm"
                     >
                       <option value="">sem dono</option>

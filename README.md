@@ -63,23 +63,55 @@ própria, então dá para testar antes de mergear.
 
 ```
 app/
-  page.tsx            painel da semana (atrasadas / 7 dias / fila)
-  tarefas/            quadro kanban + criação de tarefas
-  calendario/         grade mensal por prazo
-  relatorio/          trilha de atividades + exportação CSV
-  login/              entrada e cadastro
-components/           cartão, selo, navegação, exportador
-lib/                  clientes Supabase e tipos
-supabase/schema.sql   tabelas, triggers, RLS e a view do relatório
+  page.tsx             painel da semana (atrasadas / 7 dias / fila)
+  tarefas/              quadro kanban — visões "Individuais" e "Da frente"
+  atribuicoes/          tabela editável de tarefa, responsável, dia, unidade...
+  calendario/           grade mensal por prazo, com filtro por responsável
+  equipe/                 lista de integrantes (papel, frente)
+  equipe/[id]/             painel de um integrante — individual x frente, separado
+  frentes/                 lista de frentes + criar frente nova
+  frentes/[id]/            painel da frente — tarefas conjuntas + trabalho individual
+  entregas/                relatório enxuto (tarefa, quem fez, data, subiu no git)
+  codigo/                  commits, Pull Requests e CI do GitHub (somente leitura)
+  relatorio/               trilha de atividades + resumo por pessoa + exportação
+  reunioes/                ata das reuniões da equipe
+  sprint/                  Sprint Report por intervalo de datas
+  login/                   entrada e cadastro
+  api/github/              Route Handlers que falam com a API do GitHub (servidor)
+components/              cartão, formulário de tarefa, navegação, exportadores...
+lib/                     clientes Supabase, tipos, datas, acesso ao GitHub
+supabase/schema.sql      tabelas, triggers, RLS, view do relatório e migrações
 ```
 
 ## Como a trilha funciona
 
-A tabela `historico` recebe uma linha a cada `INSERT`, `UPDATE` ou `DELETE` em
-`tarefas`, via trigger no Postgres. Ninguém precisa lembrar de registrar nada, e
-não existe policy de `UPDATE` ou `DELETE` nessa tabela — o registro não pode ser
-reescrito depois. A página **Trilha** lê a view `relatorio_atividades` e exporta
-tudo em CSV.
+A tabela `historico` recebe uma linha a cada `INSERT`/`UPDATE` em `tarefas` e a
+cada `INSERT`/`UPDATE`/`DELETE` em `tarefa_responsaveis`, via trigger no
+Postgres. Ninguém precisa lembrar de registrar nada, e não existe policy de
+`UPDATE` ou `DELETE` em `historico` — o registro não pode ser reescrito depois.
+A página **Trilha** lê a view `relatorio_atividades` (que já cruza histórico,
+tarefa, unidade, escopo e frente), mostra um resumo por pessoa e exporta tudo
+em CSV ou PDF.
+
+## Frentes e tarefas individuais
+
+Toda tarefa tem um **escopo**: `individual` (uma pessoa só) ou `frente`
+(pertence à frente inteira). Quem executa fica em `tarefa_responsaveis` — uma
+linha por pessoa, então uma tarefa de frente com 3 integrantes tem 3 linhas e
+aparece no painel dos 3.
+
+- **Tarefa de frente**: ao criar (ou quando o escopo muda pra `frente`), um
+  trigger no banco atribui automaticamente todo mundo que já está naquela
+  frente (`membros.frente_id`). Não é retroativo — quem entra na frente
+  depois não ganha as tarefas antigas dela.
+- **Tarefa individual**: escolhe uma pessoa só no formulário. A frente dela é
+  derivada de quem é o responsável (`membros.frente_id`), não fica guardada
+  na tarefa.
+- Cada integrante pertence a uma frente só (`/equipe`, seletor "sua frente").
+  Frentes de uma pessoa só funcionam igual às outras — não tem caso especial.
+- O banco garante (`verificar_responsaveis`) que tarefa `individual` tem no
+  máximo 1 responsável e `frente` tem pelo menos 1, não importa por qual
+  caminho a escrita veio.
 
 ## Integração com o GitHub (somente leitura)
 
@@ -136,8 +168,7 @@ merge na `main`.
 
 ## Próximos passos sugeridos
 
-- [ ] Arrastar e soltar entre colunas do quadro
-- [ ] Filtro por responsável no calendário
 - [ ] Comentários por tarefa
-- [ ] Exportar a trilha em PDF, além de CSV
 - [ ] Notificação por e-mail quando um prazo estiver a 1 dia
+- [ ] Editar/renomear frente e mover integrante de frente com aviso do que muda
+- [ ] Cruzar `issue_numero` com o vínculo tarefa ↔ frente na página **Código**

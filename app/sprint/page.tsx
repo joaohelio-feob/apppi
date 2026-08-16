@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
 import { dataLocalISO } from "@/lib/datas";
-import { UNIDADES, type Reuniao, type Tarefa } from "@/lib/types";
+import { UNIDADES, responsaveisDe, type Frente, type Membro, type Reuniao, type Tarefa } from "@/lib/types";
 import BotaoExportarCSV from "@/components/BotaoExportarCSV";
 import BotaoExportarPDF from "@/components/BotaoExportarPDF";
 
@@ -12,6 +12,9 @@ type Movimentacao = {
   autor: string | null;
   acao: string;
   tarefa: string | null;
+  escopo: string | null;
+  unidade: string | null;
+  frente: string | null;
 };
 
 function primeiroDiaDoMes() {
@@ -29,33 +32,39 @@ export default function SprintReport() {
   const [atrasadas, setAtrasadas] = useState<Tarefa[]>([]);
   const [reunioes, setReunioes] = useState<Reuniao[]>([]);
   const [movimentacoes, setMovimentacoes] = useState<Movimentacao[]>([]);
+  const [membros, setMembros] = useState<Membro[]>([]);
+  const [frentes, setFrentes] = useState<Frente[]>([]);
 
   const gerar = useCallback(async () => {
     setCarregando(true);
     const supabase = criarClienteNavegador();
     const fimFechado = `${fim}T23:59:59`;
 
-    const [{ data: concluidasData }, { data: doPrazoData }, { data: reunioesData }, { data: trilhaData }] =
-      await Promise.all([
-        supabase
-          .from("tarefas")
-          .select("*, membros:responsavel_id(id, nome, papel)")
-          .gte("concluido_em", inicio)
-          .lte("concluido_em", fimFechado),
-        supabase
-          .from("tarefas")
-          .select("*, membros:responsavel_id(id, nome, papel)")
-          .gte("prazo", inicio)
-          .lte("prazo", fim),
-        supabase.from("reunioes").select("*").gte("data", inicio).lte("data", fim).order("data"),
-        supabase
-          .from("relatorio_atividades")
-          .select("em, autor, acao, tarefa")
-          .gte("em", inicio)
-          .lte("em", fimFechado)
-          .order("em", { ascending: false })
-          .limit(200),
-      ]);
+    const [
+      { data: concluidasData }, { data: doPrazoData }, { data: reunioesData },
+      { data: trilhaData }, { data: membrosData }, { data: frentesData },
+    ] = await Promise.all([
+      supabase
+        .from("tarefas")
+        .select("*, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel)), frentes(id, nome)")
+        .gte("concluido_em", inicio)
+        .lte("concluido_em", fimFechado),
+      supabase
+        .from("tarefas")
+        .select("*, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel))")
+        .gte("prazo", inicio)
+        .lte("prazo", fim),
+      supabase.from("reunioes").select("*").gte("data", inicio).lte("data", fim).order("data"),
+      supabase
+        .from("relatorio_atividades")
+        .select("em, autor, acao, tarefa, escopo, unidade, frente")
+        .gte("em", inicio)
+        .lte("em", fimFechado)
+        .order("em", { ascending: false })
+        .limit(200),
+      supabase.from("membros").select("id, nome, papel, frente_id"),
+      supabase.from("frentes").select("id, nome"),
+    ]);
 
     setConcluidas((concluidasData ?? []) as Tarefa[]);
 
@@ -70,6 +79,8 @@ export default function SprintReport() {
 
     setReunioes((reunioesData ?? []) as Reuniao[]);
     setMovimentacoes((trilhaData ?? []) as Movimentacao[]);
+    setMembros((membrosData ?? []) as Membro[]);
+    setFrentes((frentesData ?? []) as Frente[]);
     setCarregando(false);
     setGerado(true);
   }, [inicio, fim]);
@@ -77,8 +88,12 @@ export default function SprintReport() {
   useEffect(() => { gerar(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const porPessoa = concluidas.reduce<Record<string, number>>((acc, t) => {
-    const nome = t.membros?.nome ?? "sem responsável";
-    acc[nome] = (acc[nome] ?? 0) + 1;
+    const responsaveis = responsaveisDe(t);
+    if (responsaveis.length === 0) {
+      acc["sem responsável"] = (acc["sem responsável"] ?? 0) + 1;
+    } else {
+      responsaveis.forEach((m) => { acc[m.nome] = (acc[m.nome] ?? 0) + 1; });
+    }
     return acc;
   }, {});
 
@@ -91,6 +106,27 @@ export default function SprintReport() {
   const periodoFormatado = `${new Date(inicio + "T12:00:00").toLocaleDateString("pt-BR")} a ${new Date(
     fim + "T12:00:00"
   ).toLocaleDateString("pt-BR")}`;
+
+  const movimentacoesPorAutor = movimentacoes.reduce<Record<string, number>>((acc, m) => {
+    const nome = m.autor ?? "desconhecido";
+    acc[nome] = (acc[nome] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  const resumoPorPessoa = membros.map((m) => {
+    const dela = concluidas.filter((t) => responsaveisDe(t).some((r) => r.id === m.id));
+    const individuais = dela.filter((t) => t.escopo === "individual");
+    const deFrente = dela.filter((t) => t.escopo === "frente");
+    const unidades = Array.from(new Set(dela.map((t) => UNIDADES.find((u) => u.id === t.unidade)?.nome ?? t.unidade)));
+    return {
+      nome: m.nome,
+      frente: frentes.find((f) => f.id === m.frente_id)?.nome ?? "sem frente",
+      individuais: individuais.length,
+      deFrente: deFrente.length,
+      unidades,
+      movimentacoes: movimentacoesPorAutor[m.nome] ?? 0,
+    };
+  });
 
   return (
     <div>
@@ -106,12 +142,14 @@ export default function SprintReport() {
             <BotaoExportarCSV
               linhas={concluidas.map((t) => ({
                 tarefa: t.titulo,
-                responsavel: t.membros?.nome ?? "",
+                responsavel: responsaveisDe(t).map((m) => m.nome).join(", "),
+                escopo: t.escopo,
+                frente: t.frentes?.nome ?? "",
                 unidade: t.unidade,
                 concluido_em: t.concluido_em,
                 prazo: t.prazo,
               }))}
-              colunas={["tarefa", "responsavel", "unidade", "concluido_em", "prazo"]}
+              colunas={["tarefa", "responsavel", "escopo", "frente", "unidade", "concluido_em", "prazo"]}
               nomeArquivo={`sprint-report-${inicio}-a-${fim}.csv`}
               rotulo="Baixar CSV"
             />
@@ -167,7 +205,7 @@ export default function SprintReport() {
                   <li key={t.id} className="flex flex-wrap items-baseline gap-x-2 text-sm">
                     <span className="font-semibold">{t.titulo}</span>
                     <span className="font-mono text-xs text-tinta/50">
-                      {t.membros?.nome ?? "sem responsável"} ·{" "}
+                      {responsaveisDe(t).map((m) => m.nome).join(", ") || "sem responsável"} ·{" "}
                       {t.concluido_em && new Date(t.concluido_em).toLocaleDateString("pt-BR")}
                     </span>
                   </li>
@@ -189,7 +227,7 @@ export default function SprintReport() {
                   <li key={t.id} className="flex flex-wrap items-baseline gap-x-2 text-sm">
                     <span className="font-semibold text-trigo">{t.titulo}</span>
                     <span className="font-mono text-xs text-tinta/50">
-                      {t.membros?.nome ?? "sem responsável"} · prazo {t.prazo && new Date(t.prazo + "T12:00:00").toLocaleDateString("pt-BR")}
+                      {responsaveisDe(t).map((m) => m.nome).join(", ") || "sem responsável"} · prazo {t.prazo && new Date(t.prazo + "T12:00:00").toLocaleDateString("pt-BR")}
                     </span>
                   </li>
                 ))}
@@ -211,6 +249,43 @@ export default function SprintReport() {
               <Barras dados={porUnidade} />
             </section>
           </div>
+
+          <section className="overflow-x-auto border border-linha">
+            <h2 className="border-b border-linha bg-casca px-4 py-2 font-mono text-[11px] uppercase tracking-widest text-tinta/60">
+              Resumo por pessoa no período
+            </h2>
+            <table className="w-full min-w-[640px] border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-linha bg-casca font-mono text-[11px] uppercase tracking-wide text-tinta/60">
+                  <th className="px-3 py-2 text-left">Pessoa</th>
+                  <th className="px-3 py-2 text-left">Frente</th>
+                  <th className="px-3 py-2 text-left">Concluídas individuais</th>
+                  <th className="px-3 py-2 text-left">Concluídas de frente</th>
+                  <th className="px-3 py-2 text-left">Unidades</th>
+                  <th className="px-3 py-2 text-left">Movimentações na trilha</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-linha">
+                {resumoPorPessoa.map((p) => (
+                  <tr key={p.nome}>
+                    <td className="px-3 py-2 font-semibold">{p.nome}</td>
+                    <td className="px-3 py-2 text-tinta/70">{p.frente}</td>
+                    <td className="px-3 py-2 font-mono text-xs">{p.individuais}</td>
+                    <td className="px-3 py-2 font-mono text-xs">{p.deFrente}</td>
+                    <td className="px-3 py-2 text-xs text-tinta/70">{p.unidades.join(", ") || "—"}</td>
+                    <td className="px-3 py-2 font-mono text-xs">{p.movimentacoes}</td>
+                  </tr>
+                ))}
+                {resumoPorPessoa.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-3 py-6 text-center text-sm text-tinta/50">
+                      Ninguém cadastrado ainda.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </section>
 
           <section>
             <h2 className="mb-3 border-b border-linha pb-1 font-display text-lg font-semibold">
@@ -243,6 +318,8 @@ export default function SprintReport() {
                 <li key={i} className="font-mono text-xs text-tinta/60">
                   {new Date(m.em).toLocaleDateString("pt-BR")} · {m.autor ?? "—"} · {m.acao}
                   {m.tarefa ? ` · ${m.tarefa}` : ""}
+                  {m.unidade ? ` · ${UNIDADES.find((u) => u.id === m.unidade)?.nome ?? m.unidade}` : ""}
+                  {m.escopo === "frente" && m.frente ? ` · frente: ${m.frente}` : ""}
                 </li>
               ))}
               {movimentacoes.length === 0 && (

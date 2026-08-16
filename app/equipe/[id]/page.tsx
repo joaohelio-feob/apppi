@@ -10,17 +10,22 @@ import { UNIDADES, type Membro, type Tarefa } from "@/lib/types";
 export default function PainelMembro() {
   const { id } = useParams<{ id: string }>();
   const [membro, setMembro] = useState<Membro | null>(null);
-  const [tarefas, setTarefas] = useState<Tarefa[]>([]);
+  const [individuais, setIndividuais] = useState<Tarefa[]>([]);
+  const [deFrente, setDeFrente] = useState<Tarefa[]>([]);
   const [carregando, setCarregando] = useState(true);
 
   useEffect(() => {
     const supabase = criarClienteNavegador();
+    const selecao = "*, responsaveis:tarefa_responsaveis!inner(membro:membros(id, nome, papel))";
+
     Promise.all([
       supabase.from("membros").select("id, nome, papel, criado_em").eq("id", id).single(),
-      supabase.from("tarefas").select("*, membros:responsavel_id(id, nome, papel)").eq("responsavel_id", id),
-    ]).then(([{ data: m }, { data: t }]) => {
+      supabase.from("tarefas").select(selecao).eq("tarefa_responsaveis.membro_id", id).eq("escopo", "individual"),
+      supabase.from("tarefas").select(selecao).eq("tarefa_responsaveis.membro_id", id).eq("escopo", "frente"),
+    ]).then(([{ data: m }, { data: ti }, { data: tf }]) => {
       setMembro((m ?? null) as Membro | null);
-      setTarefas((t ?? []) as Tarefa[]);
+      setIndividuais((ti ?? []) as Tarefa[]);
+      setDeFrente((tf ?? []) as Tarefa[]);
       setCarregando(false);
     });
   }, [id]);
@@ -36,6 +41,26 @@ export default function PainelMembro() {
     );
   }
 
+  return (
+    <div>
+      <Link href="/equipe" className="font-mono text-xs text-tinta/50 underline underline-offset-4">
+        ← Equipe
+      </Link>
+      <p className="mt-3 font-mono text-xs uppercase tracking-widest text-musgo">Painel individual</p>
+      <h1 className="mt-1 font-display text-3xl font-extrabold tracking-tight">{membro.nome}</h1>
+      <p className="mt-2 max-w-prose text-sm text-tinta/70">
+        O que {membro.nome.split(" ")[0]} fez sozinho, separado do que fez junto com a frente.
+      </p>
+
+      <div className="mt-10 space-y-12">
+        <BlocoTarefas titulo="Trabalho individual" tarefas={individuais} />
+        <BlocoTarefas titulo="Trabalho da frente" tarefas={deFrente} />
+      </div>
+    </div>
+  );
+}
+
+function BlocoTarefas({ titulo, tarefas }: { titulo: string; tarefas: Tarefa[] }) {
   const concluidas = tarefas.filter((t) => t.status === "concluida");
 
   const duracoes = concluidas
@@ -56,48 +81,42 @@ export default function PainelMembro() {
     acc[nome] = (acc[nome] ?? 0) + 1;
     return acc;
   }, {});
+  const maiorUnidade = Math.max(1, ...Object.values(porUnidade));
 
   return (
-    <div>
-      <Link href="/equipe" className="font-mono text-xs text-tinta/50 underline underline-offset-4">
-        ← Equipe
-      </Link>
-      <p className="mt-3 font-mono text-xs uppercase tracking-widest text-musgo">Painel individual</p>
-      <h1 className="mt-1 font-display text-3xl font-extrabold tracking-tight">{membro.nome}</h1>
+    <section>
+      <h2 className="mb-3 border-b border-linha pb-1 font-display text-lg font-semibold">{titulo}</h2>
 
-      <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <Estatistica rotulo="Concluídas" valor={concluidas.length} />
         <Estatistica rotulo="Tempo médio" valor={tempoMedio !== null ? `${tempoMedio}d` : "—"} />
         <Estatistica rotulo="Atrasaram" valor={atrasadas.length} />
-        <Estatistica rotulo="Total de tarefas" valor={tarefas.length} />
+        <Estatistica rotulo="Total" valor={tarefas.length} />
       </div>
 
-      <section className="mt-10">
-        <h2 className="mb-3 border-b border-linha pb-1 font-display text-lg font-semibold">
+      <div className="mt-4">
+        <h3 className="mb-2 font-mono text-[10px] uppercase tracking-widest text-tinta/50">
           Distribuição por unidade de estudo
-        </h2>
+        </h3>
         {Object.keys(porUnidade).length === 0 ? (
           <p className="text-sm text-tinta/50">Ainda sem tarefas concluídas.</p>
         ) : (
           <div className="space-y-2">
             {Object.entries(porUnidade)
               .sort((a, b) => b[1] - a[1])
-              .map(([nome, total]) => {
-                const maior = Math.max(...Object.values(porUnidade));
-                return (
-                  <div key={nome} className="flex items-center gap-3">
-                    <span className="w-32 shrink-0 truncate text-sm">{nome}</span>
-                    <div className="h-3 flex-1 bg-linha">
-                      <div className="h-full bg-musgo" style={{ width: `${(total / maior) * 100}%` }} />
-                    </div>
-                    <span className="w-8 text-right font-mono text-xs text-tinta/60">{total}</span>
+              .map(([nome, total]) => (
+                <div key={nome} className="flex items-center gap-3">
+                  <span className="w-32 shrink-0 truncate text-sm">{nome}</span>
+                  <div className="h-3 flex-1 bg-linha">
+                    <div className="h-full bg-musgo" style={{ width: `${(total / maiorUnidade) * 100}%` }} />
                   </div>
-                );
-              })}
+                  <span className="w-8 text-right font-mono text-xs text-tinta/60">{total}</span>
+                </div>
+              ))}
           </div>
         )}
-      </section>
-    </div>
+      </div>
+    </section>
   );
 }
 

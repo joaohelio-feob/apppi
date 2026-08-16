@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
-import type { Anexo, Tarefa } from "@/lib/types";
+import { responsaveisDe, type Anexo, type Tarefa } from "@/lib/types";
 
 export default function Entregas() {
   const [tarefas, setTarefas] = useState<Tarefa[]>([]);
@@ -14,7 +14,7 @@ export default function Entregas() {
   async function carregar() {
     const { data } = await supabase
       .from("tarefas")
-      .select("*, membros:responsavel_id(id, nome, papel)")
+      .select("*, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel))")
       .eq("arquivada", false)
       .order("concluido_em", { ascending: false, nullsFirst: false });
     setTarefas((data ?? []) as Tarefa[]);
@@ -58,7 +58,9 @@ export default function Entregas() {
                   className="cursor-pointer hover:bg-casca"
                 >
                   <td className="px-3 py-2 font-semibold">{t.titulo}</td>
-                  <td className="px-3 py-2 text-tinta/70">{t.membros?.nome ?? "sem responsável"}</td>
+                  <td className="px-3 py-2 text-tinta/70">
+                    {responsaveisDe(t).map((m) => m.nome).join(", ") || "sem responsável"}
+                  </td>
                   <td className="px-3 py-2 font-mono text-xs text-tinta/60">
                     {t.concluido_em
                       ? new Date(t.concluido_em).toLocaleDateString("pt-BR")
@@ -181,7 +183,7 @@ function PainelEntrega({
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="font-mono text-xs uppercase tracking-widest text-musgo">
-              {tarefa.membros?.nome ?? "sem responsável"}
+              {responsaveisDe(tarefa).map((m) => m.nome).join(", ") || "sem responsável"}
             </p>
             <h2 className="mt-0.5 font-display text-xl font-bold">{tarefa.titulo}</h2>
           </div>

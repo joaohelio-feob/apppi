@@ -34,14 +34,24 @@ export const UNIDADES: { id: Unidade; nome: string }[] = [
   { id: "geral",            nome: "Geral" },
 ];
 
-export type Membro = { id: string; nome: string; papel: string; criado_em?: string };
+export type Frente = { id: number; nome: string; criado_em?: string };
+
+export type Membro = { id: string; nome: string; papel: string; criado_em?: string; frente_id?: number | null };
+
+export type Escopo = "frente" | "individual";
+
+export const ESCOPOS: { id: Escopo; nome: string }[] = [
+  { id: "individual", nome: "Individual" },
+  { id: "frente",     nome: "Da frente" },
+];
 
 export type Tarefa = {
   id: number;
   titulo: string;
   descricao: string | null;
-  responsavel_id: string | null;
   criador_id: string | null;
+  escopo: Escopo;
+  frente_id: number | null;
   status: Status;
   prioridade: Prioridade;
   unidade: Unidade;
@@ -55,8 +65,14 @@ export type Tarefa = {
   concluido_em: string | null;
   criado_em: string;
   atualizado_em: string;
-  membros?: Membro | null;
+  responsaveis?: { membro: Membro }[];
+  frentes?: Frente | null;
 };
+
+/** Lista os responsáveis de uma tarefa, já achatada (sem o embed aninhado do Supabase). */
+export function responsaveisDe(t: Tarefa): Membro[] {
+  return (t.responsaveis ?? []).map((r) => r.membro).filter(Boolean);
+}
 
 export type Anexo = {
   id: number;
@@ -87,4 +103,7 @@ export type Registro = {
   valor_novo: string | null;
   tarefa: string | null;
   status_atual: Status | null;
+  escopo: Escopo | null;
+  unidade: Unidade | null;
+  frente: string | null;
 };
