@@ -18,13 +18,13 @@ export default function Atribuicoes() {
     const [{ data: t }, { data: m }, { data: f }] = await Promise.all([
       supabase
         .from("tarefas")
-        .select("*, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel)), frentes(id, nome)")
+        .select("id, titulo, escopo, frente_id, status, prazo, local_entrega, issue_numero, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel)), frentes(id, nome)")
         .eq("arquivada", false)
         .order("prazo", { ascending: true, nullsFirst: false }),
       supabase.from("membros").select("id, nome, papel").order("nome"),
       supabase.from("frentes").select("id, nome").order("nome"),
     ]);
-    setTarefas((t ?? []) as Tarefa[]);
+    setTarefas((t ?? []) as unknown as Tarefa[]);
     setMembros((m ?? []) as Membro[]);
     setFrentes((f ?? []) as Frente[]);
     setCarregando(false);
@@ -69,9 +69,9 @@ export default function Atribuicoes() {
     const { data } = await supabase
       .from("tarefas")
       .insert({ titulo: novoTitulo, criador_id: sessao.user?.id ?? null })
-      .select("*, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel)), frentes(id, nome)")
+      .select("id, titulo, escopo, frente_id, status, prazo, local_entrega, issue_numero, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel)), frentes(id, nome)")
       .single();
-    if (data) setTarefas((atual) => [data as Tarefa, ...atual]);
+    if (data) setTarefas((atual) => [data as unknown as Tarefa, ...atual]);
     setNovoTitulo("");
     setCriando(false);
   }

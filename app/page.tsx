@@ -16,14 +16,14 @@ export default async function Semana() {
   const [{ data: tarefas }, { data: sessao }] = await Promise.all([
     supabase
       .from("tarefas")
-      .select("*, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel)), frentes(id, nome, cor, unidade)")
+      .select("id, titulo, descricao, escopo, status, prioridade, prazo, local_entrega, subiu_git, issue_numero, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel)), frentes(id, nome, cor, unidade)")
       .eq("arquivada", false)
       .neq("status", "concluida")
       .order("prazo", { ascending: true, nullsFirst: false }),
     supabase.auth.getUser(),
   ]);
 
-  const lista = (tarefas ?? []) as Tarefa[];
+  const lista = (tarefas ?? []) as unknown as Tarefa[];
   const atrasadas = lista.filter((t) => t.prazo && t.prazo < hojeIso);
   const daSemana  = lista.filter((t) => t.prazo && t.prazo >= hojeIso && t.prazo <= fimIso);
   const depois    = lista.filter((t) => !t.prazo || t.prazo > fimIso);

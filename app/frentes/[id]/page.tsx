@@ -22,12 +22,17 @@ export default function PainelFrente() {
     const frenteId = Number(id);
 
     async function carregar() {
-      const [{ data: f }, { data: m }, { data: tf }] = await Promise.all([
-        supabase.from("frentes").select("id, nome, unidade, cor, ordem, criado_em").eq("id", frenteId).single(),
-        supabase.from("membros").select("id, nome, papel, frente_id").eq("frente_id", frenteId).order("nome"),
+      const [{ data: f }, { data: tf }] = await Promise.all([
+        // Membros vêm embutidos (FK reversa) em vez de uma consulta à parte.
+        supabase
+          .from("frentes")
+          .select("id, nome, unidade, cor, ordem, criado_em, membros(id, nome, papel, frente_id)")
+          .eq("id", frenteId)
+          .order("nome", { foreignTable: "membros" })
+          .single(),
         supabase
           .from("tarefas")
-          .select("*, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel)), frentes(id, nome, cor, unidade)")
+          .select("id, titulo, descricao, escopo, status, prioridade, prazo, local_entrega, subiu_git, issue_numero, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel)), frentes(id, nome, cor, unidade)")
           .eq("escopo", "frente")
           .eq("frente_id", frenteId)
           .eq("arquivada", false)
@@ -35,19 +40,19 @@ export default function PainelFrente() {
       ]);
 
       setFrente((f ?? null) as Frente | null);
-      const integrantesDaFrente = (m ?? []) as Membro[];
+      const integrantesDaFrente = ((f as { membros?: Membro[] } | null)?.membros ?? []) as Membro[];
       setIntegrantes(integrantesDaFrente);
-      setTarefasFrente((tf ?? []) as Tarefa[]);
+      setTarefasFrente((tf ?? []) as unknown as Tarefa[]);
 
       if (integrantesDaFrente.length > 0) {
         const { data: ti } = await supabase
           .from("tarefas")
-          .select("*, responsaveis:tarefa_responsaveis!inner(membro:membros(id, nome, papel)), frentes(id, nome, cor, unidade)")
+          .select("id, titulo, descricao, escopo, status, prioridade, prazo, local_entrega, subiu_git, issue_numero, responsaveis:tarefa_responsaveis!inner(membro:membros(id, nome, papel)), frentes(id, nome, cor, unidade)")
           .eq("escopo", "individual")
           .eq("arquivada", false)
           .in("tarefa_responsaveis.membro_id", integrantesDaFrente.map((m) => m.id))
           .order("prazo", { ascending: true, nullsFirst: false });
-        setTarefasIndividuais((ti ?? []) as Tarefa[]);
+        setTarefasIndividuais((ti ?? []) as unknown as Tarefa[]);
       }
 
       setCarregando(false);

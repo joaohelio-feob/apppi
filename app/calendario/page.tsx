@@ -20,10 +20,10 @@ export default function Calendario() {
     const supabase = criarClienteNavegador();
     supabase
       .from("tarefas")
-      .select("*, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel))")
+      .select("id, titulo, status, prazo, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel))")
       .eq("arquivada", false)
       .not("prazo", "is", null)
-      .then(({ data }) => setTarefas((data ?? []) as Tarefa[]));
+      .then(({ data }) => setTarefas((data ?? []) as unknown as Tarefa[]));
     supabase.from("membros").select("id, nome, papel").order("nome")
       .then(({ data }) => setMembros((data ?? []) as Membro[]));
   }, []);

@@ -27,22 +27,24 @@ const VERBO: Record<string, string> = {
 export default async function Trilha() {
   const supabase = criarClienteServidor();
 
-  const [{ data }, { data: membrosData }, { data: frentesData }, { data: concluidasData }, { data: historicoTotal }] =
+  const [{ data }, { data: membrosData }, { data: concluidasData }, { data: historicoTotal }] =
     await Promise.all([
       supabase.from("relatorio_atividades").select("*").order("em", { ascending: false }).limit(500),
-      supabase.from("membros").select("id, nome, papel, frente_id"),
-      supabase.from("frentes").select("id, nome, unidade"),
+      // Frente vem embutida (FK membros.frente_id) — dispensa uma consulta à parte.
+      supabase.from("membros").select("id, nome, papel, frente_id, frentes(id, nome, unidade)"),
+      // Só o necessário pro resumo por pessoa: quem concluiu o quê, de que
+      // escopo e de que unidade — nada de título, prazo ou outros campos
+      // que esta página não usa.
       supabase
         .from("tarefas")
-        .select("*, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel)), frentes(id, nome, unidade)")
+        .select("id, escopo, responsaveis:tarefa_responsaveis(membro:membros(id)), frentes(unidade)")
         .eq("status", "concluida"),
       supabase.from("historico").select("autor_id").limit(10000),
     ]);
 
   const registros = (data ?? []) as Registro[];
-  const membros = (membrosData ?? []) as Membro[];
-  const frentes = (frentesData ?? []) as Frente[];
-  const concluidas = (concluidasData ?? []) as Tarefa[];
+  const membros = (membrosData ?? []) as unknown as (Membro & { frentes?: Frente | null })[];
+  const concluidas = (concluidasData ?? []) as unknown as Tarefa[];
 
   const participacaoPorAutor = (historicoTotal ?? []).reduce<Record<string, number>>((acc, h) => {
     if (!h.autor_id) return acc;
@@ -62,7 +64,7 @@ export default async function Trilha() {
           .map((u) => UNIDADES_FRENTE.find((x) => x.id === u)?.nome ?? u)
       )
     );
-    const frenteDela = frentes.find((f) => f.id === m.frente_id);
+    const frenteDela = m.frentes;
     return {
       nome: m.nome,
       frente: frenteDela?.nome ?? "sem frente",

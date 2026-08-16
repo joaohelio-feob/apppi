@@ -32,8 +32,7 @@ export default function SprintReport() {
   const [atrasadas, setAtrasadas] = useState<Tarefa[]>([]);
   const [reunioes, setReunioes] = useState<Reuniao[]>([]);
   const [movimentacoes, setMovimentacoes] = useState<Movimentacao[]>([]);
-  const [membros, setMembros] = useState<Membro[]>([]);
-  const [frentes, setFrentes] = useState<Frente[]>([]);
+  const [membros, setMembros] = useState<(Membro & { frentes?: Frente | null })[]>([]);
 
   const gerar = useCallback(async () => {
     setCarregando(true);
@@ -41,19 +40,16 @@ export default function SprintReport() {
     const fimFechado = `${fim}T23:59:59`;
 
     const [
-      { data: concluidasData }, { data: doPrazoData }, { data: reunioesData },
-      { data: trilhaData }, { data: membrosData }, { data: frentesData },
+      { data: tarefasData }, { data: reunioesData },
+      { data: trilhaData }, { data: membrosData },
     ] = await Promise.all([
+      // Concluídas-no-período e atrasadas-no-período são dois recortes da
+      // mesma tabela — busca só uma vez com OR e separa em memória, em vez
+      // de duas idas ao banco quase idênticas.
       supabase
         .from("tarefas")
-        .select("*, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel)), frentes(id, nome, unidade)")
-        .gte("concluido_em", inicio)
-        .lte("concluido_em", fimFechado),
-      supabase
-        .from("tarefas")
-        .select("*, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel))")
-        .gte("prazo", inicio)
-        .lte("prazo", fim),
+        .select("id, titulo, concluido_em, prazo, escopo, status, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel)), frentes(id, nome, unidade)")
+        .or(`and(concluido_em.gte.${inicio},concluido_em.lte.${fimFechado}),and(prazo.gte.${inicio},prazo.lte.${fim})`),
       supabase.from("reunioes").select("*").gte("data", inicio).lte("data", fim).order("data"),
       supabase
         .from("relatorio_atividades")
@@ -62,25 +58,27 @@ export default function SprintReport() {
         .lte("em", fimFechado)
         .order("em", { ascending: false })
         .limit(200),
-      supabase.from("membros").select("id, nome, papel, frente_id"),
-      supabase.from("frentes").select("id, nome, unidade"),
+      // Frente vem embutida (FK membros.frente_id) — dispensa uma consulta à parte.
+      supabase.from("membros").select("id, nome, papel, frente_id, frentes(id, nome, unidade)"),
     ]);
 
-    setConcluidas((concluidasData ?? []) as Tarefa[]);
-
-    const noPrazo = (doPrazoData ?? []) as Tarefa[];
+    const todas = (tarefasData ?? []) as unknown as Tarefa[];
+    setConcluidas(
+      todas.filter((t) => t.concluido_em && t.concluido_em >= inicio && t.concluido_em <= fimFechado)
+    );
     setAtrasadas(
-      noPrazo.filter((t) => {
-        if (!t.prazo) return false;
-        if (t.concluido_em) return dataLocalISO(new Date(t.concluido_em)) > t.prazo;
-        return t.status !== "concluida" && t.prazo < dataLocalISO();
-      })
+      todas
+        .filter((t) => t.prazo && t.prazo >= inicio && t.prazo <= fim)
+        .filter((t) => {
+          if (!t.prazo) return false;
+          if (t.concluido_em) return dataLocalISO(new Date(t.concluido_em)) > t.prazo;
+          return t.status !== "concluida" && t.prazo < dataLocalISO();
+        })
     );
 
     setReunioes((reunioesData ?? []) as Reuniao[]);
     setMovimentacoes((trilhaData ?? []) as Movimentacao[]);
-    setMembros((membrosData ?? []) as Membro[]);
-    setFrentes((frentesData ?? []) as Frente[]);
+    setMembros((membrosData ?? []) as unknown as (Membro & { frentes?: Frente | null })[]);
     setCarregando(false);
     setGerado(true);
   }, [inicio, fim]);
@@ -127,7 +125,7 @@ export default function SprintReport() {
           .map((u) => UNIDADES_FRENTE.find((x) => x.id === u)?.nome ?? u)
       )
     );
-    const frenteDela = frentes.find((f) => f.id === m.frente_id);
+    const frenteDela = m.frentes;
     return {
       nome: m.nome,
       frente: frenteDela?.nome ?? "sem frente",

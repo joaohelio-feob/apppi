@@ -16,8 +16,10 @@ export default function PainelMembro() {
 
   useEffect(() => {
     const supabase = criarClienteNavegador();
-    const selecao =
-      "*, responsaveis:tarefa_responsaveis!inner(membro:membros(id, nome, papel)), frentes(id, nome, cor, unidade)";
+    // BlocoTarefas só usa status/inicio/concluido_em/prazo e a unidade da
+    // frente — não precisa de título nem dos nomes dos responsáveis; o join
+    // com tarefa_responsaveis serve só pro filtro .eq(membro_id) abaixo.
+    const selecao = "id, status, inicio, concluido_em, prazo, tarefa_responsaveis!inner(membro_id), frentes(unidade)";
 
     Promise.all([
       supabase.from("membros").select("id, nome, papel, criado_em").eq("id", id).single(),
@@ -25,8 +27,8 @@ export default function PainelMembro() {
       supabase.from("tarefas").select(selecao).eq("tarefa_responsaveis.membro_id", id).eq("escopo", "frente"),
     ]).then(([{ data: m }, { data: ti }, { data: tf }]) => {
       setMembro((m ?? null) as Membro | null);
-      setIndividuais((ti ?? []) as Tarefa[]);
-      setDeFrente((tf ?? []) as Tarefa[]);
+      setIndividuais((ti ?? []) as unknown as Tarefa[]);
+      setDeFrente((tf ?? []) as unknown as Tarefa[]);
       setCarregando(false);
     });
   }, [id]);

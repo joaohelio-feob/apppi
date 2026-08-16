@@ -56,14 +56,14 @@ export default function Quadro() {
     const [t, m, f, sessao] = await Promise.all([
       supabase
         .from("tarefas")
-        .select("*, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel)), frentes(id, nome, cor, unidade)")
+        .select("id, titulo, descricao, escopo, frente_id, status, prioridade, prazo, local_entrega, subiu_git, issue_numero, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel)), frentes(id, nome, cor, unidade)")
         .eq("arquivada", false)
         .order("prazo", { ascending: true, nullsFirst: false }),
       supabase.from("membros").select("id, nome, papel, frente_id").order("nome"),
       supabase.from("frentes").select("id, nome").order("nome"),
       supabase.auth.getUser(),
     ]);
-    setTarefas((t.data ?? []) as Tarefa[]);
+    setTarefas((t.data ?? []) as unknown as Tarefa[]);
     setMembros((m.data ?? []) as Membro[]);
     setFrentes((f.data ?? []) as Frente[]);
     setMeuId(sessao.data.user?.id ?? null);

@@ -14,10 +14,10 @@ export default function Entregas() {
   async function carregar() {
     const { data } = await supabase
       .from("tarefas")
-      .select("*, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel))")
+      .select("id, titulo, concluido_em, prazo, subiu_git, observacoes, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel))")
       .eq("arquivada", false)
       .order("concluido_em", { ascending: false, nullsFirst: false });
-    setTarefas((data ?? []) as Tarefa[]);
+    setTarefas((data ?? []) as unknown as Tarefa[]);
     setCarregando(false);
   }
 

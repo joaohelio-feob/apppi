@@ -5,9 +5,10 @@ import Link from "next/link";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
 import { CLASSES_COR_FRENTE_PREENCHIDA, CORES_FRENTE, UNIDADES_FRENTE, type CorFrente, type Frente, type Membro, type Unidade } from "@/lib/types";
 
+type FrenteComMembros = Frente & { membros?: Membro[] };
+
 export default function Frentes() {
-  const [frentes, setFrentes] = useState<Frente[]>([]);
-  const [membros, setMembros] = useState<Membro[]>([]);
+  const [frentes, setFrentes] = useState<FrenteComMembros[]>([]);
   const [carregando, setCarregando] = useState(true);
 
   const [nomeNova, setNomeNova] = useState("");
@@ -19,12 +20,13 @@ export default function Frentes() {
   const supabase = criarClienteNavegador();
 
   async function carregar() {
-    const [{ data: f }, { data: m }] = await Promise.all([
-      supabase.from("frentes").select("id, nome, unidade, cor, ordem, criado_em").order("ordem"),
-      supabase.from("membros").select("id, nome, papel, frente_id"),
-    ]);
-    setFrentes((f ?? []) as Frente[]);
-    setMembros((m ?? []) as Membro[]);
+    // Membros vêm embutidos (FK reversa membros.frente_id) em vez de uma
+    // consulta à parte — economiza uma ida ao banco por carregamento.
+    const { data: f } = await supabase
+      .from("frentes")
+      .select("id, nome, unidade, cor, ordem, criado_em, membros(id, nome)")
+      .order("ordem");
+    setFrentes((f ?? []) as unknown as FrenteComMembros[]);
     setCarregando(false);
   }
 
@@ -109,7 +111,7 @@ export default function Frentes() {
       ) : (
         <div className="mt-8 divide-y divide-linha border border-linha bg-casca">
           {frentes.map((f) => {
-            const integrantes = membros.filter((m) => m.frente_id === f.id);
+            const integrantes = f.membros ?? [];
             const nomeUnidade = UNIDADES_FRENTE.find((u) => u.id === f.unidade)?.nome;
             return (
               <Link
