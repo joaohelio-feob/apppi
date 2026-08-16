@@ -1,32 +1,50 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
 import { dataLocalISO } from "@/lib/datas";
-import { CLASSES_PRIORIDADE, PRIORIDADES, STATUS, responsaveisDe, type Membro, type Tarefa } from "@/lib/types";
+import {
+  CLASSES_PRIORIDADE, PRIORIDADES, STATUS, responsaveisDe,
+  type EstadoEntrega, type Frente, type Membro, type Tarefa,
+} from "@/lib/types";
+import DetalheTarefa from "@/components/DetalheTarefa";
 
 const DIAS = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
 
 export default function Calendario() {
   const [tarefas, setTarefas] = useState<Tarefa[]>([]);
   const [membros, setMembros] = useState<Membro[]>([]);
+  const [frentes, setFrentes] = useState<Frente[]>([]);
+  const [estados, setEstados] = useState<Map<number, EstadoEntrega>>(new Map());
   const [responsavel, setResponsavel] = useState("");
+  const [tarefaAberta, setTarefaAberta] = useState<Tarefa | null>(null);
   const [mes, setMes] = useState(() => {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
   });
 
-  useEffect(() => {
+  const carregar = useCallback(async () => {
     const supabase = criarClienteNavegador();
-    supabase
-      .from("tarefas")
-      .select("id, titulo, status, prioridade, prazo, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel))")
-      .eq("arquivada", false)
-      .not("prazo", "is", null)
-      .then(({ data }) => setTarefas((data ?? []) as unknown as Tarefa[]));
-    supabase.from("membros").select("id, nome, papel").order("nome")
-      .then(({ data }) => setMembros((data ?? []) as Membro[]));
+    const [{ data: t }, { data: m }, { data: f }, { data: e }] = await Promise.all([
+      supabase
+        .from("tarefas")
+        .select("id, titulo, descricao, escopo, frente_id, status, prioridade, prazo, inicio, local_entrega, subiu_git, issue_numero, observacoes, revisor_id, commit_confirmado_em, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel)), frentes(id, nome, cor, unidade)")
+        .eq("arquivada", false)
+        .not("prazo", "is", null),
+      supabase.from("membros").select("id, nome, papel, frente_id").order("nome"),
+      supabase.from("frentes").select("id, nome").order("nome"),
+      // "Falta algo" pendente é o único estado derivado que o calendário
+      // precisa (pra sinalizar o bloco vermelho) — vem da mesma view do
+      // Bloco A, não recalculado aqui.
+      supabase.from("tarefas_estado_entrega").select("tarefa_id, ultimo_resultado, entregue_em, revisado_em"),
+    ]);
+    setTarefas((t ?? []) as unknown as Tarefa[]);
+    setMembros((m ?? []) as Membro[]);
+    setFrentes((f ?? []) as Frente[]);
+    setEstados(new Map((e ?? []).map((x) => [x.tarefa_id, x as EstadoEntrega])));
   }, []);
+
+  useEffect(() => { carregar(); }, [carregar]);
 
   const visiveis = useMemo(
     () => (responsavel ? tarefas.filter((t) => responsaveisDe(t).some((m) => m.id === responsavel)) : tarefas),
@@ -120,17 +138,25 @@ export default function Calendario() {
                   const prio = CLASSES_PRIORIDADE[t.prioridade];
                   const nomePrio = PRIORIDADES.find((p) => p.id === t.prioridade)?.nome ?? t.prioridade;
                   const atrasada = t.status !== "concluida" && !!t.prazo && t.prazo < hojeIso;
+                  const est = estados.get(t.id);
+                  const faltaAlgo =
+                    est?.ultimo_resultado === "falta_algo" &&
+                    !!est.revisado_em &&
+                    (!est.entregue_em || new Date(est.revisado_em) > new Date(est.entregue_em));
                   return (
-                    <div
+                    <button
+                      type="button"
                       key={t.id}
-                      title={`${t.titulo} · ${responsaveisDe(t).map((m) => m.nome).join(", ") || "sem responsável"} · prioridade ${nomePrio}${atrasada ? " · atrasada" : ""}`}
-                      className={`truncate px-1 py-0.5 text-xs leading-tight ${cor} ${prio.borda} ${
+                      onClick={() => setTarefaAberta(t)}
+                      title={`${t.titulo} · ${responsaveisDe(t).map((m) => m.nome).join(", ") || "sem responsável"} · prioridade ${nomePrio}${atrasada ? " · atrasada" : ""}${faltaAlgo ? " · revisor pediu ajuste, veja o detalhe" : ""}`}
+                      className={`block w-full truncate px-1 py-0.5 text-left text-xs leading-tight hover:opacity-80 ${cor} ${prio.borda} ${
                         atrasada ? "font-semibold ring-1 ring-inset ring-trigo" : ""
                       }`}
                     >
                       {atrasada ? "! " : ""}
+                      {faltaAlgo ? "falta: " : ""}
                       {prio.glifo} {t.titulo}
-                    </div>
+                    </button>
                   );
                 })}
                 {doDia.length > 3 && (
@@ -159,7 +185,20 @@ export default function Calendario() {
         <span className="flex items-center gap-1.5 font-semibold text-trigo">
           ! atrasada
         </span>
+        <span className="flex items-center gap-1.5 font-semibold">
+          falta: revisor pediu ajuste — clique pra ver o quê
+        </span>
       </div>
+
+      {tarefaAberta && (
+        <DetalheTarefa
+          tarefa={tarefaAberta}
+          aoFechar={() => setTarefaAberta(null)}
+          aoAtualizar={carregar}
+          membrosIniciais={membros}
+          frentesIniciais={frentes}
+        />
+      )}
     </div>
   );
 }

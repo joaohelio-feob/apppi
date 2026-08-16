@@ -8,6 +8,7 @@ import {
 } from "@/lib/types";
 import GerenciadorAnexos from "./GerenciadorAnexos";
 import ModalEntrega from "./ModalEntrega";
+import NotaRevisor from "./NotaRevisor";
 import SeloIssue from "./SeloIssue";
 import { useToast } from "./ToastProvider";
 
@@ -372,6 +373,8 @@ export default function DetalheTarefa({
           {!estado?.ultima_entrega_id && (
             <p className="mt-2 text-sm text-tinta/70">Ainda não foi entregue.</p>
           )}
+
+          <NotaRevisor tarefaId={t.id} entregueEm={estado?.entregue_em ?? null} />
         </div>
 
         <div className="mt-4">

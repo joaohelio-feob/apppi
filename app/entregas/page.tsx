@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
 import { responsaveisDe, type Tarefa } from "@/lib/types";
 import GerenciadorAnexos from "@/components/GerenciadorAnexos";
+import NotaRevisor from "@/components/NotaRevisor";
 
 export default function Entregas() {
   const [tarefas, setTarefas] = useState<Tarefa[]>([]);
@@ -113,6 +114,16 @@ function PainelEntrega({
   aoAtualizar: (id: number, campos: Partial<Tarefa>) => void;
 }) {
   const supabase = criarClienteNavegador();
+  const [entregueEm, setEntregueEm] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase
+      .from("tarefas_estado_entrega")
+      .select("entregue_em")
+      .eq("tarefa_id", tarefa.id)
+      .maybeSingle()
+      .then(({ data }) => setEntregueEm((data as { entregue_em: string | null } | null)?.entregue_em ?? null));
+  }, [tarefa.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function salvarObservacoes(valor: string) {
     aoAtualizar(tarefa.id, { observacoes: valor });
@@ -138,6 +149,8 @@ function PainelEntrega({
             fechar
           </button>
         </div>
+
+        <NotaRevisor tarefaId={tarefa.id} entregueEm={entregueEm} />
 
         <label className="mt-5 flex items-center gap-2 border border-linha bg-casca px-3 py-2 text-sm">
           <input
