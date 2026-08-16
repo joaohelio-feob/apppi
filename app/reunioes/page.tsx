@@ -67,9 +67,9 @@ export default function Reunioes() {
       </p>
 
       <div className="mt-6 border border-linha bg-casca p-4">
-        <h2 className="font-mono text-[11px] uppercase tracking-widest text-tinta/60">Nova reunião</h2>
+        <h2 className="font-mono text-xs uppercase tracking-widest text-tinta/70">Nova reunião</h2>
         <div className="mt-3 space-y-3">
-          <label className="block font-mono text-[11px] uppercase text-tinta/60">
+          <label className="block font-mono text-xs uppercase text-tinta/70">
             Data
             <input
               type="date"
@@ -78,7 +78,7 @@ export default function Reunioes() {
               className="mt-1 w-full border border-linha bg-campo px-3 py-2 font-corpo text-sm text-tinta sm:w-48"
             />
           </label>
-          <label className="block font-mono text-[11px] uppercase text-tinta/60">
+          <label className="block font-mono text-xs uppercase text-tinta/70">
             Pauta
             <textarea
               rows={2}
@@ -89,7 +89,7 @@ export default function Reunioes() {
             />
           </label>
           <div>
-            <p className="font-mono text-[11px] uppercase text-tinta/60">Presentes</p>
+            <p className="font-mono text-xs uppercase text-tinta/70">Presentes</p>
             <div className="mt-1 flex flex-wrap gap-2">
               {membros.map((m) => (
                 <button
@@ -105,10 +105,10 @@ export default function Reunioes() {
                   {m.nome}
                 </button>
               ))}
-              {membros.length === 0 && <p className="text-xs text-tinta/50">Ninguém cadastrado ainda.</p>}
+              {membros.length === 0 && <p className="text-xs text-tinta/70">Ninguém cadastrado ainda.</p>}
             </div>
           </div>
-          <label className="block font-mono text-[11px] uppercase text-tinta/60">
+          <label className="block font-mono text-xs uppercase text-tinta/70">
             Decisões
             <textarea
               rows={2}
@@ -132,7 +132,7 @@ export default function Reunioes() {
       </div>
 
       {carregando ? (
-        <p className="mt-10 font-mono text-sm text-tinta/50">carregando…</p>
+        <p className="mt-10 font-mono text-sm text-tinta/70">carregando…</p>
       ) : (
         <div className="mt-8 space-y-4">
           {reunioes.map((r) => (
@@ -144,7 +144,7 @@ export default function Reunioes() {
               </p>
               <p className="mt-1 text-sm">{r.pauta}</p>
               {r.presentes.length > 0 && (
-                <p className="mt-2 font-mono text-[11px] text-tinta/60">
+                <p className="mt-2 font-mono text-xs text-tinta/70">
                   presentes: {r.presentes.map((id) => membros.find((m) => m.id === id)?.nome ?? "?").join(", ")}
                 </p>
               )}
@@ -154,7 +154,7 @@ export default function Reunioes() {
             </article>
           ))}
           {reunioes.length === 0 && (
-            <p className="text-sm text-tinta/50">Nenhuma reunião registrada ainda.</p>
+            <p className="text-sm text-tinta/70">Nenhuma reunião registrada ainda.</p>
           )}
         </div>
       )}

@@ -31,12 +31,12 @@ export default function PainelMembro() {
     });
   }, [id]);
 
-  if (carregando) return <p className="mt-10 font-mono text-sm text-tinta/50">carregando…</p>;
+  if (carregando) return <p className="mt-10 font-mono text-sm text-tinta/70">carregando…</p>;
 
   if (!membro) {
     return (
       <div>
-        <p className="text-sm text-tinta/60">Integrante não encontrado.</p>
+        <p className="text-sm text-tinta/70">Integrante não encontrado.</p>
         <Link href="/equipe" className="mt-2 inline-block text-sm underline">← voltar pra Equipe</Link>
       </div>
     );
@@ -44,7 +44,7 @@ export default function PainelMembro() {
 
   return (
     <div>
-      <Link href="/equipe" className="font-mono text-xs text-tinta/50 underline underline-offset-4">
+      <Link href="/equipe" className="font-mono text-xs text-tinta/70 underline underline-offset-4">
         ← Equipe
       </Link>
       <p className="mt-3 font-mono text-xs uppercase tracking-widest text-musgo">Painel individual</p>
@@ -98,11 +98,11 @@ function BlocoTarefas({ titulo, tarefas }: { titulo: string; tarefas: Tarefa[] }
       </div>
 
       <div className="mt-4">
-        <h3 className="mb-2 font-mono text-[10px] uppercase tracking-widest text-tinta/50">
+        <h3 className="mb-2 font-mono text-xs uppercase tracking-widest text-tinta/70">
           Distribuição por unidade de estudo
         </h3>
         {Object.keys(porUnidade).length === 0 ? (
-          <p className="text-sm text-tinta/50">Ainda sem tarefas concluídas.</p>
+          <p className="text-sm text-tinta/70">Ainda sem tarefas concluídas.</p>
         ) : (
           <div className="space-y-2">
             {Object.entries(porUnidade)
@@ -113,7 +113,7 @@ function BlocoTarefas({ titulo, tarefas }: { titulo: string; tarefas: Tarefa[] }
                   <div className="h-3 flex-1 bg-linha">
                     <div className="h-full bg-musgo" style={{ width: `${(total / maiorUnidade) * 100}%` }} />
                   </div>
-                  <span className="w-8 text-right font-mono text-xs text-tinta/60">{total}</span>
+                  <span className="w-8 text-right font-mono text-xs text-tinta/70">{total}</span>
                 </div>
               ))}
           </div>
@@ -126,7 +126,7 @@ function BlocoTarefas({ titulo, tarefas }: { titulo: string; tarefas: Tarefa[] }
 function Estatistica({ rotulo, valor }: { rotulo: string; valor: string | number }) {
   return (
     <div className="border border-linha bg-casca p-3">
-      <p className="font-mono text-[10px] uppercase tracking-widest text-tinta/50">{rotulo}</p>
+      <p className="font-mono text-xs uppercase tracking-widest text-tinta/70">{rotulo}</p>
       <p className="mt-1 font-display text-2xl font-bold">{valor}</p>
     </div>
   );

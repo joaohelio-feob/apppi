@@ -54,6 +54,10 @@ de frentes/integrantes e trilha de atividades para a entrega final.
   em tempo de execução; sempre passe pelo mapa.
 - Tipografia: `font-display` para títulos, `font-corpo` para texto, `font-mono`
   para datas, contadores e rótulos técnicos.
+- Contraste: texto secundário nunca abaixo de `text-tinta/70` — é o piso que
+  bate 4.5:1 (WCAG AA) tanto sobre `campo` quanto sobre `casca`; `/50` e `/60`
+  ficam abaixo disso (medido: ~3.2:1 e ~4.2:1 sobre `campo`). Tamanho de texto
+  nunca abaixo de `text-xs` (12px) — não use `text-[10px]`/`text-[11px]`.
 
 ## Comandos
 

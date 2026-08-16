@@ -62,7 +62,7 @@ export default function Navegacao() {
 
         <button
           onClick={sair}
-          className="ml-auto hidden font-mono text-xs text-tinta/60 underline underline-offset-4 hover:text-tinta sm:block"
+          className="ml-auto hidden font-mono text-xs text-tinta/70 underline underline-offset-4 hover:text-tinta sm:block"
         >
           sair
         </button>
@@ -95,7 +95,7 @@ export default function Navegacao() {
           })}
           <button
             onClick={sair}
-            className="mt-1 border-t border-linha px-2 py-2.5 text-left font-mono text-xs text-tinta/60"
+            className="mt-1 border-t border-linha px-2 py-2.5 text-left font-mono text-xs text-tinta/70"
           >
             sair
           </button>

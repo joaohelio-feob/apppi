@@ -104,12 +104,12 @@ export default function Atribuicoes() {
       </div>
 
       {carregando ? (
-        <p className="mt-10 font-mono text-sm text-tinta/50">carregando…</p>
+        <p className="mt-10 font-mono text-sm text-tinta/70">carregando…</p>
       ) : (
         <div className="mt-6 overflow-x-auto border border-linha">
           <table className="w-full min-w-[820px] border-collapse text-sm">
             <thead>
-              <tr className="border-b border-linha bg-casca font-mono text-[11px] uppercase tracking-wide text-tinta/60">
+              <tr className="border-b border-linha bg-casca font-mono text-xs uppercase tracking-wide text-tinta/70">
                 <th className="px-3 py-2 text-left">Tarefa</th>
                 <th className="px-3 py-2 text-left">Responsável</th>
                 <th className="px-3 py-2 text-left">Dia</th>
@@ -197,7 +197,7 @@ export default function Atribuicoes() {
                   </td>
                   <td className="px-3 py-2">
                     {t.escopo === "frente" ? (
-                      <span className="font-mono text-[11px] uppercase text-tinta/70">
+                      <span className="font-mono text-xs uppercase text-tinta/70">
                         {t.frentes?.nome ?? "—"}
                       </span>
                     ) : (
@@ -209,7 +209,7 @@ export default function Atribuicoes() {
                           atualizarLocal(t.id, { frente_id: valor, frentes: frente });
                           salvarCampo(t.id, "frente_id", valor);
                         }}
-                        className="border border-linha bg-campo px-2 py-1 font-mono text-[11px] uppercase"
+                        className="border border-linha bg-campo px-2 py-1 font-mono text-xs uppercase"
                       >
                         <option value="">sem frente</option>
                         {frentes.map((f) => (
@@ -226,7 +226,7 @@ export default function Atribuicoes() {
                         atualizarLocal(t.id, { status: valor });
                         salvarCampo(t.id, "status", valor);
                       }}
-                      className="border border-linha bg-campo px-2 py-1 font-mono text-[11px] uppercase"
+                      className="border border-linha bg-campo px-2 py-1 font-mono text-xs uppercase"
                     >
                       {STATUS.map((s) => (
                         <option key={s.id} value={s.id}>{s.nome}</option>
@@ -236,7 +236,7 @@ export default function Atribuicoes() {
                   <td className="px-3 py-2 text-right">
                     <button
                       onClick={() => arquivar(t.id)}
-                      className="font-mono text-[11px] text-tinta/40 hover:text-trigo"
+                      className="font-mono text-xs text-tinta/70 hover:text-trigo"
                     >
                       arquivar
                     </button>
@@ -245,7 +245,7 @@ export default function Atribuicoes() {
               ))}
               {tarefas.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-3 py-6 text-center text-sm text-tinta/50">
+                  <td colSpan={8} className="px-3 py-6 text-center text-sm text-tinta/70">
                     Nenhuma atribuição ainda. Crie a primeira acima.
                   </td>
                 </tr>

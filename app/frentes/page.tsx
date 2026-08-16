@@ -86,7 +86,7 @@ export default function Frentes() {
             <option key={c.id} value={c.id}>{c.nome}</option>
           ))}
         </select>
-        <label className="font-mono text-[11px] uppercase text-tinta/60">
+        <label className="font-mono text-xs uppercase text-tinta/70">
           Ordem
           <input
             type="number"
@@ -105,7 +105,7 @@ export default function Frentes() {
       </div>
 
       {carregando ? (
-        <p className="mt-10 font-mono text-sm text-tinta/50">carregando…</p>
+        <p className="mt-10 font-mono text-sm text-tinta/70">carregando…</p>
       ) : (
         <div className="mt-8 divide-y divide-linha border border-linha bg-casca">
           {frentes.map((f) => {
@@ -121,10 +121,10 @@ export default function Frentes() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold">{f.nome}</p>
                   {nomeUnidade && (
-                    <p className="font-mono text-[11px] text-tinta/50">{nomeUnidade}</p>
+                    <p className="font-mono text-xs text-tinta/70">{nomeUnidade}</p>
                   )}
                 </div>
-                <span className="font-mono text-[11px] text-tinta/50">
+                <span className="font-mono text-xs text-tinta/70">
                   {integrantes.length === 0
                     ? "ninguém ainda"
                     : integrantes.map((m) => m.nome).join(", ")}
@@ -133,7 +133,7 @@ export default function Frentes() {
             );
           })}
           {frentes.length === 0 && (
-            <p className="px-4 py-6 text-sm text-tinta/50">Nenhuma frente criada ainda.</p>
+            <p className="px-4 py-6 text-sm text-tinta/70">Nenhuma frente criada ainda.</p>
           )}
         </div>
       )}

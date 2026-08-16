@@ -174,7 +174,7 @@ export default function SprintReport() {
       </p>
 
       <div className="mt-6 flex flex-wrap items-end gap-2 print:hidden">
-        <label className="font-mono text-[11px] uppercase text-tinta/60">
+        <label className="font-mono text-xs uppercase text-tinta/70">
           De
           <input
             type="date"
@@ -183,7 +183,7 @@ export default function SprintReport() {
             className="mt-1 block border border-linha bg-casca px-3 py-2 font-corpo text-sm text-tinta"
           />
         </label>
-        <label className="font-mono text-[11px] uppercase text-tinta/60">
+        <label className="font-mono text-xs uppercase text-tinta/70">
           Até
           <input
             type="date"
@@ -206,16 +206,16 @@ export default function SprintReport() {
           <section>
             <h2 className="mb-3 flex items-baseline gap-2 border-b border-linha pb-1 font-display text-lg font-semibold">
               Tarefas concluídas
-              <span className="font-mono text-xs font-normal text-tinta/50">{concluidas.length}</span>
+              <span className="font-mono text-xs font-normal text-tinta/70">{concluidas.length}</span>
             </h2>
             {concluidas.length === 0 ? (
-              <p className="text-sm text-tinta/50">Nenhuma tarefa concluída no período.</p>
+              <p className="text-sm text-tinta/70">Nenhuma tarefa concluída no período.</p>
             ) : (
               <ul className="space-y-1">
                 {concluidas.map((t) => (
                   <li key={t.id} className="flex flex-wrap items-baseline gap-x-2 text-sm">
                     <span className="font-semibold">{t.titulo}</span>
-                    <span className="font-mono text-xs text-tinta/50">
+                    <span className="font-mono text-xs text-tinta/70">
                       {responsaveisDe(t).map((m) => m.nome).join(", ") || "sem responsável"} ·{" "}
                       {t.concluido_em && new Date(t.concluido_em).toLocaleDateString("pt-BR")}
                     </span>
@@ -228,16 +228,16 @@ export default function SprintReport() {
           <section>
             <h2 className="mb-3 flex items-baseline gap-2 border-b border-linha pb-1 font-display text-lg font-semibold">
               Passaram do prazo
-              <span className="font-mono text-xs font-normal text-tinta/50">{atrasadas.length}</span>
+              <span className="font-mono text-xs font-normal text-tinta/70">{atrasadas.length}</span>
             </h2>
             {atrasadas.length === 0 ? (
-              <p className="text-sm text-tinta/50">Nenhuma, nesse período.</p>
+              <p className="text-sm text-tinta/70">Nenhuma, nesse período.</p>
             ) : (
               <ul className="space-y-1">
                 {atrasadas.map((t) => (
                   <li key={t.id} className="flex flex-wrap items-baseline gap-x-2 text-sm">
                     <span className="font-semibold text-trigo">{t.titulo}</span>
-                    <span className="font-mono text-xs text-tinta/50">
+                    <span className="font-mono text-xs text-tinta/70">
                       {responsaveisDe(t).map((m) => m.nome).join(", ") || "sem responsável"} · prazo {t.prazo && new Date(t.prazo + "T12:00:00").toLocaleDateString("pt-BR")}
                     </span>
                   </li>
@@ -262,12 +262,12 @@ export default function SprintReport() {
           </div>
 
           <section className="overflow-x-auto border border-linha">
-            <h2 className="border-b border-linha bg-casca px-4 py-2 font-mono text-[11px] uppercase tracking-widest text-tinta/60">
+            <h2 className="border-b border-linha bg-casca px-4 py-2 font-mono text-xs uppercase tracking-widest text-tinta/70">
               Resumo por pessoa no período
             </h2>
             <table className="w-full min-w-[640px] border-collapse text-sm">
               <thead>
-                <tr className="border-b border-linha bg-casca font-mono text-[11px] uppercase tracking-wide text-tinta/60">
+                <tr className="border-b border-linha bg-casca font-mono text-xs uppercase tracking-wide text-tinta/70">
                   <th className="px-3 py-2 text-left">Pessoa</th>
                   <th className="px-3 py-2 text-left">Frente</th>
                   <th className="px-3 py-2 text-left">Concluídas individuais</th>
@@ -282,7 +282,7 @@ export default function SprintReport() {
                     <td className="px-3 py-2 font-semibold">{p.nome}</td>
                     <td className="px-3 py-2 text-tinta/70">
                       {p.frente}
-                      {p.unidadeFrente && <span className="text-tinta/50"> · {p.unidadeFrente}</span>}
+                      {p.unidadeFrente && <span className="text-tinta/70"> · {p.unidadeFrente}</span>}
                     </td>
                     <td className="px-3 py-2 font-mono text-xs">{p.individuais}</td>
                     <td className="px-3 py-2 font-mono text-xs">{p.deFrente}</td>
@@ -292,7 +292,7 @@ export default function SprintReport() {
                 ))}
                 {resumoPorPessoa.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-3 py-6 text-center text-sm text-tinta/50">
+                    <td colSpan={6} className="px-3 py-6 text-center text-sm text-tinta/70">
                       Ninguém cadastrado ainda.
                     </td>
                   </tr>
@@ -304,15 +304,15 @@ export default function SprintReport() {
           <section>
             <h2 className="mb-3 border-b border-linha pb-1 font-display text-lg font-semibold">
               Reuniões realizadas
-              <span className="ml-2 font-mono text-xs font-normal text-tinta/50">{reunioes.length}</span>
+              <span className="ml-2 font-mono text-xs font-normal text-tinta/70">{reunioes.length}</span>
             </h2>
             {reunioes.length === 0 ? (
-              <p className="text-sm text-tinta/50">Nenhuma reunião registrada no período.</p>
+              <p className="text-sm text-tinta/70">Nenhuma reunião registrada no período.</p>
             ) : (
               <ul className="space-y-1">
                 {reunioes.map((r) => (
                   <li key={r.id} className="text-sm">
-                    <span className="font-mono text-xs text-tinta/50">
+                    <span className="font-mono text-xs text-tinta/70">
                       {new Date(r.data + "T12:00:00").toLocaleDateString("pt-BR")}
                     </span>{" "}
                     {r.pauta}
@@ -325,11 +325,11 @@ export default function SprintReport() {
           <section>
             <h2 className="mb-3 border-b border-linha pb-1 font-display text-lg font-semibold">
               Principais movimentações da trilha
-              <span className="ml-2 font-mono text-xs font-normal text-tinta/50">{movimentacoes.length}</span>
+              <span className="ml-2 font-mono text-xs font-normal text-tinta/70">{movimentacoes.length}</span>
             </h2>
             <ul className="max-h-96 space-y-1 overflow-y-auto print:max-h-none print:overflow-visible">
               {movimentacoes.slice(0, 40).map((m, i) => (
-                <li key={i} className="font-mono text-xs text-tinta/60">
+                <li key={i} className="font-mono text-xs text-tinta/70">
                   {new Date(m.em).toLocaleDateString("pt-BR")} · {m.autor ?? "—"} · {m.acao}
                   {m.tarefa ? ` · ${m.tarefa}` : ""}
                   {m.frente
@@ -340,7 +340,7 @@ export default function SprintReport() {
                 </li>
               ))}
               {movimentacoes.length === 0 && (
-                <p className="text-sm text-tinta/50">Nenhuma movimentação no período.</p>
+                <p className="text-sm text-tinta/70">Nenhuma movimentação no período.</p>
               )}
             </ul>
           </section>
@@ -355,7 +355,7 @@ function Barras({ dados }: { dados: Record<string, number> }) {
   const maior = Math.max(1, ...entradas.map(([, n]) => n));
 
   if (entradas.length === 0) {
-    return <p className="text-sm text-tinta/50">Sem dados no período.</p>;
+    return <p className="text-sm text-tinta/70">Sem dados no período.</p>;
   }
 
   return (
@@ -366,7 +366,7 @@ function Barras({ dados }: { dados: Record<string, number> }) {
           <div className="h-3 flex-1 bg-linha">
             <div className="h-full bg-musgo" style={{ width: `${(total / maior) * 100}%` }} />
           </div>
-          <span className="w-8 text-right font-mono text-xs text-tinta/60">{total}</span>
+          <span className="w-8 text-right font-mono text-xs text-tinta/70">{total}</span>
         </div>
       ))}
     </div>

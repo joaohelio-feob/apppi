@@ -38,12 +38,12 @@ export default function Entregas() {
       </p>
 
       {carregando ? (
-        <p className="mt-10 font-mono text-sm text-tinta/50">carregando…</p>
+        <p className="mt-10 font-mono text-sm text-tinta/70">carregando…</p>
       ) : (
         <div className="mt-6 overflow-x-auto border border-linha">
           <table className="w-full min-w-[640px] border-collapse text-sm">
             <thead>
-              <tr className="border-b border-linha bg-casca font-mono text-[11px] uppercase tracking-wide text-tinta/60">
+              <tr className="border-b border-linha bg-casca font-mono text-xs uppercase tracking-wide text-tinta/70">
                 <th className="px-3 py-2 text-left">Tarefa</th>
                 <th className="px-3 py-2 text-left">Quem fez</th>
                 <th className="px-3 py-2 text-left">Data</th>
@@ -61,7 +61,7 @@ export default function Entregas() {
                   <td className="px-3 py-2 text-tinta/70">
                     {responsaveisDe(t).map((m) => m.nome).join(", ") || "sem responsável"}
                   </td>
-                  <td className="px-3 py-2 font-mono text-xs text-tinta/60">
+                  <td className="px-3 py-2 font-mono text-xs text-tinta/70">
                     {t.concluido_em
                       ? new Date(t.concluido_em).toLocaleDateString("pt-BR")
                       : t.prazo
@@ -70,7 +70,7 @@ export default function Entregas() {
                   </td>
                   <td className="px-3 py-2">
                     <span
-                      className={`px-2 py-0.5 font-mono text-[11px] uppercase tracking-wide ${
+                      className={`px-2 py-0.5 font-mono text-xs uppercase tracking-wide ${
                         t.subiu_git ? "bg-musgo text-campo" : "bg-linha text-tinta"
                       }`}
                     >
@@ -81,7 +81,7 @@ export default function Entregas() {
               ))}
               {tarefas.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-3 py-6 text-center text-sm text-tinta/50">
+                  <td colSpan={4} className="px-3 py-6 text-center text-sm text-tinta/70">
                     Nenhuma tarefa ainda.
                   </td>
                 </tr>
@@ -187,7 +187,7 @@ function PainelEntrega({
             </p>
             <h2 className="mt-0.5 font-display text-xl font-bold">{tarefa.titulo}</h2>
           </div>
-          <button onClick={aoFechar} className="font-mono text-xs text-tinta/60 hover:text-tinta">
+          <button onClick={aoFechar} className="font-mono text-xs text-tinta/70 hover:text-tinta">
             fechar
           </button>
         </div>
@@ -202,7 +202,7 @@ function PainelEntrega({
         </label>
 
         <div className="mt-4">
-          <label className="block font-mono text-[11px] uppercase text-tinta/60">Observações</label>
+          <label className="block font-mono text-xs uppercase text-tinta/70">Observações</label>
           <textarea
             defaultValue={tarefa.observacoes ?? ""}
             rows={3}
@@ -216,8 +216,8 @@ function PainelEntrega({
 
         <div className="mt-5">
           <div className="flex items-center justify-between">
-            <label className="font-mono text-[11px] uppercase text-tinta/60">Anexos</label>
-            <label className="cursor-pointer font-mono text-[11px] text-musgo underline underline-offset-4">
+            <label className="font-mono text-xs uppercase text-tinta/70">Anexos</label>
+            <label className="cursor-pointer font-mono text-xs text-musgo underline underline-offset-4">
               {enviando ? "enviando…" : "+ anexar arquivo"}
               <input
                 type="file"
@@ -236,9 +236,9 @@ function PainelEntrega({
 
           <div className="mt-2 space-y-1.5">
             {carregandoAnexos ? (
-              <p className="font-mono text-xs text-tinta/50">carregando…</p>
+              <p className="font-mono text-xs text-tinta/70">carregando…</p>
             ) : anexos.length === 0 ? (
-              <p className="text-xs text-tinta/50">Nenhum documento anexado ainda.</p>
+              <p className="text-xs text-tinta/70">Nenhum documento anexado ainda.</p>
             ) : (
               anexos.map((a) => (
                 <div key={a.id} className="flex items-center justify-between gap-2 border border-linha bg-casca px-3 py-1.5">
@@ -248,12 +248,12 @@ function PainelEntrega({
                   >
                     {a.nome}
                   </button>
-                  <span className="shrink-0 font-mono text-[10px] text-tinta/50">
+                  <span className="shrink-0 font-mono text-xs text-tinta/70">
                     {a.membros?.nome ?? "—"}
                   </span>
                   <button
                     onClick={() => apagarAnexo(a)}
-                    className="shrink-0 font-mono text-[10px] text-tinta/40 hover:text-trigo"
+                    className="shrink-0 font-mono text-xs text-tinta/70 hover:text-trigo"
                   >
                     remover
                   </button>

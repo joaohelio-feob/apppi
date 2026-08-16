@@ -50,7 +50,7 @@ export default function CartaoTarefa({
         <div className="flex shrink-0 items-center gap-1">
           {tarefa.escopo === "frente" && (
             <span
-              className={`border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide ${
+              className={`border px-1.5 py-0.5 font-mono text-xs uppercase tracking-wide ${
                 CLASSES_COR_FRENTE[tarefa.frentes?.cor ?? "ferro"]
               }`}
             >
@@ -58,7 +58,7 @@ export default function CartaoTarefa({
             </span>
           )}
           {tarefa.prioridade === "alta" && (
-            <span className="bg-trigo px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-tinta">
+            <span className="bg-trigo px-1.5 py-0.5 font-mono text-xs uppercase tracking-wide text-tinta">
               alta
             </span>
           )}
@@ -70,7 +70,7 @@ export default function CartaoTarefa({
         <p className="mt-1.5 line-clamp-2 text-xs text-tinta/70">{tarefa.descricao}</p>
       )}
 
-      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[11px] text-tinta/60">
+      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-xs text-tinta/70">
         <span>{nomesResponsaveis(responsaveis.map((m) => m.nome))}</span>
         {tarefa.frentes?.unidade && (
           <span className="border border-linha px-1 py-0.5 uppercase">
@@ -91,7 +91,7 @@ export default function CartaoTarefa({
             entrega
           </a>
         )}
-        <span className={tarefa.subiu_git ? "text-musgo" : "text-tinta/40"}>
+        <span className={tarefa.subiu_git ? "text-musgo" : "text-tinta/70"}>
           {tarefa.subiu_git ? "● git" : "○ git"}
         </span>
         {tarefa.issue_numero && <SeloIssue numero={tarefa.issue_numero} />}
@@ -105,7 +105,7 @@ export default function CartaoTarefa({
                 key={s.id}
                 onClick={() => aoMudarStatus(tarefa.id, s.id)}
                 disabled={s.id === tarefa.status}
-                className="px-1.5 py-0.5 font-mono text-[10px] uppercase text-tinta/50 hover:bg-linha hover:text-tinta disabled:opacity-25"
+                className="px-1.5 py-0.5 font-mono text-xs uppercase text-tinta/70 hover:bg-linha hover:text-tinta disabled:opacity-25"
               >
                 {s.nome}
               </button>
@@ -113,7 +113,7 @@ export default function CartaoTarefa({
           {aoArquivar && (
             <button
               onClick={() => aoArquivar(tarefa.id)}
-              className="ml-auto px-1.5 py-0.5 font-mono text-[10px] uppercase text-tinta/40 hover:text-trigo"
+              className="ml-auto px-1.5 py-0.5 font-mono text-xs uppercase text-tinta/70 hover:text-trigo"
             >
               arquivar
             </button>

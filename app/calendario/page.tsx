@@ -98,7 +98,7 @@ export default function Calendario() {
 
       <div className="mt-6 grid grid-cols-7 gap-px border border-linha bg-linha">
         {DIAS.map((d) => (
-          <div key={d} className="bg-campo px-2 py-1.5 font-mono text-[11px] uppercase text-tinta/50">
+          <div key={d} className="bg-campo px-2 py-1.5 font-mono text-xs uppercase text-tinta/70">
             {d}
           </div>
         ))}
@@ -111,7 +111,7 @@ export default function Calendario() {
 
           return (
             <div key={iso} className={`min-h-[92px] bg-campo p-1.5 ${ehHoje ? "ring-2 ring-inset ring-tinta" : ""}`}>
-              <span className={`font-mono text-[11px] ${ehHoje ? "font-semibold" : "text-tinta/50"}`}>
+              <span className={`font-mono text-xs ${ehHoje ? "font-semibold" : "text-tinta/70"}`}>
                 {String(dia).padStart(2, "0")}
               </span>
               <div className="mt-1 space-y-1">
@@ -121,14 +121,14 @@ export default function Calendario() {
                     <div
                       key={t.id}
                       title={`${t.titulo} · ${responsaveisDe(t).map((m) => m.nome).join(", ") || "sem responsável"}`}
-                      className={`truncate px-1 py-0.5 text-[10px] leading-tight ${cor}`}
+                      className={`truncate px-1 py-0.5 text-xs leading-tight ${cor}`}
                     >
                       {t.titulo}
                     </div>
                   );
                 })}
                 {doDia.length > 3 && (
-                  <p className="font-mono text-[10px] text-tinta/50">+{doDia.length - 3}</p>
+                  <p className="font-mono text-xs text-tinta/70">+{doDia.length - 3}</p>
                 )}
               </div>
             </div>
@@ -136,7 +136,7 @@ export default function Calendario() {
         })}
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-3 font-mono text-[11px] text-tinta/60">
+      <div className="mt-4 flex flex-wrap gap-3 font-mono text-xs text-tinta/70">
         {STATUS.map((s) => (
           <span key={s.id} className="flex items-center gap-1.5">
             <i className={`inline-block h-2.5 w-2.5 ${s.cor}`} />

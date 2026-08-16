@@ -47,7 +47,7 @@ export default function Codigo() {
         máquina; isso aqui é só o espelho do que já está no GitHub.
       </p>
 
-      {carregando && <p className="mt-10 font-mono text-sm text-tinta/50">carregando…</p>}
+      {carregando && <p className="mt-10 font-mono text-sm text-tinta/70">carregando…</p>}
 
       {naoConfigurado && (
         <div className="mt-8 border border-trigo bg-casca p-4">
@@ -65,7 +65,7 @@ export default function Codigo() {
         <div className="mt-8 space-y-10">
           <section>
             <h2 className="mb-3 border-b border-linha pb-1 font-display text-lg font-semibold">
-              Commits por pessoa <span className="font-mono text-xs font-normal text-tinta/50">últimos 30 dias</span>
+              Commits por pessoa <span className="font-mono text-xs font-normal text-tinta/70">últimos 30 dias</span>
             </h2>
             {commits?.erro ? (
               <p className="text-sm text-trigo">{commits.erro}</p>
@@ -77,7 +77,7 @@ export default function Codigo() {
           <section>
             <h2 className="mb-3 border-b border-linha pb-1 font-display text-lg font-semibold">
               Pull Requests
-              <span className="ml-2 font-mono text-xs font-normal text-tinta/50">
+              <span className="ml-2 font-mono text-xs font-normal text-tinta/70">
                 {prs?.abertos ?? 0} abertos · {prs?.fechados ?? 0} fechados
               </span>
             </h2>
@@ -87,22 +87,22 @@ export default function Codigo() {
               <div className="space-y-2">
                 {(prs?.pullRequests ?? []).map((pr) => (
                   <div key={pr.numero} className="flex flex-wrap items-center gap-2 border border-linha bg-casca px-3 py-2 text-sm">
-                    <span className={`px-1.5 py-0.5 font-mono text-[10px] uppercase ${CORES_ESTADO[pr.estado]}`}>
+                    <span className={`px-1.5 py-0.5 font-mono text-xs uppercase ${CORES_ESTADO[pr.estado]}`}>
                       {pr.estado}
                     </span>
                     <a href={pr.url} target="_blank" rel="noreferrer" className="font-semibold underline underline-offset-2">
                       #{pr.numero} {pr.titulo}
                     </a>
-                    <span className="font-mono text-xs text-tinta/50">{pr.autor ?? "—"}</span>
+                    <span className="font-mono text-xs text-tinta/70">{pr.autor ?? "—"}</span>
                     {pr.revisores.length > 0 && (
-                      <span className="ml-auto font-mono text-[11px] text-tinta/50">
+                      <span className="ml-auto font-mono text-xs text-tinta/70">
                         revisado por {pr.revisores.join(", ")}
                       </span>
                     )}
                   </div>
                 ))}
                 {(prs?.pullRequests?.length ?? 0) === 0 && (
-                  <p className="text-sm text-tinta/50">Nenhum Pull Request ainda.</p>
+                  <p className="text-sm text-tinta/70">Nenhum Pull Request ainda.</p>
                 )}
               </div>
             )}
@@ -129,7 +129,7 @@ function GraficoBarras({ dados }: { dados: Record<string, number> }) {
   const maior = Math.max(1, ...entradas.map(([, n]) => n));
 
   if (entradas.length === 0) {
-    return <p className="text-sm text-tinta/50">Nenhum commit no período.</p>;
+    return <p className="text-sm text-tinta/70">Nenhum commit no período.</p>;
   }
 
   return (
@@ -140,7 +140,7 @@ function GraficoBarras({ dados }: { dados: Record<string, number> }) {
           <div className="h-3 flex-1 bg-linha">
             <div className="h-full bg-musgo" style={{ width: `${(total / maior) * 100}%` }} />
           </div>
-          <span className="w-8 text-right font-mono text-xs text-tinta/60">{total}</span>
+          <span className="w-8 text-right font-mono text-xs text-tinta/70">{total}</span>
         </div>
       ))}
     </div>

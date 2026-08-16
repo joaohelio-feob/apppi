@@ -27,11 +27,11 @@ export default function SeloIssue({ numero }: { numero: number }) {
   }, [numero]);
 
   if (r.fase === "carregando") {
-    return <span className="text-tinta/30">issue #{numero}</span>;
+    return <span className="text-tinta/70">issue #{numero}</span>;
   }
 
   if (r.fase === "indisponivel") {
-    return <span className="text-tinta/40">issue #{numero}</span>;
+    return <span className="text-tinta/70">issue #{numero}</span>;
   }
 
   return (

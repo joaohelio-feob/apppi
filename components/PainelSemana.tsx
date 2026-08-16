@@ -62,10 +62,10 @@ function Secao({ titulo, itens, vazio }: { titulo: string; itens: Tarefa[]; vazi
     <section>
       <h2 className="mb-3 flex items-baseline gap-2 border-b border-linha pb-1 font-display text-lg font-semibold">
         {titulo}
-        <span className="font-mono text-xs font-normal text-tinta/50">{itens.length}</span>
+        <span className="font-mono text-xs font-normal text-tinta/70">{itens.length}</span>
       </h2>
       {itens.length === 0 ? (
-        <p className="text-sm text-tinta/50">{vazio}</p>
+        <p className="text-sm text-tinta/70">{vazio}</p>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {itens.map((t) => <CartaoTarefa key={t.id} tarefa={t} />)}

@@ -129,7 +129,7 @@ export default function FormularioTarefa({
               type="button"
               onClick={() => setEscopo("individual")}
               className={`flex-1 py-1.5 font-mono text-xs uppercase ${
-                escopo === "individual" ? "bg-tinta text-campo" : "text-tinta/60 hover:bg-casca"
+                escopo === "individual" ? "bg-tinta text-campo" : "text-tinta/70 hover:bg-casca"
               }`}
             >
               Individual
@@ -138,7 +138,7 @@ export default function FormularioTarefa({
               type="button"
               onClick={() => setEscopo("frente")}
               className={`flex-1 py-1.5 font-mono text-xs uppercase ${
-                escopo === "frente" ? "bg-tinta text-campo" : "text-tinta/60 hover:bg-casca"
+                escopo === "frente" ? "bg-tinta text-campo" : "text-tinta/70 hover:bg-casca"
               }`}
             >
               Da frente
@@ -147,7 +147,7 @@ export default function FormularioTarefa({
 
           {escopo === "individual" ? (
             <>
-              <label className="block font-mono text-[11px] uppercase text-tinta/60">
+              <label className="block font-mono text-xs uppercase text-tinta/70">
                 Responsável
                 <select
                   className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-sm normal-case text-tinta"
@@ -160,7 +160,7 @@ export default function FormularioTarefa({
                   ))}
                 </select>
               </label>
-              <label className="block font-mono text-[11px] uppercase text-tinta/60">
+              <label className="block font-mono text-xs uppercase text-tinta/70">
                 Frente (opcional)
                 <select
                   className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-sm normal-case text-tinta"
@@ -175,7 +175,7 @@ export default function FormularioTarefa({
               </label>
             </>
           ) : (
-            <label className="block font-mono text-[11px] uppercase text-tinta/60">
+            <label className="block font-mono text-xs uppercase text-tinta/70">
               Frente
               <select
                 className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-sm normal-case text-tinta"
@@ -188,7 +188,7 @@ export default function FormularioTarefa({
                 ))}
               </select>
               {frenteId && (
-                <span className="mt-1 block font-corpo text-xs normal-case text-tinta/60">
+                <span className="mt-1 block font-corpo text-xs normal-case text-tinta/70">
                   {membrosDaFrente.length > 0
                     ? `Será atribuída a: ${membrosDaFrente.map((m) => m.nome).join(", ")}`
                     : "Essa frente ainda não tem ninguém."}
@@ -197,7 +197,7 @@ export default function FormularioTarefa({
             </label>
           )}
 
-          <label className="block font-mono text-[11px] uppercase text-tinta/60">
+          <label className="block font-mono text-xs uppercase text-tinta/70">
             Prazo
             <input
               type="date"
@@ -212,7 +212,7 @@ export default function FormularioTarefa({
             value={localEntrega}
             onChange={(e) => setLocalEntrega(e.target.value)}
           />
-          <label className="block font-mono text-[11px] uppercase text-tinta/60">
+          <label className="block font-mono text-xs uppercase text-tinta/70">
             Nº da issue no GitHub (opcional)
             <input
               type="number"
@@ -223,7 +223,7 @@ export default function FormularioTarefa({
               onChange={(e) => setIssueNumero(e.target.value)}
             />
           </label>
-          <label className="block font-mono text-[11px] uppercase text-tinta/60">
+          <label className="block font-mono text-xs uppercase text-tinta/70">
             Anexar documento (opcional)
             <input
               type="file"
@@ -243,7 +243,7 @@ export default function FormularioTarefa({
           >
             {salvando ? "Salvando…" : "Criar tarefa"}
           </button>
-          <button onClick={aoFechar} className="px-4 py-2 text-sm text-tinta/60 hover:text-tinta">
+          <button onClick={aoFechar} className="px-4 py-2 text-sm text-tinta/70 hover:text-tinta">
             Cancelar
           </button>
         </div>

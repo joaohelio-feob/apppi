@@ -149,7 +149,7 @@ export default function Quadro() {
         <button
           onClick={() => mudarVisao("individual")}
           className={`flex-1 px-4 py-1.5 font-mono text-xs uppercase sm:flex-none ${
-            visao === "individual" ? "bg-tinta text-campo" : "text-tinta/60 hover:bg-casca"
+            visao === "individual" ? "bg-tinta text-campo" : "text-tinta/70 hover:bg-casca"
           }`}
         >
           Individuais
@@ -157,7 +157,7 @@ export default function Quadro() {
         <button
           onClick={() => mudarVisao("frente")}
           className={`flex-1 px-4 py-1.5 font-mono text-xs uppercase sm:flex-none ${
-            visao === "frente" ? "bg-tinta text-campo" : "text-tinta/60 hover:bg-casca"
+            visao === "frente" ? "bg-tinta text-campo" : "text-tinta/70 hover:bg-casca"
           }`}
         >
           Da frente
@@ -212,9 +212,9 @@ export default function Quadro() {
       </div>
 
       {carregando ? (
-        <p className="mt-10 font-mono text-sm text-tinta/50">carregando…</p>
+        <p className="mt-10 font-mono text-sm text-tinta/70">carregando…</p>
       ) : grupos.length === 0 ? (
-        <p className="mt-10 text-sm text-tinta/50">
+        <p className="mt-10 text-sm text-tinta/70">
           {visao === "frente" ? "Nenhuma tarefa de frente por aqui." : "Nenhuma tarefa individual por aqui."}
         </p>
       ) : (
@@ -223,7 +223,7 @@ export default function Quadro() {
             <section key={g.chave}>
               <h2 className="mb-3 font-display text-lg font-semibold">
                 {g.titulo}
-                <span className="ml-2 font-mono text-xs font-normal text-tinta/50">{g.itens.length}</span>
+                <span className="ml-2 font-mono text-xs font-normal text-tinta/70">{g.itens.length}</span>
               </h2>
               <MiniQuadro
                 tarefas={g.itens}
@@ -263,13 +263,13 @@ function MiniQuadro({
           >
             <h3 className="mb-3 flex items-baseline gap-2 border-b border-linha pb-1 font-display text-sm font-semibold uppercase tracking-wide">
               {coluna.nome}
-              <span className="font-mono text-xs font-normal text-tinta/50">{daColuna.length}</span>
+              <span className="font-mono text-xs font-normal text-tinta/70">{daColuna.length}</span>
             </h3>
             <div className="space-y-3">
               {daColuna.map((t) => (
                 <CartaoTarefa key={t.id} tarefa={t} aoMudarStatus={aoMudarStatus} aoArquivar={aoArquivar} arrastavel />
               ))}
-              {daColuna.length === 0 && <p className="text-xs text-tinta/40">Coluna vazia.</p>}
+              {daColuna.length === 0 && <p className="text-xs text-tinta/70">Coluna vazia.</p>}
             </div>
           </div>
         );

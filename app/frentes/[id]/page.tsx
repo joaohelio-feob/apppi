@@ -75,12 +75,12 @@ export default function PainelFrente() {
     setSalvando(false);
   }
 
-  if (carregando) return <p className="mt-10 font-mono text-sm text-tinta/50">carregando…</p>;
+  if (carregando) return <p className="mt-10 font-mono text-sm text-tinta/70">carregando…</p>;
 
   if (!frente) {
     return (
       <div>
-        <p className="text-sm text-tinta/60">Frente não encontrada.</p>
+        <p className="text-sm text-tinta/70">Frente não encontrada.</p>
         <Link href="/frentes" className="mt-2 inline-block text-sm underline">← voltar pra Frentes</Link>
       </div>
     );
@@ -88,7 +88,7 @@ export default function PainelFrente() {
 
   return (
     <div>
-      <Link href="/frentes" className="font-mono text-xs text-tinta/50 underline underline-offset-4">
+      <Link href="/frentes" className="font-mono text-xs text-tinta/70 underline underline-offset-4">
         ← Frentes
       </Link>
       <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
@@ -100,7 +100,7 @@ export default function PainelFrente() {
         </div>
         <button
           onClick={() => setEditando((a) => !a)}
-          className="font-mono text-xs text-tinta/50 underline underline-offset-4 hover:text-tinta"
+          className="font-mono text-xs text-tinta/70 underline underline-offset-4 hover:text-tinta"
         >
           {editando ? "fechar edição" : "editar"}
         </button>
@@ -111,7 +111,7 @@ export default function PainelFrente() {
 
       {editando && (
         <div className="mt-4 flex flex-wrap items-end gap-2 border border-linha bg-casca p-3">
-          <label className="font-mono text-[11px] uppercase text-tinta/60">
+          <label className="font-mono text-xs uppercase text-tinta/70">
             Nome
             <input
               defaultValue={frente.nome}
@@ -119,7 +119,7 @@ export default function PainelFrente() {
               className="mt-1 block min-w-[160px] border border-linha bg-campo px-3 py-2 font-corpo text-sm normal-case text-tinta"
             />
           </label>
-          <label className="font-mono text-[11px] uppercase text-tinta/60">
+          <label className="font-mono text-xs uppercase text-tinta/70">
             Unidade
             <select
               value={frente.unidade ?? ""}
@@ -133,7 +133,7 @@ export default function PainelFrente() {
               ))}
             </select>
           </label>
-          <label className="font-mono text-[11px] uppercase text-tinta/60">
+          <label className="font-mono text-xs uppercase text-tinta/70">
             Cor
             <select
               value={frente.cor}
@@ -146,7 +146,7 @@ export default function PainelFrente() {
               ))}
             </select>
           </label>
-          <label className="font-mono text-[11px] uppercase text-tinta/60">
+          <label className="font-mono text-xs uppercase text-tinta/70">
             Ordem
             <input
               type="number"
@@ -162,11 +162,11 @@ export default function PainelFrente() {
       <section className="mt-10">
         <h2 className="mb-3 border-b border-linha pb-1 font-display text-lg font-semibold">
           Tarefas da frente
-          <span className="ml-2 font-mono text-xs font-normal text-tinta/50">{tarefasFrente.length}</span>
+          <span className="ml-2 font-mono text-xs font-normal text-tinta/70">{tarefasFrente.length}</span>
         </h2>
-        <p className="mb-3 text-xs text-tinta/50">Trabalho conjunto — pertence à frente inteira.</p>
+        <p className="mb-3 text-xs text-tinta/70">Trabalho conjunto — pertence à frente inteira.</p>
         {tarefasFrente.length === 0 ? (
-          <p className="text-sm text-tinta/50">Nenhuma tarefa de frente ainda.</p>
+          <p className="text-sm text-tinta/70">Nenhuma tarefa de frente ainda.</p>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {tarefasFrente.map((t) => <CartaoTarefa key={t.id} tarefa={t} />)}
@@ -177,18 +177,18 @@ export default function PainelFrente() {
       <section className="mt-10">
         <h2 className="mb-3 border-b border-linha pb-1 font-display text-lg font-semibold">
           Trabalho individual dos integrantes
-          <span className="ml-2 font-mono text-xs font-normal text-tinta/50">{tarefasIndividuais.length}</span>
+          <span className="ml-2 font-mono text-xs font-normal text-tinta/70">{tarefasIndividuais.length}</span>
         </h2>
-        <p className="mb-3 text-xs text-tinta/50">
+        <p className="mb-3 text-xs text-tinta/70">
           Não fica escondido: conta pro relatório final e pra validação dos professores.
         </p>
         {porPessoa.length === 0 ? (
-          <p className="text-sm text-tinta/50">Ninguém tem tarefa individual ainda.</p>
+          <p className="text-sm text-tinta/70">Ninguém tem tarefa individual ainda.</p>
         ) : (
           <div className="space-y-8">
             {porPessoa.map((p) => (
               <div key={p.nome}>
-                <h3 className="mb-2 font-mono text-xs uppercase tracking-widest text-tinta/60">{p.nome}</h3>
+                <h3 className="mb-2 font-mono text-xs uppercase tracking-widest text-tinta/70">{p.nome}</h3>
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {p.itens.map((t) => <CartaoTarefa key={t.id} tarefa={t} />)}
                 </div>

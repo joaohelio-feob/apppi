@@ -56,7 +56,7 @@ export default function Equipe() {
       </p>
 
       {carregando ? (
-        <p className="mt-10 font-mono text-sm text-tinta/50">carregando…</p>
+        <p className="mt-10 font-mono text-sm text-tinta/70">carregando…</p>
       ) : (
         <div className="mt-8 divide-y divide-linha border border-linha bg-casca">
           {membros.map((m) => (
@@ -66,7 +66,7 @@ export default function Equipe() {
                 className="min-w-0 flex-1 truncate text-sm font-semibold underline-offset-4 hover:underline"
               >
                 {m.nome}
-                {m.id === meuId && <span className="ml-2 font-mono text-[10px] text-musgo">(você)</span>}
+                {m.id === meuId && <span className="ml-2 font-mono text-xs text-musgo">(você)</span>}
               </Link>
 
               {m.id === meuId ? (
@@ -95,24 +95,24 @@ export default function Equipe() {
                 </>
               ) : (
                 <>
-                  <span className="bg-linha px-2 py-0.5 font-mono text-[11px] uppercase tracking-wide text-tinta">
+                  <span className="bg-linha px-2 py-0.5 font-mono text-xs uppercase tracking-wide text-tinta">
                     {PAPEIS.find((p) => p.id === m.papel)?.nome ?? m.papel}
                   </span>
-                  <span className="font-mono text-[11px] text-tinta/50">
+                  <span className="font-mono text-xs text-tinta/70">
                     {frentes.find((f) => f.id === m.frente_id)?.nome ?? "sem frente"}
                   </span>
                 </>
               )}
 
               {m.criado_em && (
-                <span className="font-mono text-[11px] text-tinta/50">
+                <span className="font-mono text-xs text-tinta/70">
                   entrou em {new Date(m.criado_em).toLocaleDateString("pt-BR")}
                 </span>
               )}
             </div>
           ))}
           {membros.length === 0 && (
-            <p className="px-4 py-6 text-sm text-tinta/50">
+            <p className="px-4 py-6 text-sm text-tinta/70">
               Ninguém se cadastrou ainda. Peça pra equipe criar conta em /login.
             </p>
           )}

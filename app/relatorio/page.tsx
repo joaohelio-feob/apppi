@@ -135,7 +135,7 @@ export default async function Trilha() {
       </p>
 
       <section className="mt-8 border border-linha bg-casca p-4">
-        <h2 className="font-mono text-[11px] uppercase tracking-widest text-tinta/60">
+        <h2 className="font-mono text-xs uppercase tracking-widest text-tinta/70">
           Registros por integrante
         </h2>
         <div className="mt-3 space-y-2">
@@ -149,12 +149,12 @@ export default async function Trilha() {
                   <div className="h-3 flex-1 bg-linha">
                     <div className="h-full bg-musgo" style={{ width: `${(total / maior) * 100}%` }} />
                   </div>
-                  <span className="w-10 text-right font-mono text-xs text-tinta/60">{total}</span>
+                  <span className="w-10 text-right font-mono text-xs text-tinta/70">{total}</span>
                 </div>
               );
             })}
           {registros.length === 0 && (
-            <p className="text-sm text-tinta/50">
+            <p className="text-sm text-tinta/70">
               Ainda não há registros. Crie a primeira tarefa no quadro e ela aparece aqui.
             </p>
           )}
@@ -162,12 +162,12 @@ export default async function Trilha() {
       </section>
 
       <section className="mt-8 overflow-x-auto border border-linha">
-        <h2 className="border-b border-linha bg-casca px-4 py-2 font-mono text-[11px] uppercase tracking-widest text-tinta/60">
+        <h2 className="border-b border-linha bg-casca px-4 py-2 font-mono text-xs uppercase tracking-widest text-tinta/70">
           Resumo por pessoa
         </h2>
         <table className="w-full min-w-[640px] border-collapse text-sm">
           <thead>
-            <tr className="border-b border-linha bg-casca font-mono text-[11px] uppercase tracking-wide text-tinta/60">
+            <tr className="border-b border-linha bg-casca font-mono text-xs uppercase tracking-wide text-tinta/70">
               <th className="px-3 py-2 text-left">Pessoa</th>
               <th className="px-3 py-2 text-left">Frente</th>
               <th className="px-3 py-2 text-left">Concluídas individuais</th>
@@ -182,7 +182,7 @@ export default async function Trilha() {
                 <td className="px-3 py-2 font-semibold">{p.nome}</td>
                 <td className="px-3 py-2 text-tinta/70">
                   {p.frente}
-                  {p.unidadeFrente && <span className="text-tinta/50"> · {p.unidadeFrente}</span>}
+                  {p.unidadeFrente && <span className="text-tinta/70"> · {p.unidadeFrente}</span>}
                 </td>
                 <td className="px-3 py-2 font-mono text-xs">{p.individuais}</td>
                 <td className="px-3 py-2 font-mono text-xs">{p.deFrente}</td>
@@ -192,7 +192,7 @@ export default async function Trilha() {
             ))}
             {resumoPorPessoa.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-3 py-6 text-center text-sm text-tinta/50">
+                <td colSpan={6} className="px-3 py-6 text-center text-sm text-tinta/70">
                   Ninguém cadastrado ainda.
                 </td>
               </tr>
@@ -215,7 +215,7 @@ export default async function Trilha() {
                 <li key={i} className="relative py-2">
                   <span className="absolute -left-[21px] top-3.5 h-2 w-2 bg-musgo" />
                   <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                    <time className="font-mono text-[11px] text-tinta/50">
+                    <time className="font-mono text-xs text-tinta/70">
                       {new Date(r.em).toLocaleTimeString("pt-BR", {
                         hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo",
                       })}
@@ -223,7 +223,7 @@ export default async function Trilha() {
                     <span className="text-sm font-semibold">{r.autor ?? "—"}</span>
                     <span className="text-sm text-tinta/70">{VERBO[r.acao] ?? r.acao}</span>
                     {r.valor_novo && r.acao !== "criou" && (
-                      <span className="bg-casca px-1.5 font-mono text-[11px]">{r.valor_novo}</span>
+                      <span className="bg-casca px-1.5 font-mono text-xs">{r.valor_novo}</span>
                     )}
                     {r.tarefa && (
                       <span className="text-sm">
@@ -231,7 +231,7 @@ export default async function Trilha() {
                       </span>
                     )}
                     {r.frente && (
-                      <span className="border border-musgo px-1 py-0.5 font-mono text-[10px] uppercase text-musgo">
+                      <span className="border border-musgo px-1 py-0.5 font-mono text-xs uppercase text-musgo">
                         {r.escopo === "frente" ? "frente" : "tema"} · {r.frente}
                         {r.frente_unidade && ` (${UNIDADES_FRENTE.find((u) => u.id === r.frente_unidade)?.nome ?? r.frente_unidade})`}
                       </span>
@@ -243,12 +243,12 @@ export default async function Trilha() {
 
             {porDiaGithub[dia]?.length > 0 && (
               <div className="mt-3 border-l border-linha pl-4">
-                <p className="font-mono text-[10px] uppercase tracking-widest text-tinta/40">
+                <p className="font-mono text-xs uppercase tracking-widest text-tinta/70">
                   No GitHub, no mesmo dia
                 </p>
                 <ul className="mt-1 space-y-1">
                   {porDiaGithub[dia].map((c) => (
-                    <li key={c.sha} className="text-xs text-tinta/60">
+                    <li key={c.sha} className="text-xs text-tinta/70">
                       <span className="font-mono">{c.author?.login ?? c.commit.author?.name ?? "—"}</span>
                       {" · "}
                       {c.commit.message.split("\n")[0]}
