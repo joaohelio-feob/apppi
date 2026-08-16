@@ -1,13 +1,13 @@
 import { criarClienteServidor } from "@/lib/supabase-server";
 import { dataLocalDeTimestamp, dataLocalISO } from "@/lib/datas";
 import { githubConfigurado, listarCommits, type CommitGithub } from "@/lib/github";
-import { UNIDADES, responsaveisDe, type Frente, type Membro, type Registro, type Tarefa } from "@/lib/types";
+import { UNIDADES, UNIDADES_FRENTE, responsaveisDe, type Frente, type Membro, type Registro, type Tarefa } from "@/lib/types";
 import BotaoExportarCSV from "@/components/BotaoExportarCSV";
 import BotaoExportarPDF from "@/components/BotaoExportarPDF";
 
 const COLUNAS_CSV = [
   "em", "autor", "papel", "acao", "campo", "valor_antigo", "valor_novo",
-  "tarefa", "status_atual", "escopo", "unidade", "frente",
+  "tarefa", "status_atual", "escopo", "unidade", "frente", "frente_unidade",
 ];
 
 export const dynamic = "force-dynamic";
@@ -31,10 +31,10 @@ export default async function Trilha() {
     await Promise.all([
       supabase.from("relatorio_atividades").select("*").order("em", { ascending: false }).limit(500),
       supabase.from("membros").select("id, nome, papel, frente_id"),
-      supabase.from("frentes").select("id, nome"),
+      supabase.from("frentes").select("id, nome, unidade"),
       supabase
         .from("tarefas")
-        .select("*, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel)), frentes(id, nome)")
+        .select("*, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel)), frentes(id, nome, unidade)")
         .eq("status", "concluida"),
       supabase.from("historico").select("autor_id").limit(10000),
     ]);
@@ -55,9 +55,11 @@ export default async function Trilha() {
     const individuais = dela.filter((t) => t.escopo === "individual");
     const deFrente = dela.filter((t) => t.escopo === "frente");
     const unidades = Array.from(new Set(dela.map((t) => UNIDADES.find((u) => u.id === t.unidade)?.nome ?? t.unidade)));
+    const frenteDela = frentes.find((f) => f.id === m.frente_id);
     return {
       nome: m.nome,
-      frente: frentes.find((f) => f.id === m.frente_id)?.nome ?? "sem frente",
+      frente: frenteDela?.nome ?? "sem frente",
+      unidadeFrente: UNIDADES_FRENTE.find((u) => u.id === frenteDela?.unidade)?.nome ?? null,
       individuais: individuais.length,
       deFrente: deFrente.length,
       unidades,
@@ -171,7 +173,10 @@ export default async function Trilha() {
             {resumoPorPessoa.map((p) => (
               <tr key={p.nome}>
                 <td className="px-3 py-2 font-semibold">{p.nome}</td>
-                <td className="px-3 py-2 text-tinta/70">{p.frente}</td>
+                <td className="px-3 py-2 text-tinta/70">
+                  {p.frente}
+                  {p.unidadeFrente && <span className="text-tinta/50"> · {p.unidadeFrente}</span>}
+                </td>
                 <td className="px-3 py-2 font-mono text-xs">{p.individuais}</td>
                 <td className="px-3 py-2 font-mono text-xs">{p.deFrente}</td>
                 <td className="px-3 py-2 text-xs text-tinta/70">{p.unidades.join(", ") || "—"}</td>
@@ -226,6 +231,7 @@ export default async function Trilha() {
                     {r.escopo === "frente" && r.frente && (
                       <span className="border border-musgo px-1 py-0.5 font-mono text-[10px] uppercase text-musgo">
                         frente · {r.frente}
+                        {r.frente_unidade && ` (${UNIDADES.find((u) => u.id === r.frente_unidade)?.nome ?? r.frente_unidade})`}
                       </span>
                     )}
                   </div>

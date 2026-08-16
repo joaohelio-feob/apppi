@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { dataLocalISO, diasEntre } from "@/lib/datas";
-import { STATUS, UNIDADES, responsaveisDe, type Tarefa, type Status } from "@/lib/types";
+import { CLASSES_COR_FRENTE, STATUS, UNIDADES, responsaveisDe, type Tarefa, type Status } from "@/lib/types";
 import Selo from "./Selo";
 import SeloIssue from "./SeloIssue";
 
@@ -49,8 +49,12 @@ export default function CartaoTarefa({
         <h3 className="font-display text-sm font-semibold leading-snug">{tarefa.titulo}</h3>
         <div className="flex shrink-0 items-center gap-1">
           {tarefa.escopo === "frente" && (
-            <span className="border border-musgo px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-musgo">
-              frente
+            <span
+              className={`border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide ${
+                CLASSES_COR_FRENTE[tarefa.frentes?.cor ?? "ferro"]
+              }`}
+            >
+              {tarefa.frentes?.nome ?? "frente"}
             </span>
           )}
           {tarefa.prioridade === "alta" && (

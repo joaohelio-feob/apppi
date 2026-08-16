@@ -10,6 +10,12 @@
 create table if not exists frentes (
   id         bigserial primary key,
   nome       text not null,
+  unidade    text,      -- poo | modelagem | logica | bi | autoconhecimento — liga a frente
+                        -- à unidade de estudo do PI, prova pro professor que todas foram trabalhadas
+  cor        text not null default 'ferro' constraint frentes_cor_check
+             check (cor in ('musgo', 'trigo', 'broto', 'ferro')),
+                        -- token do tema, nunca hexadecimal (ver lib/types.ts CLASSES_COR_FRENTE)
+  ordem      int  not null default 0,      -- ordem de exibição em /frentes
   criado_em  timestamptz not null default now()
 );
 
@@ -421,7 +427,8 @@ select
   t.status  as status_atual,
   t.escopo  as escopo,
   t.unidade as unidade,
-  f.nome    as frente
+  f.nome    as frente,
+  f.unidade as frente_unidade
 from historico h
 left join membros m on m.id = h.autor_id
 left join tarefas t on t.id = h.tarefa_id
@@ -468,6 +475,19 @@ create table if not exists frentes (
   nome       text not null,
   criado_em  timestamptz not null default now()
 );
+
+-- unidade/cor/ordem vieram depois — se a frentes acima já existia sem elas
+-- (banco já no ar), essas três linhas completam sem mexer no que já tem.
+alter table frentes add column if not exists unidade text;
+alter table frentes add column if not exists cor     text not null default 'ferro';
+alter table frentes add column if not exists ordem   int  not null default 0;
+
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'frentes_cor_check') then
+    alter table frentes add constraint frentes_cor_check check (cor in ('musgo', 'trigo', 'broto', 'ferro'));
+  end if;
+end $$;
 
 alter table membros add column if not exists frente_id bigint references frentes(id) on delete set null;
 

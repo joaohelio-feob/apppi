@@ -34,7 +34,47 @@ export const UNIDADES: { id: Unidade; nome: string }[] = [
   { id: "geral",            nome: "Geral" },
 ];
 
-export type Frente = { id: number; nome: string; criado_em?: string };
+// Unidades reais do PI, sem o "geral" — é o que liga cada frente à matéria
+// correspondente pra provar no relatório final que todas foram trabalhadas.
+export const UNIDADES_FRENTE = UNIDADES.filter((u) => u.id !== "geral");
+
+export type CorFrente = "musgo" | "trigo" | "broto" | "ferro";
+
+export const CORES_FRENTE: { id: CorFrente; nome: string }[] = [
+  { id: "musgo", nome: "Musgo" },
+  { id: "trigo", nome: "Trigo" },
+  { id: "broto", nome: "Broto" },
+  { id: "ferro", nome: "Ferro" },
+];
+
+// Classes inteiras por token — o Tailwind só reconhece o que aparece
+// literalmente no código em build time. Nunca monte `border-${cor}` (ou
+// `.replace()` numa classe existente) na mão: a classe some do CSS final
+// porque o texto "bg-musgo" precisa existir de verdade em algum arquivo.
+export const CLASSES_COR_FRENTE: Record<CorFrente, string> = {
+  musgo: "border-musgo text-musgo",
+  trigo: "border-trigo text-trigo",
+  broto: "border-broto text-broto",
+  ferro: "border-ferro text-ferro",
+};
+
+// Mesma cor, versão preenchida (bolinha/barra) — mapa próprio porque não dá
+// pra derivar de CLASSES_COR_FRENTE em tempo de execução (ver comentário acima).
+export const CLASSES_COR_FRENTE_PREENCHIDA: Record<CorFrente, string> = {
+  musgo: "bg-musgo",
+  trigo: "bg-trigo",
+  broto: "bg-broto",
+  ferro: "bg-ferro",
+};
+
+export type Frente = {
+  id: number;
+  nome: string;
+  unidade: Unidade | null;
+  cor: CorFrente;
+  ordem: number;
+  criado_em?: string;
+};
 
 export type Membro = { id: string; nome: string; papel: string; criado_em?: string; frente_id?: number | null };
 
@@ -106,4 +146,5 @@ export type Registro = {
   escopo: Escopo | null;
   unidade: Unidade | null;
   frente: string | null;
+  frente_unidade: Unidade | null;
 };

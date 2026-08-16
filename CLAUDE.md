@@ -38,6 +38,12 @@ de frentes/integrantes e trilha de atividades para a entrega final.
   colaborativo que o PI é avaliado.
 - Tailwind: use os tokens do tema (`campo`, `casca`, `linha`, `tinta`, `musgo`,
   `broto`, `trigo`, `ferro`). Não invente cores soltas.
+- `frentes.cor` guarda o **nome de um token do tema** (`musgo` | `trigo` |
+  `broto` | `ferro`), nunca hexadecimal. As classes completas ficam mapeadas
+  em `CLASSES_COR_FRENTE` / `CLASSES_COR_FRENTE_PREENCHIDA` (`lib/types.ts`)
+  — o Tailwind só gera CSS pra classe que aparece literal no código-fonte, então
+  nunca monte `border-${cor}` nem derive uma classe de outra com `.replace()`
+  em tempo de execução; sempre passe pelo mapa.
 - Tipografia: `font-display` para títulos, `font-corpo` para texto, `font-mono`
   para datas, contadores e rótulos técnicos.
 

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
-import { responsaveisDe, type Frente, type Membro, type Tarefa } from "@/lib/types";
+import { UNIDADES_FRENTE, CORES_FRENTE, responsaveisDe, type CorFrente, type Frente, type Membro, type Tarefa, type Unidade } from "@/lib/types";
 import CartaoTarefa from "@/components/CartaoTarefa";
 
 export default function PainelFrente() {
@@ -14,6 +14,8 @@ export default function PainelFrente() {
   const [tarefasFrente, setTarefasFrente] = useState<Tarefa[]>([]);
   const [tarefasIndividuais, setTarefasIndividuais] = useState<Tarefa[]>([]);
   const [carregando, setCarregando] = useState(true);
+  const [editando, setEditando] = useState(false);
+  const [salvando, setSalvando] = useState(false);
 
   useEffect(() => {
     const supabase = criarClienteNavegador();
@@ -21,11 +23,11 @@ export default function PainelFrente() {
 
     async function carregar() {
       const [{ data: f }, { data: m }, { data: tf }] = await Promise.all([
-        supabase.from("frentes").select("id, nome, criado_em").eq("id", frenteId).single(),
+        supabase.from("frentes").select("id, nome, unidade, cor, ordem, criado_em").eq("id", frenteId).single(),
         supabase.from("membros").select("id, nome, papel, frente_id").eq("frente_id", frenteId).order("nome"),
         supabase
           .from("tarefas")
-          .select("*, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel))")
+          .select("*, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel)), frentes(id, nome, cor)")
           .eq("escopo", "frente")
           .eq("frente_id", frenteId)
           .eq("arquivada", false)
@@ -64,6 +66,15 @@ export default function PainelFrente() {
     return Array.from(mapa.values()).sort((a, b) => a.nome.localeCompare(b.nome));
   }, [tarefasIndividuais]);
 
+  async function salvarEdicao(campos: Partial<Pick<Frente, "nome" | "unidade" | "cor" | "ordem">>) {
+    if (!frente) return;
+    setSalvando(true);
+    const atualizado = { ...frente, ...campos };
+    setFrente(atualizado);
+    await criarClienteNavegador().from("frentes").update(campos).eq("id", frente.id);
+    setSalvando(false);
+  }
+
   if (carregando) return <p className="mt-10 font-mono text-sm text-tinta/50">carregando…</p>;
 
   if (!frente) {
@@ -80,11 +91,73 @@ export default function PainelFrente() {
       <Link href="/frentes" className="font-mono text-xs text-tinta/50 underline underline-offset-4">
         ← Frentes
       </Link>
-      <p className="mt-3 font-mono text-xs uppercase tracking-widest text-musgo">Frente</p>
-      <h1 className="mt-1 font-display text-3xl font-extrabold tracking-tight">{frente.nome}</h1>
+      <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="font-mono text-xs uppercase tracking-widest text-musgo">
+            Frente{UNIDADES_FRENTE.find((u) => u.id === frente.unidade)?.nome ? ` · ${UNIDADES_FRENTE.find((u) => u.id === frente.unidade)?.nome}` : ""}
+          </p>
+          <h1 className="mt-1 font-display text-3xl font-extrabold tracking-tight">{frente.nome}</h1>
+        </div>
+        <button
+          onClick={() => setEditando((a) => !a)}
+          className="font-mono text-xs text-tinta/50 underline underline-offset-4 hover:text-tinta"
+        >
+          {editando ? "fechar edição" : "editar"}
+        </button>
+      </div>
       <p className="mt-2 text-sm text-tinta/70">
         {integrantes.length === 0 ? "Ninguém nessa frente ainda." : integrantes.map((m) => m.nome).join(", ")}
       </p>
+
+      {editando && (
+        <div className="mt-4 flex flex-wrap items-end gap-2 border border-linha bg-casca p-3">
+          <label className="font-mono text-[11px] uppercase text-tinta/60">
+            Nome
+            <input
+              defaultValue={frente.nome}
+              onBlur={(e) => e.target.value.trim() && e.target.value !== frente.nome && salvarEdicao({ nome: e.target.value })}
+              className="mt-1 block min-w-[160px] border border-linha bg-campo px-3 py-2 font-corpo text-sm normal-case text-tinta"
+            />
+          </label>
+          <label className="font-mono text-[11px] uppercase text-tinta/60">
+            Unidade
+            <select
+              value={frente.unidade ?? ""}
+              disabled={salvando}
+              onChange={(e) => salvarEdicao({ unidade: (e.target.value || null) as Unidade | null })}
+              className="mt-1 block border border-linha bg-campo px-2 py-2 font-mono text-xs uppercase disabled:opacity-50"
+            >
+              <option value="">Sem unidade</option>
+              {UNIDADES_FRENTE.map((u) => (
+                <option key={u.id} value={u.id}>{u.nome}</option>
+              ))}
+            </select>
+          </label>
+          <label className="font-mono text-[11px] uppercase text-tinta/60">
+            Cor
+            <select
+              value={frente.cor}
+              disabled={salvando}
+              onChange={(e) => salvarEdicao({ cor: e.target.value as CorFrente })}
+              className="mt-1 block border border-linha bg-campo px-2 py-2 font-mono text-xs uppercase disabled:opacity-50"
+            >
+              {CORES_FRENTE.map((c) => (
+                <option key={c.id} value={c.id}>{c.nome}</option>
+              ))}
+            </select>
+          </label>
+          <label className="font-mono text-[11px] uppercase text-tinta/60">
+            Ordem
+            <input
+              type="number"
+              defaultValue={frente.ordem}
+              disabled={salvando}
+              onBlur={(e) => salvarEdicao({ ordem: Number(e.target.value) || 0 })}
+              className="mt-1 block w-16 border border-linha bg-campo px-2 py-2 font-mono text-sm disabled:opacity-50"
+            />
+          </label>
+        </div>
+      )}
 
       <section className="mt-10">
         <h2 className="mb-3 border-b border-linha pb-1 font-display text-lg font-semibold">

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
 import { dataLocalISO } from "@/lib/datas";
-import { UNIDADES, responsaveisDe, type Frente, type Membro, type Reuniao, type Tarefa } from "@/lib/types";
+import { UNIDADES, UNIDADES_FRENTE, responsaveisDe, type Frente, type Membro, type Reuniao, type Tarefa } from "@/lib/types";
 import BotaoExportarCSV from "@/components/BotaoExportarCSV";
 import BotaoExportarPDF from "@/components/BotaoExportarPDF";
 
@@ -15,6 +15,7 @@ type Movimentacao = {
   escopo: string | null;
   unidade: string | null;
   frente: string | null;
+  frente_unidade: string | null;
 };
 
 function primeiroDiaDoMes() {
@@ -46,7 +47,7 @@ export default function SprintReport() {
     ] = await Promise.all([
       supabase
         .from("tarefas")
-        .select("*, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel)), frentes(id, nome)")
+        .select("*, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel)), frentes(id, nome, unidade)")
         .gte("concluido_em", inicio)
         .lte("concluido_em", fimFechado),
       supabase
@@ -57,13 +58,13 @@ export default function SprintReport() {
       supabase.from("reunioes").select("*").gte("data", inicio).lte("data", fim).order("data"),
       supabase
         .from("relatorio_atividades")
-        .select("em, autor, acao, tarefa, escopo, unidade, frente")
+        .select("em, autor, acao, tarefa, escopo, unidade, frente, frente_unidade")
         .gte("em", inicio)
         .lte("em", fimFechado)
         .order("em", { ascending: false })
         .limit(200),
       supabase.from("membros").select("id, nome, papel, frente_id"),
-      supabase.from("frentes").select("id, nome"),
+      supabase.from("frentes").select("id, nome, unidade"),
     ]);
 
     setConcluidas((concluidasData ?? []) as Tarefa[]);
@@ -118,9 +119,11 @@ export default function SprintReport() {
     const individuais = dela.filter((t) => t.escopo === "individual");
     const deFrente = dela.filter((t) => t.escopo === "frente");
     const unidades = Array.from(new Set(dela.map((t) => UNIDADES.find((u) => u.id === t.unidade)?.nome ?? t.unidade)));
+    const frenteDela = frentes.find((f) => f.id === m.frente_id);
     return {
       nome: m.nome,
-      frente: frentes.find((f) => f.id === m.frente_id)?.nome ?? "sem frente",
+      frente: frenteDela?.nome ?? "sem frente",
+      unidadeFrente: UNIDADES_FRENTE.find((u) => u.id === frenteDela?.unidade)?.nome ?? null,
       individuais: individuais.length,
       deFrente: deFrente.length,
       unidades,
@@ -145,11 +148,12 @@ export default function SprintReport() {
                 responsavel: responsaveisDe(t).map((m) => m.nome).join(", "),
                 escopo: t.escopo,
                 frente: t.frentes?.nome ?? "",
+                frente_unidade: t.frentes?.unidade ?? "",
                 unidade: t.unidade,
                 concluido_em: t.concluido_em,
                 prazo: t.prazo,
               }))}
-              colunas={["tarefa", "responsavel", "escopo", "frente", "unidade", "concluido_em", "prazo"]}
+              colunas={["tarefa", "responsavel", "escopo", "frente", "frente_unidade", "unidade", "concluido_em", "prazo"]}
               nomeArquivo={`sprint-report-${inicio}-a-${fim}.csv`}
               rotulo="Baixar CSV"
             />
@@ -269,7 +273,10 @@ export default function SprintReport() {
                 {resumoPorPessoa.map((p) => (
                   <tr key={p.nome}>
                     <td className="px-3 py-2 font-semibold">{p.nome}</td>
-                    <td className="px-3 py-2 text-tinta/70">{p.frente}</td>
+                    <td className="px-3 py-2 text-tinta/70">
+                      {p.frente}
+                      {p.unidadeFrente && <span className="text-tinta/50"> · {p.unidadeFrente}</span>}
+                    </td>
                     <td className="px-3 py-2 font-mono text-xs">{p.individuais}</td>
                     <td className="px-3 py-2 font-mono text-xs">{p.deFrente}</td>
                     <td className="px-3 py-2 text-xs text-tinta/70">{p.unidades.join(", ") || "—"}</td>
@@ -319,7 +326,9 @@ export default function SprintReport() {
                   {new Date(m.em).toLocaleDateString("pt-BR")} · {m.autor ?? "—"} · {m.acao}
                   {m.tarefa ? ` · ${m.tarefa}` : ""}
                   {m.unidade ? ` · ${UNIDADES.find((u) => u.id === m.unidade)?.nome ?? m.unidade}` : ""}
-                  {m.escopo === "frente" && m.frente ? ` · frente: ${m.frente}` : ""}
+                  {m.escopo === "frente" && m.frente
+                    ? ` · frente: ${m.frente}${m.frente_unidade ? ` (${UNIDADES.find((u) => u.id === m.frente_unidade)?.nome ?? m.frente_unidade})` : ""}`
+                    : ""}
                 </li>
               ))}
               {movimentacoes.length === 0 && (
