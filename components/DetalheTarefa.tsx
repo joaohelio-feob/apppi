@@ -4,9 +4,10 @@ import { useEffect, useState } from "react";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
 import {
   CLASSES_COR_FRENTE, PRIORIDADES, STATUS, UNIDADES_FRENTE, responsaveisDe,
-  type Frente, type Membro, type Tarefa,
+  type EstadoEntrega, type Frente, type Membro, type Tarefa,
 } from "@/lib/types";
 import GerenciadorAnexos from "./GerenciadorAnexos";
+import ModalEntrega from "./ModalEntrega";
 import SeloIssue from "./SeloIssue";
 import { useToast } from "./ToastProvider";
 
@@ -35,19 +36,52 @@ export default function DetalheTarefa({
   const [membros, setMembros] = useState<Membro[]>(membrosIniciais ?? []);
   const [frentes, setFrentes] = useState<Frente[]>(frentesIniciais ?? []);
   const [arquivando, setArquivando] = useState(false);
+  const [meuId, setMeuId] = useState<string | null>(null);
+  const [estado, setEstado] = useState<EstadoEntrega | null>(null);
+  const [entregaAberta, setEntregaAberta] = useState(false);
+  const [confirmandoCommit, setConfirmandoCommit] = useState(false);
   const { avisar } = useToast();
   const supabase = criarClienteNavegador();
 
+  async function carregarEstadoEntrega() {
+    const { data } = await supabase
+      .from("tarefas_estado_entrega")
+      .select("*")
+      .eq("tarefa_id", t.id)
+      .maybeSingle();
+    setEstado((data ?? null) as EstadoEntrega | null);
+  }
+
   useEffect(() => {
-    if (membrosIniciais && frentesIniciais) return; // já veio pronto da página que abriu
-    Promise.all([
-      supabase.from("membros").select("id, nome, papel, frente_id").order("nome"),
-      supabase.from("frentes").select("id, nome, cor, unidade").order("nome"),
-    ]).then(([m, f]) => {
-      setMembros((m.data ?? []) as Membro[]);
-      setFrentes((f.data ?? []) as unknown as Frente[]);
-    });
+    if (!(membrosIniciais && frentesIniciais)) {
+      Promise.all([
+        supabase.from("membros").select("id, nome, papel, frente_id").order("nome"),
+        supabase.from("frentes").select("id, nome, cor, unidade").order("nome"),
+      ]).then(([m, f]) => {
+        setMembros((m.data ?? []) as Membro[]);
+        setFrentes((f.data ?? []) as unknown as Frente[]);
+      });
+    }
+    supabase.auth.getUser().then(({ data }) => setMeuId(data.user?.id ?? null));
+    carregarEstadoEntrega();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const souResponsavel = responsaveisDe(t).some((m) => m.id === meuId);
+
+  async function confirmarCommit() {
+    setConfirmandoCommit(true);
+    const { error } = await supabase
+      .from("tarefas")
+      .update({ commit_confirmado_em: new Date().toISOString() })
+      .eq("id", t.id);
+    setConfirmandoCommit(false);
+    if (error) {
+      avisar("Não deu pra confirmar o commit. Tenta de novo.");
+      return;
+    }
+    carregarEstadoEntrega();
+    aoAtualizar?.();
+  }
 
   async function salvarCampo(campo: keyof Tarefa, valor: string | number | boolean | null) {
     const anterior = t[campo];
@@ -270,6 +304,57 @@ export default function DetalheTarefa({
           Já subiu no Git
         </label>
 
+        <div className="mt-5 border-t border-linha pt-4">
+          <div className="flex items-center justify-between">
+            <label className="font-mono text-xs uppercase text-tinta/70">Entrega</label>
+            {souResponsavel && (
+              <button
+                onClick={() => setEntregaAberta(true)}
+                className="bg-tinta px-3 py-1.5 font-mono text-xs uppercase text-campo hover:bg-musgo"
+              >
+                Entregar
+              </button>
+            )}
+          </div>
+
+          {estado?.pendente_git && (
+            <div className="mt-2 flex flex-wrap items-center gap-2 border border-trigo bg-trigo/10 px-3 py-2">
+              <span className="bg-trigo px-2 py-0.5 font-mono text-xs uppercase text-tinta">
+                Pendente no Git
+              </span>
+              {estado.commit_nome && (
+                <span className="text-sm">
+                  commit: <strong className="font-semibold">{estado.commit_nome}</strong>
+                </span>
+              )}
+              {souResponsavel && (
+                <button
+                  onClick={confirmarCommit}
+                  disabled={confirmandoCommit}
+                  className="ml-auto font-mono text-xs uppercase underline underline-offset-4 hover:text-musgo disabled:opacity-50"
+                >
+                  {confirmandoCommit ? "confirmando…" : "Confirmar commit"}
+                </button>
+              )}
+            </div>
+          )}
+
+          {estado?.ultima_entrega_id && (
+            <div className="mt-2 text-sm text-tinta/70">
+              <p className="font-mono text-xs text-tinta/70">
+                Entregue por <span className="text-tinta">{estado.entrega_autor_nome}</span> em{" "}
+                {estado.entregue_em && new Date(estado.entregue_em).toLocaleDateString("pt-BR")} · arquivo:{" "}
+                <span className="text-tinta">{estado.arquivo_drive}</span>
+              </p>
+              {estado.o_que_mudou && <p className="mt-1">{estado.o_que_mudou}</p>}
+            </div>
+          )}
+
+          {!estado?.ultima_entrega_id && (
+            <p className="mt-2 text-sm text-tinta/70">Ainda não foi entregue.</p>
+          )}
+        </div>
+
         <div className="mt-4">
           <label className="block font-mono text-xs uppercase text-tinta/70">Observações</label>
           <textarea
@@ -296,6 +381,17 @@ export default function DetalheTarefa({
           </button>
         </div>
       </div>
+
+      {entregaAberta && (
+        <ModalEntrega
+          tarefaId={t.id}
+          aoFechar={() => setEntregaAberta(false)}
+          aoEntregar={() => {
+            carregarEstadoEntrega();
+            aoAtualizar?.();
+          }}
+        />
+      )}
     </div>
   );
 }
