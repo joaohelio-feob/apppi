@@ -416,7 +416,16 @@ create policy "autor apaga seu arquivo" on storage.objects
   for delete to authenticated using (bucket_id = 'entregas' and owner = auth.uid());
 
 -- ---------- 6. VIEW pronta para o relatório final ---------------------
-create or replace view relatorio_atividades as
+-- "create or replace" não funciona aqui pra quem já tinha a view antiga
+-- (com a coluna "unidade", derivada de tarefas.unidade): Postgres recusa
+-- remover coluna da lista de saída de uma view via "or replace", só
+-- aceita adicionar no fim ou trocar o cálculo de coluna já existente. Por
+-- isso é "drop + create" — vale tanto pra quem está criando do zero
+-- quanto pra quem está re-rodando o arquivo inteiro num banco antigo (a
+-- migração no fim do arquivo também faz esse drop+create, pro caso de
+-- alguém colar só aquele bloco isolado, sem rodar o arquivo inteiro).
+drop view if exists relatorio_atividades;
+create view relatorio_atividades as
 select
   h.em,
   m.nome    as autor,
@@ -564,7 +573,38 @@ drop index if exists idx_tarefas_responsavel;
 --
 -- A unidade de estudo não desaparece do produto, só de tarefas: passa a
 -- viver em frentes.unidade e a tarefa a alcança por frente_id.
+--
+-- A view relatorio_atividades (seção 6) referenciava t.unidade. Postgres
+-- não deixa "create or replace view" remover uma coluna da lista de saída
+-- — só trocar o cálculo de colunas que já existem ou acrescentar no fim —
+-- então rodar de novo a seção 6 sozinha NÃO atualiza a view antiga o
+-- suficiente pra soltar a dependência, e o "alter table drop column" logo
+-- abaixo falha com "cannot drop column unidade because other objects
+-- depend on it" (2BP01). Por isso este bloco derruba e recria a view na
+-- versão nova *antes* de mexer na coluna, sem depender de ter rodado a
+-- seção 6 primeiro — pode colar só este bloco isolado num banco já no ar.
 -- =====================================================================
+drop view if exists relatorio_atividades;
+create view relatorio_atividades as
+select
+  h.em,
+  m.nome    as autor,
+  m.papel,
+  h.acao,
+  h.campo,
+  h.valor_antigo,
+  h.valor_novo,
+  t.titulo  as tarefa,
+  t.status  as status_atual,
+  t.escopo  as escopo,
+  f.nome    as frente,
+  f.unidade as frente_unidade
+from historico h
+left join membros m on m.id = h.autor_id
+left join tarefas t on t.id = h.tarefa_id
+left join frentes f on f.id = t.frente_id
+order by h.em desc;
+
 do $$
 begin
   if exists (
