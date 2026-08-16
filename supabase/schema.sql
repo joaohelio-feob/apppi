@@ -425,7 +425,14 @@ create policy "autor apaga seu arquivo" on storage.objects
 -- migração no fim do arquivo também faz esse drop+create, pro caso de
 -- alguém colar só aquele bloco isolado, sem rodar o arquivo inteiro).
 drop view if exists relatorio_atividades;
-create view relatorio_atividades as
+-- security_invoker = on: sem isso, a view roda com o dono dela (quem a
+-- criou), ignorando o RLS de historico/tarefas/membros/frentes — qualquer
+-- authenticated que soubesse o nome dela furava as policies dessas
+-- tabelas. Com invoker on, a view roda com a permissão de quem está
+-- consultando, então volta a respeitar o RLS das tabelas de base.
+create view relatorio_atividades
+with (security_invoker = on)
+as
 select
   h.em,
   m.nome    as autor,
@@ -585,7 +592,14 @@ drop index if exists idx_tarefas_responsavel;
 -- seção 6 primeiro — pode colar só este bloco isolado num banco já no ar.
 -- =====================================================================
 drop view if exists relatorio_atividades;
-create view relatorio_atividades as
+-- security_invoker = on: sem isso, a view roda com o dono dela (quem a
+-- criou), ignorando o RLS de historico/tarefas/membros/frentes — qualquer
+-- authenticated que soubesse o nome dela furava as policies dessas
+-- tabelas. Com invoker on, a view roda com a permissão de quem está
+-- consultando, então volta a respeitar o RLS das tabelas de base.
+create view relatorio_atividades
+with (security_invoker = on)
+as
 select
   h.em,
   m.nome    as autor,
