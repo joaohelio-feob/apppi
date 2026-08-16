@@ -12,6 +12,18 @@ function repoBase(): string {
   return `${BASE}/repos/${process.env.GITHUB_ORG}/${process.env.GITHUB_REPO}`;
 }
 
+// Carrega o status HTTP junto com o erro, pra quem chama poder distinguir
+// 401/404/409 (os que a equipe mais bate) de uma falha qualquer, sem
+// precisar reabrir o texto cru da resposta do GitHub.
+export class ErroGithub extends Error {
+  status: number;
+  constructor(status: number, corpo: string) {
+    super(`GitHub API ${status}: ${corpo}`);
+    this.name = "ErroGithub";
+    this.status = status;
+  }
+}
+
 async function chamarGithub<T>(caminho: string): Promise<T> {
   const resposta = await fetch(`${repoBase()}${caminho}`, {
     headers: {
@@ -22,9 +34,40 @@ async function chamarGithub<T>(caminho: string): Promise<T> {
     next: { revalidate: REVALIDATE_SEGUNDOS },
   });
   if (!resposta.ok) {
-    throw new Error(`GitHub API ${resposta.status}: ${await resposta.text()}`);
+    throw new ErroGithub(resposta.status, await resposta.text());
   }
   return resposta.json() as Promise<T>;
+}
+
+/**
+ * Traduz uma falha da API do GitHub pro texto que a equipe vai ver na tela —
+ * nunca o JSON cru da resposta. Cobre os três erros mais comuns (token,
+ * repositório e repositório vazio); o resto cai num aviso genérico com o
+ * status HTTP, sem despejar o corpo da resposta.
+ */
+export function mensagemErroGithub(erro: unknown): { status: number; mensagem: string } {
+  if (erro instanceof ErroGithub) {
+    switch (erro.status) {
+      case 401:
+        return {
+          status: 401,
+          mensagem: "Token do GitHub inválido ou expirado. Gere um novo e atualize GITHUB_TOKEN.",
+        };
+      case 404:
+        return {
+          status: 404,
+          mensagem: "Repositório não encontrado, ou o token não tem acesso a ele. Confira GITHUB_ORG e GITHUB_REPO.",
+        };
+      case 409:
+        return { status: 409, mensagem: "O repositório ainda não tem commits." };
+      default:
+        return {
+          status: 502,
+          mensagem: `Falha ao consultar o GitHub (HTTP ${erro.status}). Tenta de novo em alguns minutos.`,
+        };
+    }
+  }
+  return { status: 502, mensagem: "Falha ao consultar o GitHub. Tenta de novo em alguns minutos." };
 }
 
 export type CommitGithub = {

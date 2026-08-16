@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { githubConfigurado, statusCIUltimoPush } from "@/lib/github";
+import { githubConfigurado, mensagemErroGithub, statusCIUltimoPush } from "@/lib/github";
 
 export const dynamic = "force-dynamic";
 
@@ -12,9 +12,7 @@ export async function GET() {
     const status = await statusCIUltimoPush();
     return NextResponse.json({ configurado: true, ...status });
   } catch (erro) {
-    return NextResponse.json(
-      { configurado: true, erro: erro instanceof Error ? erro.message : "Falha ao consultar o GitHub." },
-      { status: 502 }
-    );
+    const { status, mensagem } = mensagemErroGithub(erro);
+    return NextResponse.json({ configurado: true, erro: mensagem }, { status });
   }
 }
