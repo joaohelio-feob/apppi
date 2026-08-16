@@ -269,6 +269,25 @@ export default function DetalheTarefa({
           )}
         </div>
 
+        <label className="mt-2 block font-mono text-xs uppercase text-tinta/70">
+          Revisor (opcional)
+          <select
+            value={t.revisor_id ?? ""}
+            onChange={(e) => salvarCampo("revisor_id", e.target.value || null)}
+            className="mt-1 block w-full border border-linha bg-casca px-2 py-2 font-corpo text-sm normal-case text-tinta"
+          >
+            <option value="">Sem revisor</option>
+            {membros
+              .filter((m) => !responsaveis.some((r) => r.id === m.id))
+              .map((m) => (
+                <option key={m.id} value={m.id}>{m.nome}</option>
+              ))}
+          </select>
+          <span className="mt-1 block font-corpo text-xs normal-case text-tinta/70">
+            Sem revisor, a tarefa conclui direto quando for entregue.
+          </span>
+        </label>
+
         <input
           value={t.local_entrega ?? ""}
           onChange={(e) => setT((atual) => ({ ...atual, local_entrega: e.target.value }))}

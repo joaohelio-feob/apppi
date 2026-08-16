@@ -22,6 +22,7 @@ export default function FormularioTarefa({
   const [escopo, setEscopo] = useState<Escopo>("individual");
   const [frenteId, setFrenteId] = useState("");
   const [responsavel, setResponsavel] = useState("");
+  const [revisor, setRevisor] = useState("");
   const [prioridade, setPrioridade] = useState<Prioridade>("media");
   const [inicio, setInicio] = useState("");
   const [prazo, setPrazo] = useState("");
@@ -40,6 +41,21 @@ export default function FormularioTarefa({
     () => membros.filter((m) => String(m.frente_id ?? "") === frenteId),
     [membros, frenteId]
   );
+
+  // Ninguém revisa a própria tarefa: exclui quem vai ser responsável — o
+  // indivíduo escolhido, ou todo mundo da frente, se for tarefa de frente.
+  const idsExcluidosDoRevisor = useMemo(
+    () => new Set(escopo === "frente" ? membrosDaFrente.map((m) => m.id) : responsavel ? [responsavel] : []),
+    [escopo, membrosDaFrente, responsavel]
+  );
+  const membrosParaRevisor = useMemo(
+    () => membros.filter((m) => !idsExcluidosDoRevisor.has(m.id)),
+    [membros, idsExcluidosDoRevisor]
+  );
+
+  useEffect(() => {
+    if (revisor && idsExcluidosDoRevisor.has(revisor)) setRevisor("");
+  }, [revisor, idsExcluidosDoRevisor]);
 
   async function salvar() {
     if (!titulo.trim()) {
@@ -67,6 +83,7 @@ export default function FormularioTarefa({
         criador_id: sessao.user?.id ?? null,
         escopo,
         frente_id: frenteId ? Number(frenteId) : null,
+        revisor_id: revisor || null,
         prioridade,
         inicio: inicio || null,
         prazo: prazo || null,
@@ -200,6 +217,23 @@ export default function FormularioTarefa({
               )}
             </label>
           )}
+
+          <label className="block font-mono text-xs uppercase text-tinta/70">
+            Revisor (opcional)
+            <select
+              className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-sm normal-case text-tinta"
+              value={revisor}
+              onChange={(e) => setRevisor(e.target.value)}
+            >
+              <option value="">Sem revisor</option>
+              {membrosParaRevisor.map((m) => (
+                <option key={m.id} value={m.id}>{m.nome}</option>
+              ))}
+            </select>
+            <span className="mt-1 block font-corpo text-xs normal-case text-tinta/70">
+              Sem revisor, a tarefa conclui direto quando for entregue.
+            </span>
+          </label>
 
           <label className="block font-mono text-xs uppercase text-tinta/70">
             Prioridade
