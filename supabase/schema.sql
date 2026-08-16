@@ -153,6 +153,26 @@ create trigger trg_hist_atribuicao
   after insert or update or delete on tarefa_responsaveis
   for each row execute function public.registrar_atribuicao();
 
+-- O Quadro escuta postgres_changes só na tabela tarefas (é nela que o
+-- realtime do Supabase está ligado). Atribuir/reatribuir/desatribuir mexe
+-- só em tarefa_responsaveis, então sem isso aqui ninguém veria a mudança
+-- ao vivo — só ao recarregar a página.
+create or replace function public.tocar_tarefa_responsaveis()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  update tarefas set atualizado_em = now() where id = coalesce(new.tarefa_id, old.tarefa_id);
+  return coalesce(new, old);
+end;
+$$;
+
+drop trigger if exists trg_tocar_tarefa_responsaveis on tarefa_responsaveis;
+create trigger trg_tocar_tarefa_responsaveis
+  after insert or update or delete on tarefa_responsaveis
+  for each row execute function public.tocar_tarefa_responsaveis();
+
 -- Tarefa de frente: ao criar (ou quando o escopo passa a ser "frente"),
 -- atribui todo mundo que está na frente, de uma vez. Não é retroativo: quem
 -- entra na frente depois não ganha as tarefas antigas dela — só valeria
