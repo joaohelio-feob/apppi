@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
-import { responsaveisDe, type Anexo, type Tarefa } from "@/lib/types";
+import { responsaveisDe, type Tarefa } from "@/lib/types";
+import GerenciadorAnexos from "@/components/GerenciadorAnexos";
 
 export default function Entregas() {
   const [tarefas, setTarefas] = useState<Tarefa[]>([]);
@@ -111,61 +112,7 @@ function PainelEntrega({
   aoFechar: () => void;
   aoAtualizar: (id: number, campos: Partial<Tarefa>) => void;
 }) {
-  const [anexos, setAnexos] = useState<Anexo[]>([]);
-  const [carregandoAnexos, setCarregandoAnexos] = useState(true);
-  const [enviando, setEnviando] = useState(false);
-  const [erro, setErro] = useState<string | null>(null);
-
   const supabase = criarClienteNavegador();
-
-  async function carregarAnexos() {
-    const { data } = await supabase
-      .from("anexos")
-      .select("*, membros:autor_id(id, nome, papel)")
-      .eq("tarefa_id", tarefa.id)
-      .order("criado_em", { ascending: false });
-    setAnexos((data ?? []) as Anexo[]);
-    setCarregandoAnexos(false);
-  }
-
-  useEffect(() => { carregarAnexos(); }, [tarefa.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  async function abrirAnexo(caminho: string) {
-    const { data } = await supabase.storage.from("entregas").createSignedUrl(caminho, 3600);
-    if (data?.signedUrl) window.open(data.signedUrl, "_blank");
-  }
-
-  async function apagarAnexo(anexo: Anexo) {
-    if (!confirm(`Remover o anexo "${anexo.nome}"?`)) return;
-    await supabase.storage.from("entregas").remove([anexo.caminho]);
-    await supabase.from("anexos").delete().eq("id", anexo.id);
-    setAnexos((atual) => atual.filter((a) => a.id !== anexo.id));
-  }
-
-  async function anexar(arquivo: File) {
-    setErro(null);
-    setEnviando(true);
-    const { data: sessao } = await supabase.auth.getUser();
-    const caminho = `${tarefa.id}/${Date.now()}-${arquivo.name}`;
-
-    const { error: erroUpload } = await supabase.storage.from("entregas").upload(caminho, arquivo);
-    if (erroUpload) {
-      setErro(erroUpload.message);
-      setEnviando(false);
-      return;
-    }
-
-    const { error: erroLinha } = await supabase.from("anexos").insert({
-      tarefa_id: tarefa.id,
-      autor_id: sessao.user?.id ?? null,
-      nome: arquivo.name,
-      caminho,
-    });
-    if (erroLinha) setErro(erroLinha.message);
-
-    setEnviando(false);
-    carregarAnexos();
-  }
 
   async function salvarObservacoes(valor: string) {
     aoAtualizar(tarefa.id, { observacoes: valor });
@@ -215,52 +162,7 @@ function PainelEntrega({
         </div>
 
         <div className="mt-5">
-          <div className="flex items-center justify-between">
-            <label className="font-mono text-xs uppercase text-tinta/70">Anexos</label>
-            <label className="cursor-pointer font-mono text-xs text-musgo underline underline-offset-4">
-              {enviando ? "enviando…" : "+ anexar arquivo"}
-              <input
-                type="file"
-                className="hidden"
-                disabled={enviando}
-                onChange={(e) => {
-                  const arquivo = e.target.files?.[0];
-                  if (arquivo) anexar(arquivo);
-                  e.target.value = "";
-                }}
-              />
-            </label>
-          </div>
-
-          {erro && <p className="mt-1 font-mono text-xs text-trigo">{erro}</p>}
-
-          <div className="mt-2 space-y-1.5">
-            {carregandoAnexos ? (
-              <p className="font-mono text-xs text-tinta/70">carregando…</p>
-            ) : anexos.length === 0 ? (
-              <p className="text-xs text-tinta/70">Nenhum documento anexado ainda.</p>
-            ) : (
-              anexos.map((a) => (
-                <div key={a.id} className="flex items-center justify-between gap-2 border border-linha bg-casca px-3 py-1.5">
-                  <button
-                    onClick={() => abrirAnexo(a.caminho)}
-                    className="truncate text-left text-sm underline underline-offset-4"
-                  >
-                    {a.nome}
-                  </button>
-                  <span className="shrink-0 font-mono text-xs text-tinta/70">
-                    {a.membros?.nome ?? "—"}
-                  </span>
-                  <button
-                    onClick={() => apagarAnexo(a)}
-                    className="shrink-0 font-mono text-xs text-tinta/70 hover:text-trigo"
-                  >
-                    remover
-                  </button>
-                </div>
-              ))
-            )}
-          </div>
+          <GerenciadorAnexos tarefaId={tarefa.id} />
         </div>
       </div>
     </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import CartaoTarefa from "@/components/CartaoTarefa";
 import { responsaveisDe, type Tarefa } from "@/lib/types";
 
@@ -18,6 +19,7 @@ export default function PainelSemana({
   meuId: string | null;
 }) {
   const [somenteMinhas, setSomenteMinhas] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     setSomenteMinhas(localStorage.getItem(CHAVE_MINHAS) === "1");
@@ -49,15 +51,25 @@ export default function PainelSemana({
       </div>
 
       <div className="mt-4 space-y-10">
-        <Secao titulo="Passou do prazo" itens={filtrar(atrasadas)} vazio="Nada atrasado. Bom sinal." />
-        <Secao titulo="Próximos 7 dias" itens={filtrar(daSemana)} vazio="A semana está livre — hora de puxar algo da fila." />
-        <Secao titulo="Mais adiante" itens={filtrar(depois)} vazio="Sem tarefas na fila." />
+        <Secao titulo="Passou do prazo" itens={filtrar(atrasadas)} vazio="Nada atrasado. Bom sinal." aoAtualizar={() => router.refresh()} />
+        <Secao titulo="Próximos 7 dias" itens={filtrar(daSemana)} vazio="A semana está livre — hora de puxar algo da fila." aoAtualizar={() => router.refresh()} />
+        <Secao titulo="Mais adiante" itens={filtrar(depois)} vazio="Sem tarefas na fila." aoAtualizar={() => router.refresh()} />
       </div>
     </div>
   );
 }
 
-function Secao({ titulo, itens, vazio }: { titulo: string; itens: Tarefa[]; vazio: string }) {
+function Secao({
+  titulo,
+  itens,
+  vazio,
+  aoAtualizar,
+}: {
+  titulo: string;
+  itens: Tarefa[];
+  vazio: string;
+  aoAtualizar: () => void;
+}) {
   return (
     <section>
       <h2 className="mb-3 flex items-baseline gap-2 border-b border-linha pb-1 font-display text-lg font-semibold">
@@ -68,7 +80,7 @@ function Secao({ titulo, itens, vazio }: { titulo: string; itens: Tarefa[]; vazi
         <p className="text-sm text-tinta/70">{vazio}</p>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {itens.map((t) => <CartaoTarefa key={t.id} tarefa={t} />)}
+          {itens.map((t) => <CartaoTarefa key={t.id} tarefa={t} aoAtualizar={aoAtualizar} />)}
         </div>
       )}
     </section>

@@ -1,11 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
 import { UNIDADES_FRENTE, CORES_FRENTE, responsaveisDe, type CorFrente, type Frente, type Membro, type Tarefa, type Unidade } from "@/lib/types";
 import CartaoTarefa from "@/components/CartaoTarefa";
+
+const CAMPOS_TAREFA =
+  "id, titulo, descricao, escopo, frente_id, status, prioridade, prazo, inicio, local_entrega, subiu_git, issue_numero, observacoes";
 
 export default function PainelFrente() {
   const { id } = useParams<{ id: string }>();
@@ -17,48 +20,49 @@ export default function PainelFrente() {
   const [editando, setEditando] = useState(false);
   const [salvando, setSalvando] = useState(false);
 
-  useEffect(() => {
+  const carregar = useCallback(async () => {
     const supabase = criarClienteNavegador();
     const frenteId = Number(id);
 
-    async function carregar() {
-      const [{ data: f }, { data: tf }] = await Promise.all([
-        // Membros vêm embutidos (FK reversa) em vez de uma consulta à parte.
-        supabase
-          .from("frentes")
-          .select("id, nome, unidade, cor, ordem, criado_em, membros(id, nome, papel, frente_id)")
-          .eq("id", frenteId)
-          .order("nome", { foreignTable: "membros" })
-          .single(),
-        supabase
-          .from("tarefas")
-          .select("id, titulo, descricao, escopo, status, prioridade, prazo, local_entrega, subiu_git, issue_numero, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel)), frentes(id, nome, cor, unidade)")
-          .eq("escopo", "frente")
-          .eq("frente_id", frenteId)
-          .eq("arquivada", false)
-          .order("prazo", { ascending: true, nullsFirst: false }),
-      ]);
+    const [{ data: f }, { data: tf }] = await Promise.all([
+      // Membros vêm embutidos (FK reversa) em vez de uma consulta à parte.
+      supabase
+        .from("frentes")
+        .select("id, nome, unidade, cor, ordem, criado_em, membros(id, nome, papel, frente_id)")
+        .eq("id", frenteId)
+        .order("nome", { foreignTable: "membros" })
+        .single(),
+      supabase
+        .from("tarefas")
+        .select(`${CAMPOS_TAREFA}, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel)), frentes(id, nome, cor, unidade)`)
+        .eq("escopo", "frente")
+        .eq("frente_id", frenteId)
+        .eq("arquivada", false)
+        .order("prazo", { ascending: true, nullsFirst: false }),
+    ]);
 
-      setFrente((f ?? null) as Frente | null);
-      const integrantesDaFrente = ((f as { membros?: Membro[] } | null)?.membros ?? []) as Membro[];
-      setIntegrantes(integrantesDaFrente);
-      setTarefasFrente((tf ?? []) as unknown as Tarefa[]);
+    setFrente((f ?? null) as Frente | null);
+    const integrantesDaFrente = ((f as { membros?: Membro[] } | null)?.membros ?? []) as Membro[];
+    setIntegrantes(integrantesDaFrente);
+    setTarefasFrente((tf ?? []) as unknown as Tarefa[]);
 
-      if (integrantesDaFrente.length > 0) {
-        const { data: ti } = await supabase
-          .from("tarefas")
-          .select("id, titulo, descricao, escopo, status, prioridade, prazo, local_entrega, subiu_git, issue_numero, responsaveis:tarefa_responsaveis!inner(membro:membros(id, nome, papel)), frentes(id, nome, cor, unidade)")
-          .eq("escopo", "individual")
-          .eq("arquivada", false)
-          .in("tarefa_responsaveis.membro_id", integrantesDaFrente.map((m) => m.id))
-          .order("prazo", { ascending: true, nullsFirst: false });
-        setTarefasIndividuais((ti ?? []) as unknown as Tarefa[]);
-      }
-
-      setCarregando(false);
+    if (integrantesDaFrente.length > 0) {
+      const { data: ti } = await supabase
+        .from("tarefas")
+        .select(`${CAMPOS_TAREFA}, responsaveis:tarefa_responsaveis!inner(membro:membros(id, nome, papel)), frentes(id, nome, cor, unidade)`)
+        .eq("escopo", "individual")
+        .eq("arquivada", false)
+        .in("tarefa_responsaveis.membro_id", integrantesDaFrente.map((m) => m.id))
+        .order("prazo", { ascending: true, nullsFirst: false });
+      setTarefasIndividuais((ti ?? []) as unknown as Tarefa[]);
+    } else {
+      setTarefasIndividuais([]);
     }
-    carregar();
+
+    setCarregando(false);
   }, [id]);
+
+  useEffect(() => { carregar(); }, [carregar]);
 
   const porPessoa = useMemo(() => {
     const mapa = new Map<string, { nome: string; itens: Tarefa[] }>();
@@ -174,7 +178,7 @@ export default function PainelFrente() {
           <p className="text-sm text-tinta/70">Nenhuma tarefa de frente ainda.</p>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {tarefasFrente.map((t) => <CartaoTarefa key={t.id} tarefa={t} />)}
+            {tarefasFrente.map((t) => <CartaoTarefa key={t.id} tarefa={t} aoAtualizar={carregar} />)}
           </div>
         )}
       </section>
@@ -195,7 +199,7 @@ export default function PainelFrente() {
               <div key={p.nome}>
                 <h3 className="mb-2 font-mono text-xs uppercase tracking-widest text-tinta/70">{p.nome}</h3>
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {p.itens.map((t) => <CartaoTarefa key={t.id} tarefa={t} />)}
+                  {p.itens.map((t) => <CartaoTarefa key={t.id} tarefa={t} aoAtualizar={carregar} />)}
                 </div>
               </div>
             ))}

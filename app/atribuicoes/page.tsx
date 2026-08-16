@@ -1,37 +1,49 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
 import { PRIORIDADES, STATUS, responsaveisDe, type Frente, type Membro, type Tarefa } from "@/lib/types";
+import FormularioTarefa from "@/components/FormularioTarefa";
 import SeloIssue from "@/components/SeloIssue";
 
+type TarefaComAnexos = Tarefa & { anexos?: { count: number }[] };
+
 export default function Atribuicoes() {
-  const [tarefas, setTarefas] = useState<Tarefa[]>([]);
+  const [tarefas, setTarefas] = useState<TarefaComAnexos[]>([]);
   const [membros, setMembros] = useState<Membro[]>([]);
   const [frentes, setFrentes] = useState<Frente[]>([]);
   const [carregando, setCarregando] = useState(true);
-  const [criando, setCriando] = useState(false);
-  const [novoTitulo, setNovoTitulo] = useState("");
+  const [criandoTarefa, setCriandoTarefa] = useState(false);
 
   const supabase = criarClienteNavegador();
 
-  async function carregar() {
+  const carregar = useCallback(async () => {
     const [{ data: t }, { data: m }, { data: f }] = await Promise.all([
       supabase
         .from("tarefas")
-        .select("id, titulo, escopo, frente_id, status, prioridade, prazo, local_entrega, issue_numero, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel)), frentes(id, nome)")
+        .select("id, titulo, descricao, escopo, frente_id, status, prioridade, prazo, local_entrega, issue_numero, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel)), frentes(id, nome), anexos(count)")
         .eq("arquivada", false)
         .order("prazo", { ascending: true, nullsFirst: false }),
-      supabase.from("membros").select("id, nome, papel").order("nome"),
+      supabase.from("membros").select("id, nome, papel, frente_id").order("nome"),
       supabase.from("frentes").select("id, nome").order("nome"),
     ]);
-    setTarefas((t ?? []) as unknown as Tarefa[]);
+    setTarefas((t ?? []) as unknown as TarefaComAnexos[]);
     setMembros((m ?? []) as Membro[]);
     setFrentes((f ?? []) as Frente[]);
     setCarregando(false);
-  }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { carregar(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { carregar(); }, [carregar]);
+
+  // Atualização ao vivo: se um colega mexer numa tarefa (aqui, no Quadro ou
+  // no painel de detalhe), esta tabela acompanha sem precisar recarregar.
+  useEffect(() => {
+    const canal = supabase
+      .channel("atribuicoes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "tarefas" }, carregar)
+      .subscribe();
+    return () => { supabase.removeChannel(canal); };
+  }, [carregar]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function atualizarLocal(id: number, campos: Partial<Tarefa>) {
     setTarefas((atual) => atual.map((t) => (t.id === id ? { ...t, ...campos } : t)));
@@ -63,20 +75,6 @@ export default function Atribuicoes() {
     await supabase.from("tarefas").update({ arquivada: true }).eq("id", id);
   }
 
-  async function adicionar() {
-    if (!novoTitulo.trim()) return;
-    setCriando(true);
-    const { data: sessao } = await supabase.auth.getUser();
-    const { data } = await supabase
-      .from("tarefas")
-      .insert({ titulo: novoTitulo, criador_id: sessao.user?.id ?? null })
-      .select("id, titulo, escopo, frente_id, status, prazo, local_entrega, issue_numero, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel)), frentes(id, nome)")
-      .single();
-    if (data) setTarefas((atual) => [data as unknown as Tarefa, ...atual]);
-    setNovoTitulo("");
-    setCriando(false);
-  }
-
   return (
     <div>
       <p className="font-mono text-xs uppercase tracking-widest text-musgo">Atribuições</p>
@@ -87,22 +85,24 @@ export default function Atribuicoes() {
         Tabela para planejar rápido. Editar aqui é a mesma tarefa do Quadro — muda ali também.
       </p>
 
-      <div className="mt-6 flex flex-wrap gap-2">
-        <input
-          className="min-w-[240px] flex-1 border border-linha bg-casca px-3 py-2 text-sm"
-          placeholder="Título da nova tarefa"
-          value={novoTitulo}
-          onChange={(e) => setNovoTitulo(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && adicionar()}
-        />
+      <div className="mt-6">
         <button
-          onClick={adicionar}
-          disabled={criando || !novoTitulo.trim()}
-          className="bg-tinta px-4 py-2 text-sm font-semibold text-campo hover:bg-musgo disabled:opacity-50"
+          onClick={() => setCriandoTarefa(true)}
+          className="bg-tinta px-4 py-2 text-sm font-semibold text-campo hover:bg-musgo"
         >
-          {criando ? "Criando…" : "Nova atribuição"}
+          Nova atribuição
         </button>
       </div>
+
+      {criandoTarefa && (
+        <FormularioTarefa
+          membros={membros}
+          frentes={frentes}
+          autoFoco
+          aoFechar={() => setCriandoTarefa(false)}
+          aoSalvar={carregar}
+        />
+      )}
 
       {carregando ? (
         <p className="mt-10 font-mono text-sm text-tinta/70">carregando…</p>
@@ -136,6 +136,16 @@ export default function Atribuicoes() {
                       }}
                       className="w-full min-w-[180px] border border-transparent bg-transparent px-1 py-1 hover:border-linha focus:border-linha focus:outline-none"
                     />
+                    {(t.descricao || (t.anexos?.[0]?.count ?? 0) > 0) && (
+                      <div className="mt-0.5 flex items-center gap-2 px-1 text-xs text-tinta/70">
+                        {t.descricao && <span className="line-clamp-1">{t.descricao}</span>}
+                        {(t.anexos?.[0]?.count ?? 0) > 0 && (
+                          <span className="shrink-0 font-mono">
+                            {t.anexos![0].count} anexo{t.anexos![0].count > 1 ? "s" : ""}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </td>
                   <td className="px-3 py-2">
                     {t.escopo === "frente" ? (

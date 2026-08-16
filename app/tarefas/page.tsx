@@ -56,7 +56,7 @@ export default function Quadro() {
     const [t, m, f, sessao] = await Promise.all([
       supabase
         .from("tarefas")
-        .select("id, titulo, descricao, escopo, frente_id, status, prioridade, prazo, local_entrega, subiu_git, issue_numero, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel)), frentes(id, nome, cor, unidade)")
+        .select("id, titulo, descricao, escopo, frente_id, status, prioridade, prazo, inicio, local_entrega, subiu_git, issue_numero, observacoes, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel)), frentes(id, nome, cor, unidade)")
         .eq("arquivada", false)
         .order("prazo", { ascending: true, nullsFirst: false }),
       supabase.from("membros").select("id, nome, papel, frente_id").order("nome"),
@@ -229,6 +229,7 @@ export default function Quadro() {
                 tarefas={g.itens}
                 aoMudarStatus={mudarStatus}
                 aoArquivar={arquivar}
+                aoAtualizar={carregar}
               />
             </section>
           ))}
@@ -242,10 +243,12 @@ function MiniQuadro({
   tarefas,
   aoMudarStatus,
   aoArquivar,
+  aoAtualizar,
 }: {
   tarefas: Tarefa[];
   aoMudarStatus: (id: number, status: Status) => void;
   aoArquivar: (id: number) => void;
+  aoAtualizar: () => void;
 }) {
   return (
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -267,7 +270,7 @@ function MiniQuadro({
             </h3>
             <div className="space-y-3">
               {daColuna.map((t) => (
-                <CartaoTarefa key={t.id} tarefa={t} aoMudarStatus={aoMudarStatus} aoArquivar={aoArquivar} arrastavel />
+                <CartaoTarefa key={t.id} tarefa={t} aoMudarStatus={aoMudarStatus} aoArquivar={aoArquivar} aoAtualizar={aoAtualizar} arrastavel />
               ))}
               {daColuna.length === 0 && <p className="text-xs text-tinta/70">Coluna vazia.</p>}
             </div>

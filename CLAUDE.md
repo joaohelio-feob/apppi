@@ -84,6 +84,13 @@ npm run build    # verifica se compila antes de abrir PR
   `supabase/schema.sql`
 - Interface do quadro (duas visões: Individuais/Da frente) → `app/tarefas/page.tsx`
 - Formulário de nova tarefa (pergunta o escopo primeiro) → `components/FormularioTarefa.tsx`
+- Painel de detalhe/edição de uma tarefa (abre ao clicar num `CartaoTarefa`,
+  em qualquer página) → `components/DetalheTarefa.tsx`. Reúne os campos que
+  antes só davam pra editar espalhados entre `/atribuicoes` e `/entregas` —
+  inclusive `inicio`, que não tinha UI nenhuma antes. Anexos (lista/upload/
+  remoção) ficam em `components/GerenciadorAnexos.tsx`, reaproveitado por
+  `DetalheTarefa` e por `/entregas`.
+- Tabela de atribuições (edição campo a campo, tempo real) → `app/atribuicoes/page.tsx`
 - Grade do calendário → `app/calendario/page.tsx`
 - Painel de uma frente (tarefas conjuntas + individuais dos integrantes) → `app/frentes/[id]/page.tsx`
 - Painel de um integrante (individual x frente, separado) → `app/equipe/[id]/page.tsx`

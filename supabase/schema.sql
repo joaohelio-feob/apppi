@@ -293,6 +293,17 @@ begin
   end if;
 
   if (tg_op = 'UPDATE') then
+    -- Precisa vir antes do bloco de status: quem edita a data de início na
+    -- mão manda um valor diferente aqui; quem só muda o status pra
+    -- "fazendo" não manda nada, e é o bloco de status logo abaixo que
+    -- preenche sozinho (se ainda estiver vazio). Checar aqui em cima evita
+    -- registrar duas entradas ("mudou_status" e "editou inicio") pra uma
+    -- única ação de quem só arrastou o card pra "Fazendo".
+    if new.inicio is distinct from old.inicio then
+      insert into historico (tarefa_id, autor_id, acao, campo, valor_antigo, valor_novo)
+      values (new.id, auth.uid(), 'editou', 'inicio', old.inicio::text, new.inicio::text);
+    end if;
+
     if new.status is distinct from old.status then
       insert into historico (tarefa_id, autor_id, acao, campo, valor_antigo, valor_novo)
       values (new.id, auth.uid(), 'mudou_status', 'status', old.status, new.status);

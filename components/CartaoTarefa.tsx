@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { dataLocalISO, diasEntre } from "@/lib/datas";
 import { CLASSES_COR_FRENTE, STATUS, UNIDADES_FRENTE, responsaveisDe, type Tarefa, type Status } from "@/lib/types";
+import DetalheTarefa from "./DetalheTarefa";
 import Selo from "./Selo";
 import SeloIssue from "./SeloIssue";
 
@@ -21,16 +22,19 @@ export default function CartaoTarefa({
   tarefa,
   aoMudarStatus,
   aoArquivar,
+  aoAtualizar,
   arrastavel,
 }: {
   tarefa: Tarefa;
   aoMudarStatus?: (id: number, status: Status) => void;
   aoArquivar?: (id: number) => void;
+  aoAtualizar?: () => void;
   arrastavel?: boolean;
 }) {
   const dias = diasAte(tarefa.prazo);
   const atrasada = dias !== null && dias < 0 && tarefa.status !== "concluida";
   const [arrastando, setArrastando] = useState(false);
+  const [detalheAberto, setDetalheAberto] = useState(false);
   const responsaveis = responsaveisDe(tarefa);
 
   return (
@@ -45,56 +49,79 @@ export default function CartaoTarefa({
         arrastando ? "opacity-40" : ""
       } ${arrastavel ? "cursor-grab active:cursor-grabbing" : ""}`}
     >
-      <div className="flex items-start justify-between gap-2">
-        <h3 className="font-display text-sm font-semibold leading-snug">{tarefa.titulo}</h3>
-        <div className="flex shrink-0 items-center gap-1">
-          {tarefa.escopo === "frente" && (
-            <span
-              className={`border px-1.5 py-0.5 font-mono text-xs uppercase tracking-wide ${
-                CLASSES_COR_FRENTE[tarefa.frentes?.cor ?? "ferro"]
-              }`}
-            >
-              {tarefa.frentes?.nome ?? "frente"}
-            </span>
-          )}
-          {tarefa.prioridade === "alta" && (
-            <span className="bg-trigo px-1.5 py-0.5 font-mono text-xs uppercase tracking-wide text-tinta">
-              alta
-            </span>
-          )}
-          <Selo status={tarefa.status} />
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => setDetalheAberto(true)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setDetalheAberto(true);
+          }
+        }}
+        className="cursor-pointer"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <h3 className="font-display text-sm font-semibold leading-snug">{tarefa.titulo}</h3>
+          <div className="flex shrink-0 items-center gap-1">
+            {tarefa.escopo === "frente" && (
+              <span
+                className={`border px-1.5 py-0.5 font-mono text-xs uppercase tracking-wide ${
+                  CLASSES_COR_FRENTE[tarefa.frentes?.cor ?? "ferro"]
+                }`}
+              >
+                {tarefa.frentes?.nome ?? "frente"}
+              </span>
+            )}
+            {tarefa.prioridade === "alta" && (
+              <span className="bg-trigo px-1.5 py-0.5 font-mono text-xs uppercase tracking-wide text-tinta">
+                alta
+              </span>
+            )}
+            <Selo status={tarefa.status} />
+          </div>
         </div>
-      </div>
 
-      {tarefa.descricao && (
-        <p className="mt-1.5 line-clamp-2 text-xs text-tinta/70">{tarefa.descricao}</p>
-      )}
+        {tarefa.descricao && (
+          <p className="mt-1.5 line-clamp-2 text-xs text-tinta/70">{tarefa.descricao}</p>
+        )}
 
-      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-xs text-tinta/70">
-        <span>{nomesResponsaveis(responsaveis.map((m) => m.nome))}</span>
-        {tarefa.frentes?.unidade && (
-          <span className="border border-linha px-1 py-0.5 uppercase">
-            {UNIDADES_FRENTE.find((u) => u.id === tarefa.frentes!.unidade)?.nome ?? tarefa.frentes.unidade}
+        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-xs text-tinta/70">
+          <span>{nomesResponsaveis(responsaveis.map((m) => m.nome))}</span>
+          {tarefa.frentes?.unidade && (
+            <span className="border border-linha px-1 py-0.5 uppercase">
+              {UNIDADES_FRENTE.find((u) => u.id === tarefa.frentes!.unidade)?.nome ?? tarefa.frentes.unidade}
+            </span>
+          )}
+          {tarefa.prazo && (
+            <span className={atrasada ? "font-semibold text-trigo" : ""}>
+              {atrasada
+                ? `${Math.abs(dias!)}d atrasada`
+                : dias === 0
+                ? "entrega hoje"
+                : `faltam ${dias}d`}
+            </span>
+          )}
+          {tarefa.local_entrega && (
+            <a
+              href={tarefa.local_entrega}
+              target="_blank"
+              rel="noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="underline"
+            >
+              entrega
+            </a>
+          )}
+          <span className={tarefa.subiu_git ? "text-musgo" : "text-tinta/70"}>
+            {tarefa.subiu_git ? "● git" : "○ git"}
           </span>
-        )}
-        {tarefa.prazo && (
-          <span className={atrasada ? "font-semibold text-trigo" : ""}>
-            {atrasada
-              ? `${Math.abs(dias!)}d atrasada`
-              : dias === 0
-              ? "entrega hoje"
-              : `faltam ${dias}d`}
-          </span>
-        )}
-        {tarefa.local_entrega && (
-          <a href={tarefa.local_entrega} target="_blank" rel="noreferrer" className="underline">
-            entrega
-          </a>
-        )}
-        <span className={tarefa.subiu_git ? "text-musgo" : "text-tinta/70"}>
-          {tarefa.subiu_git ? "● git" : "○ git"}
-        </span>
-        {tarefa.issue_numero && <SeloIssue numero={tarefa.issue_numero} />}
+          {tarefa.issue_numero && (
+            <span onClick={(e) => e.stopPropagation()}>
+              <SeloIssue numero={tarefa.issue_numero} />
+            </span>
+          )}
+        </div>
       </div>
 
       {(aoMudarStatus || aoArquivar) && (
@@ -119,6 +146,14 @@ export default function CartaoTarefa({
             </button>
           )}
         </div>
+      )}
+
+      {detalheAberto && (
+        <DetalheTarefa
+          tarefa={tarefa}
+          aoFechar={() => setDetalheAberto(false)}
+          aoAtualizar={aoAtualizar}
+        />
       )}
     </article>
   );

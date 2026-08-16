@@ -65,7 +65,9 @@ própria, então dá para testar antes de mergear.
 app/
   page.tsx             painel da semana (atrasadas / 7 dias / fila)
   tarefas/              quadro kanban — visões "Individuais" e "Da frente"
-  atribuicoes/          tabela editável de tarefa, responsável, dia, frente...
+  atribuicoes/          tabela editável de tarefa, responsável, dia, frente,
+                        prioridade e status, em tempo real — "Nova atribuição"
+                        abre o mesmo formulário completo do Quadro
   calendario/           grade mensal por prazo, com filtro por responsável
   equipe/                 lista de integrantes (papel, frente)
   equipe/[id]/             painel de um integrante — individual x frente, separado
@@ -78,7 +80,9 @@ app/
   sprint/                  Sprint Report por intervalo de datas
   login/                   entrada e cadastro
   api/github/              Route Handlers que falam com a API do GitHub (servidor)
-components/              cartão, formulário de tarefa, navegação, exportadores...
+components/              cartão (abre o painel de detalhe ao clicar), formulário
+                        de tarefa, painel de detalhe/edição, gerenciador de
+                        anexos, navegação, exportadores...
 lib/                     clientes Supabase, tipos, datas, acesso ao GitHub
 supabase/schema.sql      tabelas, triggers, RLS, view do relatório e migrações
 ```
