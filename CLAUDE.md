@@ -52,16 +52,13 @@ de frentes/integrantes e trilha de atividades para a entrega final.
   — o Tailwind só gera CSS pra classe que aparece literal no código-fonte, então
   nunca monte `border-${cor}` nem derive uma classe de outra com `.replace()`
   em tempo de execução; sempre passe pelo mapa.
-- **Critérios de aceite moram em `tarefas.descricao`, na convenção markdown
-  `- [ ]` / `- [x]` — é opt-in, não schema.** A descrição continua texto
-  livre: linha que começa com `- [ ] ` (ou `*`/`+`) vira item marcável no
-  `DetalheTarefa` e alimenta o progresso no `CartaoTarefa`; sem nenhuma
-  checkbox, a descrição é só texto e nem checklist nem barra aparecem. O
-  parser é `lib/criterios.ts` e é round-trip: marcar um item troca um
-  caractere e devolve o resto do texto byte a byte igual — nunca reescreva
-  nem normalize o markdown de quem escreveu. **Não crie coluna nem tabela
-  pra isso**, e não repita a regex em componente: leia por
-  `lerCriterios` / `progressoCriterios` / `alternarCriterio`.
+- **Critérios de aceite são convenção opcional em `tarefas.descricao`, não
+  schema.** Linha `- [ ]` / `- [x]` vira item marcável no `DetalheTarefa` e
+  progresso no `CartaoTarefa`; descrição sem checkbox nenhuma continua texto
+  puro, sem checklist nem barra. Marcar um item preserva o resto do markdown
+  byte a byte — leia sempre por `lib/criterios.ts` (`lerCriterios`,
+  `progressoCriterios`, `alternarCriterio`), nunca repetindo a regex nem
+  criando coluna pra isso.
 - **Uma escrita por sessão de edição, nunca uma por clique.** Todo `UPDATE`
   em `tarefas` grava linha em `historico`, que é append-only e é a evidência
   avaliada no PI. Por isso a checklist de critérios guarda estado local e
