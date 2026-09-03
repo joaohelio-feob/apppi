@@ -52,6 +52,24 @@ de frentes/integrantes e trilha de atividades para a entrega final.
   — o Tailwind só gera CSS pra classe que aparece literal no código-fonte, então
   nunca monte `border-${cor}` nem derive uma classe de outra com `.replace()`
   em tempo de execução; sempre passe pelo mapa.
+- **Critérios de aceite moram em `tarefas.descricao`, na convenção markdown
+  `- [ ]` / `- [x]` — é opt-in, não schema.** A descrição continua texto
+  livre: linha que começa com `- [ ] ` (ou `*`/`+`) vira item marcável no
+  `DetalheTarefa` e alimenta o progresso no `CartaoTarefa`; sem nenhuma
+  checkbox, a descrição é só texto e nem checklist nem barra aparecem. O
+  parser é `lib/criterios.ts` e é round-trip: marcar um item troca um
+  caractere e devolve o resto do texto byte a byte igual — nunca reescreva
+  nem normalize o markdown de quem escreveu. **Não crie coluna nem tabela
+  pra isso**, e não repita a regex em componente: leia por
+  `lerCriterios` / `progressoCriterios` / `alternarCriterio`.
+- **Uma escrita por sessão de edição, nunca uma por clique.** Todo `UPDATE`
+  em `tarefas` grava linha em `historico`, que é append-only e é a evidência
+  avaliada no PI. Por isso a checklist de critérios guarda estado local e
+  persiste num "Salvar" explícito: 12 cliques de checkbox são 1 linha de
+  trilha, não 12. Vale pra qualquer edição inline nova. (Detalhe do schema a
+  ter em mente: mudar só a `descricao` grava uma linha `editou/titulo` com
+  `valor_antigo` igual ao `valor_novo` — mais um motivo pra não multiplicar
+  escritas.)
 - Tipografia: `font-display` para títulos, `font-corpo` para texto, `font-mono`
   para datas, contadores e rótulos técnicos.
 - Contraste: texto secundário nunca abaixo de `text-tinta/70` — é o piso que

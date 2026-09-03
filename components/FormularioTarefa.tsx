@@ -140,10 +140,14 @@ export default function FormularioTarefa({
           <textarea
             className="w-full border border-linha bg-casca px-3 py-2 text-sm"
             rows={3}
-            placeholder="Detalhes, critérios de aceite…"
+            placeholder={"Detalhes da tarefa.\nUma linha começando com \"- [ ] \" vira critério de aceite, marcável no detalhe:\n- [ ] Diagrama de classes revisado"}
             value={descricao}
             onChange={(e) => setDescricao(e.target.value)}
           />
+          <p className="font-mono text-xs text-tinta/70">
+            Critérios de aceite: escreva <code>- [ ] o critério</code>, um por linha. Viram checklist
+            marcável no detalhe da tarefa e progresso no cartão do quadro.
+          </p>
 
           <div className="flex gap-1 border border-linha p-1">
             <button
