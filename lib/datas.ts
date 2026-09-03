@@ -26,3 +26,18 @@ function paraDiaUTC(iso: string): number {
 export function diasEntre(isoAlvo: string, isoBase: string): number {
   return Math.round((paraDiaUTC(isoAlvo) - paraDiaUTC(isoBase)) / 86_400_000);
 }
+
+/**
+ * "Está atrasada?" — fonte única do cálculo, porque ele depende do relógio e
+ * o quadro e o calendário não podem discordar. Passe sempre o mesmo `hoje`
+ * (dataLocalISO()) que a tela já usa pra marcar o dia corrente, senão duas
+ * partes da mesma página podem cair em lados diferentes da virada do dia.
+ * Tarefa concluída nunca está atrasada, mesmo com prazo vencido.
+ */
+export function estaAtrasada(
+  status: string,
+  prazo: string | null,
+  hoje: string = dataLocalISO()
+): boolean {
+  return status !== "concluida" && !!prazo && prazo < hoje;
+}
