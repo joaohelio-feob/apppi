@@ -17,6 +17,21 @@ export function dataLocalDeTimestamp(timestamp: string): string {
   return dataLocalISO(new Date(timestamp));
 }
 
+/**
+ * Timestamp do banco -> "03/09/2026". Sempre com o fuso do projeto fixado:
+ * `toLocaleDateString` puro usa o fuso do navegador, o que faz servidor e
+ * cliente discordarem e pode adiantar/atrasar a data em um dia inteiro
+ * perto da meia-noite.
+ */
+export function dataCurta(timestamp: string): string {
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: FUSO,
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(new Date(timestamp));
+}
+
 function paraDiaUTC(iso: string): number {
   const [ano, mes, dia] = iso.split("-").map(Number);
   return Date.UTC(ano, mes - 1, dia);
