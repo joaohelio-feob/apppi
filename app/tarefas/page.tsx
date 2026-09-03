@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
 import {
   PRIORIDADES, STATUS, responsaveisDe,
-  type Frente, type Membro, type Status, type Tarefa,
+  type Escopo, type Frente, type Membro, type Status, type Tarefa,
 } from "@/lib/types";
 import CartaoTarefa from "@/components/CartaoTarefa";
 import { useNovaTarefa } from "@/components/NovaTarefaProvider";
@@ -13,12 +13,21 @@ import { useToast } from "@/components/ToastProvider";
 const CHAVE_MINHAS = "pi-quadro-somente-minhas";
 const CHAVE_VISAO = "pi-quadro-visao";
 
-type Visao = "frente" | "individual";
+/** Quantos cartões uma coluna mostra antes do "ver mais". */
+const CAP_COLUNA = 8;
+
+/** Quanto tempo uma mudança otimista resiste a um refetch que a contradiga. */
+const VALIDADE_OTIMISTA = 10_000;
+
+type Visao = Escopo;
+
+const VISOES: Visao[] = ["individual", "frente"];
 
 export default function Quadro() {
   const [tarefas, setTarefas] = useState<Tarefa[]>([]);
   const [membros, setMembros] = useState<Membro[]>([]);
   const [frentes, setFrentes] = useState<Frente[]>([]);
+  const [pendentesGit, setPendentesGit] = useState<Set<number>>(new Set());
   const [meuId, setMeuId] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
 
@@ -28,6 +37,24 @@ export default function Quadro() {
   const [filtroPrioridade, setFiltroPrioridade] = useState("");
   const [filtroFrente, setFiltroFrente] = useState("");
   const [somenteMinhas, setSomenteMinhas] = useState(false);
+
+  /**
+   * Colunas expandidas ("ver mais"), por chave estável `grupo::status` — nunca
+   * por índice, porque o refetch do realtime reordena e remonta a lista. É o
+   * que impede a coluna de colapsar sozinha embaixo de quem está lendo.
+   */
+  const [expandidas, setExpandidas] = useState<Set<string>>(new Set());
+
+  /**
+   * Mudanças de status já aplicadas na tela e ainda não confirmadas pelo
+   * servidor. O realtime refaz a consulta inteira a cada evento — inclusive
+   * eventos de outras pessoas — e uma consulta que parta antes do nosso UPDATE
+   * commitar voltaria com o status antigo e desfaria o que o usuário acabou de
+   * fazer. Reaplicar por cima resolve sem piscar; a entrada morre quando o
+   * servidor concorda ou quando o prazo expira.
+   */
+  const otimistas = useRef(new Map<number, { status: Status; ate: number }>());
+  const timerRecarga = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { abrir } = useNovaTarefa();
   const { avisar } = useToast();
@@ -53,40 +80,80 @@ export default function Quadro() {
   }
 
   const carregar = useCallback(async () => {
-    const [t, m, f, sessao] = await Promise.all([
+    const [t, m, f, e, sessao] = await Promise.all([
       supabase
         .from("tarefas")
-        .select("id, titulo, descricao, escopo, frente_id, status, prioridade, prazo, inicio, local_entrega, subiu_git, issue_numero, observacoes, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel)), frentes(id, nome, cor, unidade)")
+        .select("id, titulo, descricao, escopo, frente_id, status, prioridade, prazo, inicio, local_entrega, subiu_git, issue_numero, observacoes, revisor_id, commit_confirmado_em, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel)), frentes(id, nome, cor, unidade)")
         .eq("arquivada", false)
         .order("prazo", { ascending: true, nullsFirst: false }),
       supabase.from("membros").select("id, nome, papel, frente_id").order("nome"),
-      supabase.from("frentes").select("id, nome").order("nome"),
+      supabase.from("frentes").select("id, nome, cor, unidade").order("nome"),
+      // "Pendente no git" é derivado e mora só na view — o cartão exibe o
+      // booleano, ninguém refaz a conta (ver CLAUDE.md).
+      supabase.from("tarefas_estado_entrega").select("tarefa_id, pendente_git"),
       supabase.auth.getUser(),
     ]);
-    setTarefas((t.data ?? []) as unknown as Tarefa[]);
+
+    const lista = (t.data ?? []) as unknown as Tarefa[];
+    const agora = Date.now();
+    setTarefas(
+      lista.map((tarefa) => {
+        const otimista = otimistas.current.get(tarefa.id);
+        if (!otimista) return tarefa;
+        if (tarefa.status === otimista.status || agora > otimista.ate) {
+          otimistas.current.delete(tarefa.id);
+          return tarefa;
+        }
+        return { ...tarefa, status: otimista.status };
+      })
+    );
     setMembros((m.data ?? []) as Membro[]);
-    setFrentes((f.data ?? []) as Frente[]);
+    setFrentes((f.data ?? []) as unknown as Frente[]);
+    setPendentesGit(
+      new Set((e.data ?? []).filter((x) => x.pendente_git).map((x) => x.tarefa_id as number))
+    );
     setMeuId(sessao.data.user?.id ?? null);
     setCarregando(false);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { carregar(); }, [carregar]);
 
-  // Atualização ao vivo: se um colega mexer, seu quadro acompanha.
+  // Atualização ao vivo: se um colega mexer, seu quadro acompanha. Uma ação só
+  // pode disparar vários eventos (entregar mexe em tarefas duas vezes por
+  // trigger), então os eventos são juntados numa recarga só.
   useEffect(() => {
+    function agendarRecarga() {
+      if (timerRecarga.current) clearTimeout(timerRecarga.current);
+      timerRecarga.current = setTimeout(() => {
+        timerRecarga.current = null;
+        carregar();
+      }, 250);
+    }
+
     const canal = supabase
       .channel("quadro")
-      .on("postgres_changes", { event: "*", schema: "public", table: "tarefas" }, carregar)
+      .on("postgres_changes", { event: "*", schema: "public", table: "tarefas" }, agendarRecarga)
       .subscribe();
-    return () => { supabase.removeChannel(canal); };
+
+    return () => {
+      if (timerRecarga.current) clearTimeout(timerRecarga.current);
+      supabase.removeChannel(canal);
+    };
   }, [carregar]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function mudarStatus(id: number, status: Status) {
     const anterior = tarefas.find((t) => t.id === id)?.status;
+    if (anterior === status) return;
+
+    otimistas.current.set(id, { status, ate: Date.now() + VALIDADE_OTIMISTA });
     setTarefas((atual) => atual.map((t) => (t.id === id ? { ...t, status } : t)));
+
     const { error } = await supabase.from("tarefas").update({ status }).eq("id", id);
-    if (error && anterior) {
-      setTarefas((atual) => atual.map((t) => (t.id === id ? { ...t, status: anterior } : t)));
+    if (error) {
+      otimistas.current.delete(id);
+      if (anterior) {
+        setTarefas((atual) => atual.map((t) => (t.id === id ? { ...t, status: anterior } : t)));
+      }
       avisar("Não deu pra mudar o status. Tenta de novo.");
     }
   }
@@ -95,6 +162,15 @@ export default function Quadro() {
     if (!confirm("Arquivar esta tarefa? Ela some do quadro, mas o histórico continua.")) return;
     setTarefas((atual) => atual.filter((t) => t.id !== id));
     await supabase.from("tarefas").update({ arquivada: true }).eq("id", id);
+  }
+
+  function alternarColuna(chave: string) {
+    setExpandidas((atual) => {
+      const nova = new Set(atual);
+      if (nova.has(chave)) nova.delete(chave);
+      else nova.add(chave);
+      return nova;
+    });
   }
 
   const visiveis = useMemo(() => {
@@ -128,6 +204,20 @@ export default function Quadro() {
     return Array.from(porPessoa.values()).sort((a, b) => a.titulo.localeCompare(b.titulo));
   }, [visao, visiveis, frentes]);
 
+  /** Setas circulam entre as abas, como manda o padrão de tablist. */
+  function teclasDaAba(e: React.KeyboardEvent<HTMLButtonElement>) {
+    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft" && e.key !== "Home" && e.key !== "End") return;
+    e.preventDefault();
+    const i = VISOES.indexOf(visao);
+    const proxima =
+      e.key === "Home" ? VISOES[0]
+      : e.key === "End" ? VISOES[VISOES.length - 1]
+      : e.key === "ArrowRight" ? VISOES[(i + 1) % VISOES.length]
+      : VISOES[(i - 1 + VISOES.length) % VISOES.length];
+    mudarVisao(proxima);
+    document.getElementById(`aba-${proxima}`)?.focus();
+  }
+
   return (
     <div>
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -139,29 +229,37 @@ export default function Quadro() {
         </div>
         <button
           onClick={abrir}
-          className="bg-tinta px-4 py-2 text-sm font-semibold text-campo hover:bg-musgo"
+          className="bg-tinta px-4 py-2 text-sm font-semibold text-campo transition duration-150 hover:bg-musgo"
         >
-          Nova tarefa <span className="font-mono text-xs opacity-60">(n)</span>
+          Nova tarefa <span className="font-mono text-xs opacity-70">(n)</span>
         </button>
       </div>
 
-      <div className="mt-6 flex gap-1 border border-linha p-1 sm:w-fit">
-        <button
-          onClick={() => mudarVisao("individual")}
-          className={`flex-1 px-4 py-1.5 font-mono text-xs uppercase sm:flex-none ${
-            visao === "individual" ? "bg-tinta text-campo" : "text-tinta/70 hover:bg-casca"
-          }`}
-        >
-          Individuais
-        </button>
-        <button
-          onClick={() => mudarVisao("frente")}
-          className={`flex-1 px-4 py-1.5 font-mono text-xs uppercase sm:flex-none ${
-            visao === "frente" ? "bg-tinta text-campo" : "text-tinta/70 hover:bg-casca"
-          }`}
-        >
-          Da frente
-        </button>
+      <div
+        role="tablist"
+        aria-label="Escopo das tarefas"
+        className="mt-6 flex gap-1 border border-linha bg-casca p-1 sm:w-fit"
+      >
+        {VISOES.map((v) => {
+          const ativa = visao === v;
+          return (
+            <button
+              key={v}
+              id={`aba-${v}`}
+              role="tab"
+              aria-selected={ativa}
+              aria-controls="painel-quadro"
+              tabIndex={ativa ? 0 : -1}
+              onClick={() => mudarVisao(v)}
+              onKeyDown={teclasDaAba}
+              className={`flex-1 px-4 py-1.5 font-mono text-xs uppercase transition duration-150 sm:flex-none ${
+                ativa ? "bg-campo font-semibold text-tinta shadow-sm" : "text-tinta/70 hover:bg-campo/60"
+              }`}
+            >
+              {v === "individual" ? "Individuais" : "Da frente"}
+            </button>
+          );
+        })}
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -169,11 +267,13 @@ export default function Quadro() {
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
           placeholder="Buscar por título…"
+          aria-label="Buscar tarefa por título"
           className="min-w-[200px] flex-1 border border-linha bg-casca px-3 py-2 text-sm"
         />
         <select
           value={filtroResponsavel}
           onChange={(e) => setFiltroResponsavel(e.target.value)}
+          aria-label="Filtrar por responsável"
           className="border border-linha bg-casca px-2 py-2 font-mono text-xs uppercase"
         >
           <option value="">Todo mundo</option>
@@ -184,6 +284,7 @@ export default function Quadro() {
         <select
           value={filtroPrioridade}
           onChange={(e) => setFiltroPrioridade(e.target.value)}
+          aria-label="Filtrar por prioridade"
           className="border border-linha bg-casca px-2 py-2 font-mono text-xs uppercase"
         >
           <option value="">Toda prioridade</option>
@@ -194,6 +295,7 @@ export default function Quadro() {
         <select
           value={filtroFrente}
           onChange={(e) => setFiltroFrente(e.target.value)}
+          aria-label="Filtrar por frente"
           className="border border-linha bg-casca px-2 py-2 font-mono text-xs uppercase"
         >
           <option value="">Toda frente</option>
@@ -203,7 +305,8 @@ export default function Quadro() {
         </select>
         <button
           onClick={alternarMinhas}
-          className={`border px-3 py-2 font-mono text-xs uppercase ${
+          aria-pressed={somenteMinhas}
+          className={`border px-3 py-2 font-mono text-xs uppercase transition duration-150 ${
             somenteMinhas ? "border-tinta bg-tinta text-campo" : "border-linha text-tinta/70 hover:bg-casca"
           }`}
         >
@@ -211,71 +314,112 @@ export default function Quadro() {
         </button>
       </div>
 
-      {carregando ? (
-        <p className="mt-10 font-mono text-sm text-tinta/70">carregando…</p>
-      ) : grupos.length === 0 ? (
-        <p className="mt-10 text-sm text-tinta/70">
-          {visao === "frente" ? "Nenhuma tarefa de frente por aqui." : "Nenhuma tarefa individual por aqui."}
-        </p>
-      ) : (
-        <div className="mt-8 space-y-10">
-          {grupos.map((g) => (
-            <section key={g.chave}>
-              <h2 className="mb-3 font-display text-lg font-semibold">
-                {g.titulo}
-                <span className="ml-2 font-mono text-xs font-normal text-tinta/70">{g.itens.length}</span>
-              </h2>
-              <MiniQuadro
-                tarefas={g.itens}
-                aoMudarStatus={mudarStatus}
-                aoArquivar={arquivar}
-                aoAtualizar={carregar}
-                membros={membros}
-                frentes={frentes}
-              />
-            </section>
-          ))}
-        </div>
-      )}
+      <div id="painel-quadro" role="tabpanel" aria-labelledby={`aba-${visao}`} tabIndex={-1}>
+        {carregando ? (
+          <p className="mt-10 font-mono text-sm text-tinta/70">carregando…</p>
+        ) : grupos.length === 0 ? (
+          <p className="mt-10 text-sm text-tinta/70">
+            {visao === "frente"
+              ? "Nenhuma tarefa de frente por aqui."
+              : "Nenhuma tarefa individual por aqui."}
+          </p>
+        ) : (
+          <div className="mt-8 space-y-10">
+            {grupos.map((g) => (
+              <section key={g.chave} aria-labelledby={`grupo-${g.chave}`}>
+                <h2 id={`grupo-${g.chave}`} className="mb-3 font-display text-lg font-semibold">
+                  {g.titulo}
+                  <span className="ml-2 font-mono text-xs font-normal text-tinta/70">
+                    {g.itens.length}
+                  </span>
+                </h2>
+                <MiniQuadro
+                  grupo={g.chave}
+                  nomeDoGrupo={g.titulo}
+                  tarefas={g.itens}
+                  expandidas={expandidas}
+                  aoAlternarColuna={alternarColuna}
+                  aoMudarStatus={mudarStatus}
+                  aoArquivar={arquivar}
+                  aoAtualizar={carregar}
+                  membros={membros}
+                  frentes={frentes}
+                  pendentesGit={pendentesGit}
+                />
+              </section>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
 function MiniQuadro({
+  grupo,
+  nomeDoGrupo,
   tarefas,
+  expandidas,
+  aoAlternarColuna,
   aoMudarStatus,
   aoArquivar,
   aoAtualizar,
   membros,
   frentes,
+  pendentesGit,
 }: {
+  grupo: string;
+  nomeDoGrupo: string;
   tarefas: Tarefa[];
+  expandidas: Set<string>;
+  aoAlternarColuna: (chave: string) => void;
   aoMudarStatus: (id: number, status: Status) => void;
   aoArquivar: (id: number) => void;
   aoAtualizar: () => void;
   membros: Membro[];
   frentes: Frente[];
+  pendentesGit: Set<number>;
 }) {
   return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    // Abaixo de lg o quadro vira uma faixa horizontal com snap por coluna;
+    // de lg pra cima, as quatro colunas lado a lado. Nunca há scroll vertical
+    // aninhado: o cap de cartões por coluna é que segura a altura.
+    <div className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 sm:-mx-6 sm:px-6 lg:mx-0 lg:grid lg:grid-cols-4 lg:overflow-visible lg:px-0 lg:pb-0">
       {STATUS.map((coluna) => {
         const daColuna = tarefas.filter((t) => t.status === coluna.id);
+        const chave = `${grupo}::${coluna.id}`;
+        const expandida = expandidas.has(chave);
+        const mostrados = expandida ? daColuna : daColuna.slice(0, CAP_COLUNA);
+        const escondidos = daColuna.length - mostrados.length;
+
         return (
           <div
             key={coluna.id}
+            // A área de soltar é a coluna inteira, não a lista visível: dá pra
+            // soltar num ponto qualquer, inclusive numa coluna vazia ou numa
+            // coluna colapsada (o cartão entra e o contador acompanha, mesmo
+            // que ele caia fora do cap).
             onDragOver={(e) => e.preventDefault()}
             onDrop={(e) => {
               e.preventDefault();
               const id = Number(e.dataTransfer.getData("text/plain"));
               if (id) aoMudarStatus(id, coluna.id);
             }}
+            className="flex w-[85%] shrink-0 snap-start flex-col sm:w-[60%] md:w-[45%] lg:w-auto lg:shrink"
           >
-            <h3 className="mb-3 flex items-baseline gap-2 border-b border-linha pb-1 font-display text-sm font-semibold uppercase tracking-wide">
+            {/* A navegação do site não é fixed nem sticky, então top-0 basta:
+                o cabeçalho encosta no topo da janela e fica lá enquanto o
+                grupo passa pela tela. */}
+            <h3 className="sticky top-0 z-10 mb-3 flex items-baseline gap-2 border-b border-linha bg-campo pb-1 pt-1 font-display text-sm font-semibold uppercase tracking-wide">
               {coluna.nome}
-              <span className="font-mono text-xs font-normal text-tinta/70">{daColuna.length}</span>
+              {/* Sempre o total real da coluna — nunca o que sobrou do cap. */}
+              <span className="border border-linha bg-casca px-1.5 py-0.5 font-mono text-xs font-normal text-tinta/70">
+                {daColuna.length}
+              </span>
             </h3>
+
             <div className="space-y-3">
-              {daColuna.map((t) => (
+              {mostrados.map((t) => (
                 <CartaoTarefa
                   key={t.id}
                   tarefa={t}
@@ -284,10 +428,29 @@ function MiniQuadro({
                   aoAtualizar={aoAtualizar}
                   membros={membros}
                   frentes={frentes}
+                  pendenteGit={pendentesGit.has(t.id)}
                   arrastavel
                 />
               ))}
-              {daColuna.length === 0 && <p className="text-xs text-tinta/70">Coluna vazia.</p>}
+
+              {daColuna.length === 0 && (
+                <p className="text-xs text-tinta/70">Coluna vazia.</p>
+              )}
+
+              {(escondidos > 0 || expandida) && (
+                <button
+                  onClick={() => aoAlternarColuna(chave)}
+                  aria-expanded={expandida}
+                  aria-label={
+                    expandida
+                      ? `ver menos em ${coluna.nome}, ${nomeDoGrupo}`
+                      : `ver mais ${escondidos} em ${coluna.nome}, ${nomeDoGrupo}`
+                  }
+                  className="w-full border border-linha bg-casca px-3 py-2 font-mono text-xs uppercase text-tinta/70 transition duration-150 hover:border-musgo hover:text-tinta"
+                >
+                  {expandida ? "ver menos" : `ver mais ${escondidos}`}
+                </button>
+              )}
             </div>
           </div>
         );
