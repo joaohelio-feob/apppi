@@ -1,7 +1,14 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
-  content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}"],
+  // lib/ precisa estar aqui: CLASSES_PRIORIDADE e CLASSES_COR_FRENTE
+  // (lib/types.ts) guardam classes inteiras como texto, e o Tailwind só gera
+  // CSS pra classe que aparece literalmente num arquivo escaneado. Sem esta
+  // linha, "border-l-4", "border-broto", "text-broto", "bg-broto" e
+  // "border-ferro" não existiam em nenhum arquivo de app/ ou components/ —
+  // ou seja, a borda esquerda de prioridade do calendário e a cor das
+  // frentes "broto"/"ferro" simplesmente não renderizavam.
+  content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./lib/**/*.{ts,tsx}"],
   theme: {
     extend: {
       colors: {

@@ -52,6 +52,28 @@ de frentes/integrantes e trilha de atividades para a entrega final.
   — o Tailwind só gera CSS pra classe que aparece literal no código-fonte, então
   nunca monte `border-${cor}` nem derive uma classe de outra com `.replace()`
   em tempo de execução; sempre passe pelo mapa.
+- **Critérios de aceite são convenção opcional em `tarefas.descricao`, não
+  schema.** Linha `- [ ]` / `- [x]` vira item marcável no `DetalheTarefa` e
+  progresso no `CartaoTarefa`; descrição sem checkbox nenhuma continua texto
+  puro, sem checklist nem barra. Marcar um item preserva o resto do markdown
+  byte a byte — leia sempre por `lib/criterios.ts` (`lerCriterios`,
+  `progressoCriterios`, `alternarCriterio`), nunca repetindo a regex nem
+  criando coluna pra isso.
+- **Uma escrita por sessão de edição, nunca uma por clique.** Todo `UPDATE`
+  em `tarefas` grava linha em `historico`, que é append-only e é a evidência
+  avaliada no PI. Por isso a checklist de critérios guarda estado local e
+  persiste num "Salvar" explícito: 12 cliques de checkbox são 1 linha de
+  trilha, não 12. Vale pra qualquer edição inline nova. (Detalhe do schema a
+  ter em mente: mudar só a `descricao` grava uma linha `editou/titulo` com
+  `valor_antigo` igual ao `valor_novo` — mais um motivo pra não multiplicar
+  escritas.)
+- **A navegação é `position: static` de propósito, e o `sticky top-0` dos
+  cabeçalhos de coluna do quadro depende disso.** Se um dia ela virar
+  sticky/fixed, a saída **não** é `top-[Xpx]` por breakpoint: a altura dela
+  depende do texto dos 12 links (101px a 1440px, porque quebram em duas
+  linhas) e um número mágico desses quebra silenciosamente quando alguém
+  renomeia um link. Use variável CSS medida em runtime, ou deixe a própria
+  nav `sticky` e ancore o cabeçalho nela.
 - Tipografia: `font-display` para títulos, `font-corpo` para texto, `font-mono`
   para datas, contadores e rótulos técnicos.
 - Contraste: texto secundário nunca abaixo de `text-tinta/70` — é o piso que

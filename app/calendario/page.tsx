@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
-import { dataLocalISO } from "@/lib/datas";
+import { dataLocalISO, estaAtrasada } from "@/lib/datas";
 import {
   CLASSES_PRIORIDADE, PRIORIDADES, STATUS, responsaveisDe,
   type EstadoEntrega, type Frente, type Membro, type Tarefa,
@@ -137,7 +137,7 @@ export default function Calendario() {
                   const cor = STATUS.find((s) => s.id === t.status)?.cor ?? "";
                   const prio = CLASSES_PRIORIDADE[t.prioridade];
                   const nomePrio = PRIORIDADES.find((p) => p.id === t.prioridade)?.nome ?? t.prioridade;
-                  const atrasada = t.status !== "concluida" && !!t.prazo && t.prazo < hojeIso;
+                  const atrasada = estaAtrasada(t.status, t.prazo, hojeIso);
                   const est = estados.get(t.id);
                   const faltaAlgo =
                     est?.ultimo_resultado === "falta_algo" &&

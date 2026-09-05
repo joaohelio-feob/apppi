@@ -17,6 +17,21 @@ export function dataLocalDeTimestamp(timestamp: string): string {
   return dataLocalISO(new Date(timestamp));
 }
 
+/**
+ * Timestamp do banco -> "03/09/2026". Sempre com o fuso do projeto fixado:
+ * `toLocaleDateString` puro usa o fuso do navegador, o que faz servidor e
+ * cliente discordarem e pode adiantar/atrasar a data em um dia inteiro
+ * perto da meia-noite.
+ */
+export function dataCurta(timestamp: string): string {
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: FUSO,
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(new Date(timestamp));
+}
+
 function paraDiaUTC(iso: string): number {
   const [ano, mes, dia] = iso.split("-").map(Number);
   return Date.UTC(ano, mes - 1, dia);
@@ -25,4 +40,19 @@ function paraDiaUTC(iso: string): number {
 /** Diferença em dias entre duas datas YYYY-MM-DD (positivo = isoAlvo é depois de isoBase). */
 export function diasEntre(isoAlvo: string, isoBase: string): number {
   return Math.round((paraDiaUTC(isoAlvo) - paraDiaUTC(isoBase)) / 86_400_000);
+}
+
+/**
+ * "Está atrasada?" — fonte única do cálculo, porque ele depende do relógio e
+ * o quadro e o calendário não podem discordar. Passe sempre o mesmo `hoje`
+ * (dataLocalISO()) que a tela já usa pra marcar o dia corrente, senão duas
+ * partes da mesma página podem cair em lados diferentes da virada do dia.
+ * Tarefa concluída nunca está atrasada, mesmo com prazo vencido.
+ */
+export function estaAtrasada(
+  status: string,
+  prazo: string | null,
+  hoje: string = dataLocalISO()
+): boolean {
+  return status !== "concluida" && !!prazo && prazo < hoje;
 }
