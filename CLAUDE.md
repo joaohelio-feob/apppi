@@ -67,6 +67,13 @@ de frentes/integrantes e trilha de atividades para a entrega final.
   ter em mente: mudar só a `descricao` grava uma linha `editou/titulo` com
   `valor_antigo` igual ao `valor_novo` — mais um motivo pra não multiplicar
   escritas.)
+- **A navegação é `position: static` de propósito, e o `sticky top-0` dos
+  cabeçalhos de coluna do quadro depende disso.** Se um dia ela virar
+  sticky/fixed, a saída **não** é `top-[Xpx]` por breakpoint: a altura dela
+  depende do texto dos 12 links (101px a 1440px, porque quebram em duas
+  linhas) e um número mágico desses quebra silenciosamente quando alguém
+  renomeia um link. Use variável CSS medida em runtime, ou deixe a própria
+  nav `sticky` e ancore o cabeçalho nela.
 - Tipografia: `font-display` para títulos, `font-corpo` para texto, `font-mono`
   para datas, contadores e rótulos técnicos.
 - Contraste: texto secundário nunca abaixo de `text-tinta/70` — é o piso que
