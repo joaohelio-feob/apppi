@@ -166,7 +166,18 @@ export default function CartaoTarefa({
 
         {resumo && <p className="mt-1.5 line-clamp-2 break-words text-xs text-tinta/70">{resumo}</p>}
 
-        {progresso && (
+        {/* Progresso zero não ganha trilho: barra vazia em largura total não
+            comunica nada. Fica só o contador, que ocupa a linha nos dois
+            estados — então nada salta quando o primeiro item é marcado. */}
+        {progresso && progresso.feitos === 0 && (
+          <div className="mt-2">
+            <span className="font-mono text-xs text-tinta/70">
+              {progresso.feitos}/{progresso.total} critérios
+            </span>
+          </div>
+        )}
+
+        {progresso && progresso.feitos > 0 && (
           <div className="mt-2 flex items-center gap-2">
             <span
               className="h-1 flex-1 bg-linha"
