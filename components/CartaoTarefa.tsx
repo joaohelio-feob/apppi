@@ -6,7 +6,7 @@ import { progressoCriterios, textoSemCriterios } from "@/lib/criterios";
 import { lerLocalEntrega } from "@/lib/links";
 import {
   CLASSES_COR_FRENTE, CLASSES_COR_FRENTE_PREENCHIDA, CLASSES_PRIORIDADE,
-  PRIORIDADES, STATUS, UNIDADES_FRENTE, responsaveisDe,
+  PRIORIDADES, STATUS, responsaveisDe,
   type Frente, type Membro, type Tarefa, type Status,
 } from "@/lib/types";
 import DetalheTarefa from "./DetalheTarefa";
@@ -83,10 +83,6 @@ export default function CartaoTarefa({
   const progresso = progressoCriterios(tarefa.descricao);
   const resumo = textoSemCriterios(tarefa.descricao);
   const local = lerLocalEntrega(tarefa.local_entrega);
-  const unidade = tarefa.frentes?.unidade
-    ? UNIDADES_FRENTE.find((u) => u.id === tarefa.frentes!.unidade)?.nome ?? tarefa.frentes.unidade
-    : null;
-
   const nomes = responsaveis.map((m) => m.nome);
   const visiveis = responsaveis.slice(0, 3);
   const excedente = responsaveis.length - visiveis.length;
@@ -142,9 +138,12 @@ export default function CartaoTarefa({
             <Selo status={tarefa.status} />
             {tarefa.frentes && (
               <span
-                className={`flex max-w-[9rem] items-center gap-1 border px-1.5 py-0.5 font-mono text-xs uppercase tracking-wide ${
+                className={`flex max-w-[12rem] items-center gap-1 border px-1.5 py-0.5 font-mono text-xs uppercase tracking-wide ${
                   CLASSES_COR_FRENTE[tarefa.frentes.cor ?? "ferro"]
                 }`}
+                // O nome inteiro fica sempre no title: 12rem acomoda os nomes
+                // reais mais longos das frentes de hoje, mas o truncamento
+                // continua como rede para um nome futuro maior.
                 title={
                   tarefa.escopo === "frente"
                     ? `Tarefa da frente ${tarefa.frentes.nome} — todos os integrantes`
@@ -209,8 +208,6 @@ export default function CartaoTarefa({
               )}
             </span>
           )}
-
-          {unidade && <span className="border border-linha px-1 py-0.5 uppercase">{unidade}</span>}
 
           {tarefa.prazo && (
             <span className={atrasada ? "font-semibold text-trigo" : ""}>
