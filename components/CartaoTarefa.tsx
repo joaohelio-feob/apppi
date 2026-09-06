@@ -52,7 +52,6 @@ export default function CartaoTarefa({
   arrastavel,
   membros,
   frentes,
-  pendenteGit,
 }: {
   tarefa: Tarefa;
   aoMudarStatus?: (id: number, status: Status) => void;
@@ -62,12 +61,6 @@ export default function CartaoTarefa({
   /** Repassados ao painel de detalhe pra não duplicar a consulta quando a página já tem essas listas. */
   membros?: Membro[];
   frentes?: Frente[];
-  /**
-   * `pendente_git` da view tarefas_estado_entrega. O cartão só EXIBE — não
-   * recalcula, nem consulta: quem tem a lista (o Quadro) passa pra cá. Quem
-   * não passa simplesmente não mostra o badge.
-   */
-  pendenteGit?: boolean;
 }) {
   const [arrastando, setArrastando] = useState(false);
   const [detalheAberto, setDetalheAberto] = useState(false);
@@ -219,14 +212,6 @@ export default function CartaoTarefa({
             dentro de uma mesma linha (tops 415/416/418).
             --------------------------------------------------------------- */}
 
-        {pendenteGit && (
-          <div className="mt-3 font-mono text-xs">
-            <span className="inline-block bg-trigo px-1.5 py-0.5 uppercase leading-none tracking-wide text-tinta">
-              pendente no git
-            </span>
-          </div>
-        )}
-
         <div className="mt-3 flex items-center gap-2 font-mono text-xs leading-none text-tinta/70">
           {responsaveis.length === 0 ? (
             <span className="border border-dashed border-linha px-1.5 py-0.5 leading-none">sem dono</span>
@@ -252,46 +237,40 @@ export default function CartaoTarefa({
           )}
         </div>
 
-        {/* Sempre presente: o marcador de git não some quando a tarefa não
-            tem link nem issue. */}
-        <div className="mt-1.5 flex flex-nowrap items-center gap-2 font-mono text-xs leading-none text-tinta/70">
-          {local ? (
-            local.tipo === "link" ? (
-            <a
-              href={local.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              title={local.titulo}
-              // z-10 obrigatório: sem isso o overlay do título come o clique.
-              className="relative z-10 flex min-w-0 flex-1 items-center gap-1 py-0.5 leading-none underline underline-offset-4 hover:text-musgo"
-            >
-              <IconeLink />
-              <span className="truncate">{local.rotulo}</span>
-            </a>
+        {(local || tarefa.issue_numero) && (
+          <div className="mt-1.5 flex flex-nowrap items-center gap-2 font-mono text-xs leading-none text-tinta/70">
+            {local ? (
+              local.tipo === "link" ? (
+              <a
+                href={local.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                title={local.titulo}
+                // z-10 obrigatório: sem isso o overlay do título come o clique.
+                className="relative z-10 flex min-w-0 flex-1 items-center gap-1 py-0.5 leading-none underline underline-offset-4 hover:text-musgo"
+              >
+                <IconeLink />
+                <span className="truncate">{local.rotulo}</span>
+              </a>
+              ) : (
+              <span className="flex min-w-0 flex-1 items-center gap-1 py-0.5 leading-none" title={local.titulo}>
+                <IconeLink />
+                <span className="truncate">{local.rotulo}</span>
+              </span>
+              )
             ) : (
-            <span className="flex min-w-0 flex-1 items-center gap-1 py-0.5 leading-none" title={local.titulo}>
-              <IconeLink />
-              <span className="truncate">{local.rotulo}</span>
-            </span>
-            )
-          ) : (
-            null
-          )}
+              null
+            )}
 
-          {/* ml-auto no lugar de um espaçador vazio: sem link o marcador
-              encosta na direita do mesmo jeito, e não sobra uma caixa de
-              altura zero desalinhando a faixa. */}
-          <span className={`ml-auto shrink-0 py-0.5 leading-none ${tarefa.subiu_git ? "text-musgo" : "text-tinta/70"}`}>
-            {tarefa.subiu_git ? "● git" : "○ git"}
-          </span>
-
-          {tarefa.issue_numero && (
-            <span className="relative z-10 shrink-0 py-0.5 leading-none" onClick={(e) => e.stopPropagation()}>
-              <SeloIssue numero={tarefa.issue_numero} />
-            </span>
-          )}
+            {tarefa.issue_numero && (
+              <span className="relative z-10 ml-auto shrink-0 py-0.5 leading-none" onClick={(e) => e.stopPropagation()}>
+                <SeloIssue numero={tarefa.issue_numero} />
+              </span>
+            )}
         </div>
+        )}
+
       </div>
 
       {(aoMudarStatus || aoArquivar) && (

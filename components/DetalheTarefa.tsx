@@ -551,27 +551,52 @@ export default function DetalheTarefa({
             )}
           </div>
 
-          {estado?.pendente_git && (
-            <div className="mt-2 flex flex-wrap items-center gap-2 border border-trigo bg-trigo/10 px-3 py-2">
-              <span className="bg-trigo px-2 py-0.5 font-mono text-xs uppercase text-tinta">
-                Pendente no Git
-              </span>
-              {estado.commit_nome && (
-                <span className="min-w-0 text-sm">
-                  commit: <strong className="break-words font-semibold">{estado.commit_nome}</strong>
-                </span>
+          {/* As duas perguntas de git, lado a lado. Elas respondem coisas
+              diferentes e podem divergir sem que nenhuma esteja errada:
+              "falta commitar?" é calculado a partir da última entrega,
+              "alguém marcou que subiu?" é declaração manual de quem
+              trabalhou. Nenhuma corrige a outra — por isso as duas aparecem
+              aqui, com o significado escrito, e nenhuma delas no cartão. */}
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            <div className={`border px-3 py-2 ${estado?.pendente_git ? "border-trigo bg-trigo/10" : "border-linha bg-casca"}`}>
+              <p className="text-xs uppercase tracking-wide text-tinta/70">Falta commitar?</p>
+              <p className="mt-1 text-sm font-semibold">
+                {estado?.pendente_git ? "Sim — a entrega pede commit e ele ainda não foi confirmado" : "Não"}
+              </p>
+              <p className="mt-1 text-xs text-tinta/70">
+                Calculado a partir da última entrega, não editável.
+              </p>
+              {estado?.pendente_git && estado.commit_nome && (
+                <p className="mt-1 break-words font-mono text-xs text-tinta/70">
+                  commit: <span className="text-tinta">{estado.commit_nome}</span>
+                </p>
               )}
-              {souResponsavel && (
+              {estado?.pendente_git && souResponsavel && (
                 <button
                   onClick={confirmarCommit}
                   disabled={confirmandoCommit}
-                  className="ml-auto font-mono text-xs uppercase underline underline-offset-4 hover:text-musgo disabled:opacity-50"
+                  className="mt-2 text-xs underline underline-offset-4 hover:text-musgo disabled:opacity-50"
                 >
                   {confirmandoCommit ? "confirmando…" : "Confirmar commit"}
                 </button>
               )}
             </div>
-          )}
+
+            <label className="block cursor-pointer border border-linha bg-casca px-3 py-2">
+              <p className="text-xs uppercase tracking-wide text-tinta/70">Alguém marcou que subiu?</p>
+              <span className="mt-1 flex items-center gap-2 text-sm font-semibold">
+                <input
+                  type="checkbox"
+                  checked={t.subiu_git}
+                  onChange={(e) => salvarCampo("subiu_git", e.target.checked)}
+                />
+                {t.subiu_git ? "Sim, marcado pela equipe" : "Ainda não marcaram"}
+              </span>
+              <span className="mt-1 block text-xs text-tinta/70">
+                Marcação manual da equipe, independente do cálculo ao lado.
+              </span>
+            </label>
+          </div>
 
           {estado?.ultima_entrega_id ? (
             <div className="mt-2 text-sm text-tinta/70">
@@ -588,7 +613,7 @@ export default function DetalheTarefa({
 
           <NotaRevisor tarefaId={t.id} entregueEm={estado?.entregue_em ?? null} />
 
-          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+          <div className="mt-4">
             <label className="block font-mono text-xs uppercase text-tinta/70">
               Nº da issue no GitHub
               <span className="mt-1 flex items-center gap-2">
@@ -605,14 +630,6 @@ export default function DetalheTarefa({
                   </span>
                 )}
               </span>
-            </label>
-            <label className="flex items-center gap-2 self-end border border-linha bg-casca px-3 py-2 text-sm">
-              <input
-                type="checkbox"
-                checked={t.subiu_git}
-                onChange={(e) => salvarCampo("subiu_git", e.target.checked)}
-              />
-              Já subiu no Git
             </label>
           </div>
 
