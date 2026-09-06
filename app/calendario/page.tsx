@@ -11,6 +11,9 @@ import DetalheTarefa from "@/components/DetalheTarefa";
 
 const DIAS = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
 
+/** Quantos itens um dia mostra antes do "+N". */
+const VISIVEIS_POR_DIA = 3;
+
 export default function Calendario() {
   const [tarefas, setTarefas] = useState<Tarefa[]>([]);
   const [membros, setMembros] = useState<Membro[]>([]);
@@ -18,6 +21,8 @@ export default function Calendario() {
   const [estados, setEstados] = useState<Map<number, EstadoEntrega>>(new Map());
   const [responsavel, setResponsavel] = useState("");
   const [tarefaAberta, setTarefaAberta] = useState<Tarefa | null>(null);
+  /** Dias com "+N" aberto, por data ISO — chave estável, não índice. */
+  const [diasAbertos, setDiasAbertos] = useState<Set<string>>(new Set());
   const [mes, setMes] = useState(() => {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
@@ -46,6 +51,17 @@ export default function Calendario() {
 
   useEffect(() => { carregar(); }, [carregar]);
 
+  const hojeIso = dataLocalISO();
+
+  function alternarDia(iso: string) {
+    setDiasAbertos((atual) => {
+      const nova = new Set(atual);
+      if (nova.has(iso)) nova.delete(iso);
+      else nova.add(iso);
+      return nova;
+    });
+  }
+
   const visiveis = useMemo(
     () => (responsavel ? tarefas.filter((t) => responsaveisDe(t).some((m) => m.id === responsavel)) : tarefas),
     [tarefas, responsavel]
@@ -67,13 +83,25 @@ export default function Calendario() {
       if (!t.prazo) return;
       (mapa[t.prazo] ??= []).push(t);
     });
+    // A consulta não ordena, então a ordem dentro do dia era a que o Postgres
+    // devolvesse — e como só as 3 primeiras aparecem, QUAIS 3 era indefinido.
+    // Ordena por urgência: atrasada primeiro, depois prioridade, depois título
+    // pra empate ficar estável entre recarregamentos.
+    const PESO: Record<string, number> = { alta: 0, media: 1, baixa: 2 };
+    Object.values(mapa).forEach((lista) =>
+      lista.sort((a, b) => {
+        const atrasoA = estaAtrasada(a.status, a.prazo, hojeIso) ? 0 : 1;
+        const atrasoB = estaAtrasada(b.status, b.prazo, hojeIso) ? 0 : 1;
+        if (atrasoA !== atrasoB) return atrasoA - atrasoB;
+        if (PESO[a.prioridade] !== PESO[b.prioridade]) return PESO[a.prioridade] - PESO[b.prioridade];
+        return a.titulo.localeCompare(b.titulo);
+      })
+    );
     return mapa;
-  }, [visiveis]);
+  }, [visiveis, hojeIso]);
 
   const chave = (dia: number) =>
     `${mes.getFullYear()}-${String(mes.getMonth() + 1).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
-
-  const hojeIso = dataLocalISO();
 
   return (
     <div>
@@ -126,6 +154,7 @@ export default function Calendario() {
           const iso = chave(dia);
           const doDia = porDia[iso] ?? [];
           const ehHoje = iso === hojeIso;
+          const expandido = diasAbertos.has(iso);
 
           return (
             <div key={iso} className={`min-h-[92px] bg-campo p-1.5 ${ehHoje ? "ring-2 ring-inset ring-tinta" : ""}`}>
@@ -133,7 +162,7 @@ export default function Calendario() {
                 {String(dia).padStart(2, "0")}
               </span>
               <div className="mt-1 space-y-1">
-                {doDia.slice(0, 3).map((t) => {
+                {(expandido ? doDia : doDia.slice(0, VISIVEIS_POR_DIA)).map((t) => {
                   const cor = STATUS.find((s) => s.id === t.status)?.cor ?? "";
                   const prio = CLASSES_PRIORIDADE[t.prioridade];
                   const nomePrio = PRIORIDADES.find((p) => p.id === t.prioridade)?.nome ?? t.prioridade;
@@ -149,18 +178,37 @@ export default function Calendario() {
                       key={t.id}
                       onClick={() => setTarefaAberta(t)}
                       title={`${t.titulo} · ${responsaveisDe(t).map((m) => m.nome).join(", ") || "sem responsável"} · prioridade ${nomePrio}${atrasada ? " · atrasada" : ""}${faltaAlgo ? " · revisor pediu ajuste, veja o detalhe" : ""}`}
-                      className={`block w-full truncate px-1 py-0.5 text-left text-xs leading-tight hover:opacity-80 ${cor} ${prio.borda} ${
+                      // Os sinais ficam numa coluna fixa à esquerda e o título na
+                      // outra: antes eles eram texto no mesmo fluxo, e "falta: " +
+                      // "! " + glifo comiam até 45px dos 145px da célula — num
+                      // chip que já cortava o título pela metade.
+                      className={`grid w-full grid-cols-[auto_minmax(0,1fr)] items-start gap-x-1 px-1 py-0.5 text-left text-xs leading-tight transition-opacity duration-150 hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-tinta ${cor} ${prio.borda} ${
                         atrasada ? "font-semibold ring-1 ring-inset ring-trigo" : ""
                       }`}
                     >
-                      {atrasada ? "! " : ""}
-                      {faltaAlgo ? "falta: " : ""}
-                      {prio.glifo} {t.titulo}
+                      <span aria-hidden="true" className="font-mono">
+                        {atrasada ? "!" : ""}
+                        {faltaAlgo ? "↩" : ""}
+                        {prio.glifo}
+                      </span>
+                      <span className="line-clamp-2 break-words">{t.titulo}</span>
                     </button>
                   );
                 })}
-                {doDia.length > 3 && (
-                  <p className="font-mono text-xs text-tinta/70">+{doDia.length - 3}</p>
+                {doDia.length > VISIVEIS_POR_DIA && (
+                  <button
+                    type="button"
+                    onClick={() => alternarDia(iso)}
+                    aria-expanded={expandido}
+                    aria-label={
+                      expandido
+                        ? `ver menos no dia ${dia}`
+                        : `ver mais ${doDia.length - VISIVEIS_POR_DIA} no dia ${dia}`
+                    }
+                    className="w-full px-1 py-0.5 text-left font-mono text-xs text-tinta/70 underline underline-offset-2 transition-opacity duration-150 hover:text-tinta focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-tinta"
+                  >
+                    {expandido ? "ver menos" : `+${doDia.length - VISIVEIS_POR_DIA}`}
+                  </button>
                 )}
               </div>
             </div>
@@ -185,8 +233,8 @@ export default function Calendario() {
         <span className="flex items-center gap-1.5 font-semibold text-trigo">
           ! atrasada
         </span>
-        <span className="flex items-center gap-1.5 font-semibold">
-          falta: revisor pediu ajuste — clique pra ver o quê
+        <span className="flex items-center gap-1.5">
+          <span className="font-mono font-semibold">↩</span> revisor pediu ajuste — clique pra ver o quê
         </span>
       </div>
 
