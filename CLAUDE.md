@@ -81,6 +81,14 @@ de frentes/integrantes e trilha de atividades para a entrega final.
   linhas) e um número mágico desses quebra silenciosamente quando alguém
   renomeia um link. Use variável CSS medida em runtime, ou deixe a própria
   nav `sticky` e ancore o cabeçalho nela.
+- **Para saber se algo entrou no bundle, sonde por string literal ASCII e
+  sempre com controle negativo** (uma string que você sabe que está no app,
+  tipo `"Coluna vazia."`). Grep por nome de função dá zero mesmo com o código
+  lá dentro, porque o minificador renomeia identificadores — `responsaveisDe`
+  não aparece em chunk nenhum. E o bundle escapa não-ASCII, então
+  `"responsável"` vira `respons\u00e1vel` e some do grep. Como o projeto
+  escreve tudo em português, quase toda sonda óbvia cai nessa armadilha: sem
+  o controle negativo, um zero parece prova e não é.
 - Tipografia: `font-display` para títulos, `font-corpo` para texto, `font-mono`
   para datas, contadores e rótulos técnicos.
 - Contraste: texto secundário nunca abaixo de `text-tinta/70` — é o piso que
