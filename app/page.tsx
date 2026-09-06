@@ -30,16 +30,20 @@ export default async function Semana() {
 
   return (
     <div>
-      <p className="font-mono text-xs uppercase tracking-widest text-musgo">
-        {agora.toLocaleDateString("pt-BR", {
-          weekday: "long", day: "2-digit", month: "long", timeZone: "America/Sao_Paulo",
-        })}
-      </p>
-      <h1 className="mt-1 font-display text-3xl font-extrabold tracking-tight sm:text-4xl">
-        O que a equipe tem em mãos
-      </h1>
+      {/* Título e data numa faixa só: a sobrancelha em mono maiúsculo acima
+          do display gastava duas faixas para dizer uma coisa. */}
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <h1 className="font-display text-3xl font-extrabold tracking-tight sm:text-4xl">
+          O que a equipe tem em mãos
+        </h1>
+        <p className="text-sm text-tinta/70">
+          {agora.toLocaleDateString("pt-BR", {
+            weekday: "long", day: "2-digit", month: "long", timeZone: "America/Sao_Paulo",
+          })}
+        </p>
+      </div>
 
-      <div className="mt-8">
+      <div className="mt-6">
         <PainelSemana
           atrasadas={atrasadas}
           daSemana={daSemana}

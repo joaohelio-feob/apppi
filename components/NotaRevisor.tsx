@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
+import { dataCurta } from "@/lib/datas";
 import type { Revisao } from "@/lib/types";
 
 type RevisaoComNome = Revisao & { membros?: { nome: string } | null };
@@ -49,7 +50,7 @@ export default function NotaRevisor({ tarefaId, entregueEm }: { tarefaId: number
           </p>
           <p className="mt-1 text-sm">{maisRecente.comentario}</p>
           <p className="mt-1 font-mono text-xs text-tinta/70">
-            {maisRecente.membros?.nome ?? "—"} · {new Date(maisRecente.criado_em).toLocaleDateString("pt-BR")}
+            {maisRecente.membros?.nome ?? "—"} · {dataCurta(maisRecente.criado_em)}
           </p>
         </div>
       )}
@@ -65,7 +66,7 @@ export default function NotaRevisor({ tarefaId, entregueEm }: { tarefaId: number
               <li key={r.id} className="border-t border-linha pt-2 text-sm first:border-t-0 first:pt-0">
                 <p className="font-mono text-xs uppercase text-tinta/70">
                   {r.resultado === "concluido" ? "Concluído" : r.resultado === "falta_algo" ? "Falta algo" : "Observações"}
-                  {" · "}{r.membros?.nome ?? "—"} · {new Date(r.criado_em).toLocaleDateString("pt-BR")}
+                  {" · "}{r.membros?.nome ?? "—"} · {dataCurta(r.criado_em)}
                 </p>
                 {r.comentario && <p className="mt-0.5">{r.comentario}</p>}
               </li>

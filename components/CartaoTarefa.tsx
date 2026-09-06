@@ -6,7 +6,7 @@ import { progressoCriterios, textoSemCriterios } from "@/lib/criterios";
 import { lerLocalEntrega } from "@/lib/links";
 import {
   CLASSES_COR_FRENTE, CLASSES_COR_FRENTE_PREENCHIDA, CLASSES_PRIORIDADE,
-  PRIORIDADES, STATUS, UNIDADES_FRENTE, responsaveisDe,
+  PRIORIDADES, STATUS, responsaveisDe,
   type Frente, type Membro, type Tarefa, type Status,
 } from "@/lib/types";
 import DetalheTarefa from "./DetalheTarefa";
@@ -52,7 +52,6 @@ export default function CartaoTarefa({
   arrastavel,
   membros,
   frentes,
-  pendenteGit,
 }: {
   tarefa: Tarefa;
   aoMudarStatus?: (id: number, status: Status) => void;
@@ -62,12 +61,6 @@ export default function CartaoTarefa({
   /** Repassados ao painel de detalhe pra não duplicar a consulta quando a página já tem essas listas. */
   membros?: Membro[];
   frentes?: Frente[];
-  /**
-   * `pendente_git` da view tarefas_estado_entrega. O cartão só EXIBE — não
-   * recalcula, nem consulta: quem tem a lista (o Quadro) passa pra cá. Quem
-   * não passa simplesmente não mostra o badge.
-   */
-  pendenteGit?: boolean;
 }) {
   const [arrastando, setArrastando] = useState(false);
   const [detalheAberto, setDetalheAberto] = useState(false);
@@ -83,10 +76,6 @@ export default function CartaoTarefa({
   const progresso = progressoCriterios(tarefa.descricao);
   const resumo = textoSemCriterios(tarefa.descricao);
   const local = lerLocalEntrega(tarefa.local_entrega);
-  const unidade = tarefa.frentes?.unidade
-    ? UNIDADES_FRENTE.find((u) => u.id === tarefa.frentes!.unidade)?.nome ?? tarefa.frentes.unidade
-    : null;
-
   const nomes = responsaveis.map((m) => m.nome);
   const visiveis = responsaveis.slice(0, 3);
   const excedente = responsaveis.length - visiveis.length;
@@ -142,9 +131,12 @@ export default function CartaoTarefa({
             <Selo status={tarefa.status} />
             {tarefa.frentes && (
               <span
-                className={`flex max-w-[9rem] items-center gap-1 border px-1.5 py-0.5 font-mono text-xs uppercase tracking-wide ${
+                className={`flex max-w-[12rem] items-center gap-1 border px-1.5 py-0.5 font-mono text-xs uppercase tracking-wide ${
                   CLASSES_COR_FRENTE[tarefa.frentes.cor ?? "ferro"]
                 }`}
+                // O nome inteiro fica sempre no title: 12rem acomoda os nomes
+                // reais mais longos das frentes de hoje, mas o truncamento
+                // continua como rede para um nome futuro maior.
                 title={
                   tarefa.escopo === "frente"
                     ? `Tarefa da frente ${tarefa.frentes.nome} — todos os integrantes`
@@ -167,7 +159,18 @@ export default function CartaoTarefa({
 
         {resumo && <p className="mt-1.5 line-clamp-2 break-words text-xs text-tinta/70">{resumo}</p>}
 
-        {progresso && (
+        {/* Progresso zero não ganha trilho: barra vazia em largura total não
+            comunica nada. Fica só o contador, que ocupa a linha nos dois
+            estados — então nada salta quando o primeiro item é marcado. */}
+        {progresso && progresso.feitos === 0 && (
+          <div className="mt-2">
+            <span className="font-mono text-xs text-tinta/70">
+              {progresso.feitos}/{progresso.total} critérios
+            </span>
+          </div>
+        )}
+
+        {progresso && progresso.feitos > 0 && (
           <div className="mt-2 flex items-center gap-2">
             <span
               className="h-1 flex-1 bg-linha"
@@ -188,44 +191,56 @@ export default function CartaoTarefa({
           </div>
         )}
 
-        <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1.5 font-mono text-xs text-tinta/70">
+        {/* ---------------------------------------------------------------
+            GRAMÁTICA FIXA DO RODAPÉ — slots e ordem, não flex-wrap livre.
+
+            Antes eram seis itens de largura livre num flex-wrap: onde a
+            linha quebrava dependia da soma dos anteriores, então mudava com
+            o conteúdo (medido: dois cartões diferentes quebrando em pontos
+            diferentes pelo mesmo motivo). Agora cada faixa tem papel fixo:
+
+              alerta      pendência que exige ação          (condicional)
+              identidade  quem responde · quando vence      (sempre)
+              evidência   onde está o trabalho · git · issue (condicional)
+
+            A faixa de evidência NÃO quebra: o link absorve a sobra e trunca;
+            git e issue são shrink-0 e ficam sempre na mesma linha. O que não
+            couber aqui vive no painel de detalhes, não numa quarta linha.
+
+            Todos os itens levam py-0.5 e leading-none para os boxes terem a
+            mesma altura — era o desalinhamento de baseline de 3px medido
+            dentro de uma mesma linha (tops 415/416/418).
+            --------------------------------------------------------------- */}
+
+        <div className="mt-3 flex items-center gap-2 font-mono text-xs leading-none text-tinta/70">
           {responsaveis.length === 0 ? (
-            <span className="border border-dashed border-linha px-1.5 py-0.5">sem dono</span>
+            <span className="border border-dashed border-linha px-1.5 py-0.5 leading-none">sem dono</span>
           ) : (
-            <span className="flex items-center gap-1" title={textoResponsaveis}>
+            <span className="flex shrink-0 items-center gap-1" title={textoResponsaveis}>
               {visiveis.map((m) => (
-                <span
-                  key={m.id}
-                  className="rounded bg-linha px-1.5 py-0.5 text-tinta"
-                  title={m.nome}
-                >
+                <span key={m.id} className="rounded bg-linha px-1.5 py-0.5 leading-none text-tinta" title={m.nome}>
                   {iniciais(m.nome)}
                 </span>
               ))}
               {excedente > 0 && (
-                <span className="rounded border border-linha px-1.5 py-0.5" aria-label={textoResponsaveis}>
+                <span className="rounded border border-linha px-1.5 py-0.5 leading-none" aria-label={textoResponsaveis}>
                   +{excedente}
                 </span>
               )}
             </span>
           )}
 
-          {unidade && <span className="border border-linha px-1 py-0.5 uppercase">{unidade}</span>}
-
           {tarefa.prazo && (
-            <span className={atrasada ? "font-semibold text-trigo" : ""}>
+            <span className={`py-0.5 leading-none ${atrasada ? "font-semibold text-trigo" : ""}`}>
               {textoDoPrazo(tarefa.prazo, atrasada, hoje)}
             </span>
           )}
+        </div>
 
-          {pendenteGit && (
-            <span className="bg-trigo px-1.5 py-0.5 uppercase tracking-wide text-tinta">
-              pendente no git
-            </span>
-          )}
-
-          {local &&
-            (local.tipo === "link" ? (
+        {(local || tarefa.issue_numero) && (
+          <div className="mt-1.5 flex flex-nowrap items-center gap-2 font-mono text-xs leading-none text-tinta/70">
+            {local ? (
+              local.tipo === "link" ? (
               <a
                 href={local.href}
                 target="_blank"
@@ -233,28 +248,29 @@ export default function CartaoTarefa({
                 onClick={(e) => e.stopPropagation()}
                 title={local.titulo}
                 // z-10 obrigatório: sem isso o overlay do título come o clique.
-                className="relative z-10 flex min-w-0 max-w-[14rem] items-center gap-1 underline underline-offset-4 hover:text-musgo"
+                className="relative z-10 flex min-w-0 flex-1 items-center gap-1 py-0.5 leading-none underline underline-offset-4 hover:text-musgo"
               >
                 <IconeLink />
                 <span className="truncate">{local.rotulo}</span>
               </a>
-            ) : (
-              <span className="flex min-w-0 max-w-[14rem] items-center gap-1" title={local.titulo}>
+              ) : (
+              <span className="flex min-w-0 flex-1 items-center gap-1 py-0.5 leading-none" title={local.titulo}>
                 <IconeLink />
                 <span className="truncate">{local.rotulo}</span>
               </span>
-            ))}
+              )
+            ) : (
+              null
+            )}
 
-          <span className={tarefa.subiu_git ? "text-musgo" : "text-tinta/70"}>
-            {tarefa.subiu_git ? "● git" : "○ git"}
-          </span>
-
-          {tarefa.issue_numero && (
-            <span className="relative z-10" onClick={(e) => e.stopPropagation()}>
-              <SeloIssue numero={tarefa.issue_numero} />
-            </span>
-          )}
+            {tarefa.issue_numero && (
+              <span className="relative z-10 ml-auto shrink-0 py-0.5 leading-none" onClick={(e) => e.stopPropagation()}>
+                <SeloIssue numero={tarefa.issue_numero} />
+              </span>
+            )}
         </div>
+        )}
+
       </div>
 
       {(aoMudarStatus || aoArquivar) && (

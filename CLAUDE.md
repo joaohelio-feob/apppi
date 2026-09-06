@@ -67,6 +67,13 @@ de frentes/integrantes e trilha de atividades para a entrega final.
   ter em mente: mudar só a `descricao` grava uma linha `editou/titulo` com
   `valor_antigo` igual ao `valor_novo` — mais um motivo pra não multiplicar
   escritas.)
+- **O papel milimetrado do fundo não é grade de alinhamento.** `body::before`
+  é `fixed`/`inset-0`, então a origem dele é a viewport: horizontalmente o
+  conteúdo é centralizado (o offset só cai em múltiplo da célula por
+  coincidência da largura da janela) e verticalmente o fundo não rola com a
+  página. Não tente alinhar conteúdo ao quadriculado — para ritmo visual use
+  a escala de espaçamento do Tailwind. Medido: alinha em 1280/1600/1920 e
+  desalinha em 1440/1860.
 - **A navegação é `position: static` de propósito, e o `sticky top-0` dos
   cabeçalhos de coluna do quadro depende disso.** Se um dia ela virar
   sticky/fixed, a saída **não** é `top-[Xpx]` por breakpoint: a altura dela

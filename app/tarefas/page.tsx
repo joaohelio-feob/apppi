@@ -27,7 +27,6 @@ export default function Quadro() {
   const [tarefas, setTarefas] = useState<Tarefa[]>([]);
   const [membros, setMembros] = useState<Membro[]>([]);
   const [frentes, setFrentes] = useState<Frente[]>([]);
-  const [pendentesGit, setPendentesGit] = useState<Set<number>>(new Set());
   const [meuId, setMeuId] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
 
@@ -80,7 +79,7 @@ export default function Quadro() {
   }
 
   const carregar = useCallback(async () => {
-    const [t, m, f, e, sessao] = await Promise.all([
+    const [t, m, f, sessao] = await Promise.all([
       supabase
         .from("tarefas")
         .select("id, titulo, descricao, escopo, frente_id, status, prioridade, prazo, inicio, local_entrega, subiu_git, issue_numero, observacoes, revisor_id, commit_confirmado_em, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel)), frentes(id, nome, cor, unidade)")
@@ -88,9 +87,6 @@ export default function Quadro() {
         .order("prazo", { ascending: true, nullsFirst: false }),
       supabase.from("membros").select("id, nome, papel, frente_id").order("nome"),
       supabase.from("frentes").select("id, nome, cor, unidade").order("nome"),
-      // "Pendente no git" é derivado e mora só na view — o cartão exibe o
-      // booleano, ninguém refaz a conta (ver CLAUDE.md).
-      supabase.from("tarefas_estado_entrega").select("tarefa_id, pendente_git"),
       supabase.auth.getUser(),
     ]);
 
@@ -109,9 +105,6 @@ export default function Quadro() {
     );
     setMembros((m.data ?? []) as Membro[]);
     setFrentes((f.data ?? []) as unknown as Frente[]);
-    setPendentesGit(
-      new Set((e.data ?? []).filter((x) => x.pendente_git).map((x) => x.tarefa_id as number))
-    );
     setMeuId(sessao.data.user?.id ?? null);
     setCarregando(false);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -344,7 +337,6 @@ export default function Quadro() {
                   aoAtualizar={carregar}
                   membros={membros}
                   frentes={frentes}
-                  pendentesGit={pendentesGit}
                 />
               </section>
             ))}
@@ -366,7 +358,6 @@ function MiniQuadro({
   aoAtualizar,
   membros,
   frentes,
-  pendentesGit,
 }: {
   grupo: string;
   nomeDoGrupo: string;
@@ -378,7 +369,6 @@ function MiniQuadro({
   aoAtualizar: () => void;
   membros: Membro[];
   frentes: Frente[];
-  pendentesGit: Set<number>;
 }) {
   return (
     // Abaixo de lg o quadro vira uma faixa horizontal com snap por coluna;
@@ -428,7 +418,6 @@ function MiniQuadro({
                   aoAtualizar={aoAtualizar}
                   membros={membros}
                   frentes={frentes}
-                  pendenteGit={pendentesGit.has(t.id)}
                   arrastavel
                 />
               ))}
