@@ -1,0 +1,27 @@
+[
+  {
+    "titulo": "Implementar conversão entre bases numéricas",
+    "descricao": "Converter entre bases 2, 8, 10 e 16, com validação de entrada.\n\n- [ ] Função de conversão\n- [ ] Tratamento de entrada inválida\n- [ ] Testes com valores de borda",
+    "escopo": "individual",
+    "frente": "Lógica de Programação",
+    "responsavel": "João Hélio",
+    "revisor": "Diana Barros",
+    "prioridade": "alta",
+    "prazo": "2026-09-19",
+    "local_entrega": "https://github.com/joaohelio-feob/apppi/pull/42",
+    "issue_numero": 42,
+    "observacoes": null
+  },
+  {
+    "titulo": "Montar a apresentação final da frente",
+    "descricao": "Slides e roteiro para a banca.\n\n- [ ] Estrutura dos slides\n- [ ] Ensaio cronometrado\n- [ ] Revisão da professora",
+    "escopo": "frente",
+    "frente": "Modelagem de Dados",
+    "revisor": "João Hélio",
+    "prioridade": "media",
+    "prazo": "2026-10-03",
+    "local_entrega": null,
+    "issue_numero": null,
+    "observacoes": null
+  }
+]
