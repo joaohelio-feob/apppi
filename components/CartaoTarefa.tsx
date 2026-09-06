@@ -198,22 +198,47 @@ export default function CartaoTarefa({
           </div>
         )}
 
-        <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1.5 font-mono text-xs text-tinta/70">
+        {/* ---------------------------------------------------------------
+            GRAMÁTICA FIXA DO RODAPÉ — slots e ordem, não flex-wrap livre.
+
+            Antes eram seis itens de largura livre num flex-wrap: onde a
+            linha quebrava dependia da soma dos anteriores, então mudava com
+            o conteúdo (medido: dois cartões diferentes quebrando em pontos
+            diferentes pelo mesmo motivo). Agora cada faixa tem papel fixo:
+
+              alerta      pendência que exige ação          (condicional)
+              identidade  quem responde · quando vence      (sempre)
+              evidência   onde está o trabalho · git · issue (condicional)
+
+            A faixa de evidência NÃO quebra: o link absorve a sobra e trunca;
+            git e issue são shrink-0 e ficam sempre na mesma linha. O que não
+            couber aqui vive no painel de detalhes, não numa quarta linha.
+
+            Todos os itens levam py-0.5 e leading-none para os boxes terem a
+            mesma altura — era o desalinhamento de baseline de 3px medido
+            dentro de uma mesma linha (tops 415/416/418).
+            --------------------------------------------------------------- */}
+
+        {pendenteGit && (
+          <div className="mt-3 font-mono text-xs">
+            <span className="inline-block bg-trigo px-1.5 py-0.5 uppercase leading-none tracking-wide text-tinta">
+              pendente no git
+            </span>
+          </div>
+        )}
+
+        <div className="mt-3 flex items-center gap-2 font-mono text-xs leading-none text-tinta/70">
           {responsaveis.length === 0 ? (
-            <span className="border border-dashed border-linha px-1.5 py-0.5">sem dono</span>
+            <span className="border border-dashed border-linha px-1.5 py-0.5 leading-none">sem dono</span>
           ) : (
-            <span className="flex items-center gap-1" title={textoResponsaveis}>
+            <span className="flex shrink-0 items-center gap-1" title={textoResponsaveis}>
               {visiveis.map((m) => (
-                <span
-                  key={m.id}
-                  className="rounded bg-linha px-1.5 py-0.5 text-tinta"
-                  title={m.nome}
-                >
+                <span key={m.id} className="rounded bg-linha px-1.5 py-0.5 leading-none text-tinta" title={m.nome}>
                   {iniciais(m.nome)}
                 </span>
               ))}
               {excedente > 0 && (
-                <span className="rounded border border-linha px-1.5 py-0.5" aria-label={textoResponsaveis}>
+                <span className="rounded border border-linha px-1.5 py-0.5 leading-none" aria-label={textoResponsaveis}>
                   +{excedente}
                 </span>
               )}
@@ -221,44 +246,48 @@ export default function CartaoTarefa({
           )}
 
           {tarefa.prazo && (
-            <span className={atrasada ? "font-semibold text-trigo" : ""}>
+            <span className={`py-0.5 leading-none ${atrasada ? "font-semibold text-trigo" : ""}`}>
               {textoDoPrazo(tarefa.prazo, atrasada, hoje)}
             </span>
           )}
+        </div>
 
-          {pendenteGit && (
-            <span className="bg-trigo px-1.5 py-0.5 uppercase tracking-wide text-tinta">
-              pendente no git
+        {/* Sempre presente: o marcador de git não some quando a tarefa não
+            tem link nem issue. */}
+        <div className="mt-1.5 flex flex-nowrap items-center gap-2 font-mono text-xs leading-none text-tinta/70">
+          {local ? (
+            local.tipo === "link" ? (
+            <a
+              href={local.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              title={local.titulo}
+              // z-10 obrigatório: sem isso o overlay do título come o clique.
+              className="relative z-10 flex min-w-0 flex-1 items-center gap-1 py-0.5 leading-none underline underline-offset-4 hover:text-musgo"
+            >
+              <IconeLink />
+              <span className="truncate">{local.rotulo}</span>
+            </a>
+            ) : (
+            <span className="flex min-w-0 flex-1 items-center gap-1 py-0.5 leading-none" title={local.titulo}>
+              <IconeLink />
+              <span className="truncate">{local.rotulo}</span>
             </span>
+            )
+          ) : (
+            null
           )}
 
-          {local &&
-            (local.tipo === "link" ? (
-              <a
-                href={local.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                title={local.titulo}
-                // z-10 obrigatório: sem isso o overlay do título come o clique.
-                className="relative z-10 flex min-w-0 max-w-[14rem] items-center gap-1 underline underline-offset-4 hover:text-musgo"
-              >
-                <IconeLink />
-                <span className="truncate">{local.rotulo}</span>
-              </a>
-            ) : (
-              <span className="flex min-w-0 max-w-[14rem] items-center gap-1" title={local.titulo}>
-                <IconeLink />
-                <span className="truncate">{local.rotulo}</span>
-              </span>
-            ))}
-
-          <span className={tarefa.subiu_git ? "text-musgo" : "text-tinta/70"}>
+          {/* ml-auto no lugar de um espaçador vazio: sem link o marcador
+              encosta na direita do mesmo jeito, e não sobra uma caixa de
+              altura zero desalinhando a faixa. */}
+          <span className={`ml-auto shrink-0 py-0.5 leading-none ${tarefa.subiu_git ? "text-musgo" : "text-tinta/70"}`}>
             {tarefa.subiu_git ? "● git" : "○ git"}
           </span>
 
           {tarefa.issue_numero && (
-            <span className="relative z-10" onClick={(e) => e.stopPropagation()}>
+            <span className="relative z-10 shrink-0 py-0.5 leading-none" onClick={(e) => e.stopPropagation()}>
               <SeloIssue numero={tarefa.issue_numero} />
             </span>
           )}
