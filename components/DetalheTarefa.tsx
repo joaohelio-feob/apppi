@@ -10,6 +10,7 @@ import {
   STATUS, UNIDADES_FRENTE, responsaveisDe,
   type EstadoEntrega, type Frente, type Membro, type Tarefa,
 } from "@/lib/types";
+import ConfirmarAcao from "./ConfirmarAcao";
 import GerenciadorAnexos from "./GerenciadorAnexos";
 import ModalEntrega from "./ModalEntrega";
 import NotaRevisor from "./NotaRevisor";
@@ -67,6 +68,7 @@ export default function DetalheTarefa({
   const [membros, setMembros] = useState<Membro[]>(membrosIniciais ?? []);
   const [frentes, setFrentes] = useState<Frente[]>(frentesIniciais ?? []);
   const [arquivando, setArquivando] = useState(false);
+  const [confirmandoArquivo, setConfirmandoArquivo] = useState(false);
   const [meuId, setMeuId] = useState<string | null>(null);
   const [estado, setEstado] = useState<EstadoEntrega | null>(null);
   const [entregaAberta, setEntregaAberta] = useState(false);
@@ -243,7 +245,6 @@ export default function DetalheTarefa({
   }
 
   async function arquivar() {
-    if (!confirm("Arquivar esta tarefa? Ela some dos quadros, mas o histórico continua.")) return;
     setArquivando(true);
     const { error } = await supabase.from("tarefas").update({ arquivada: true }).eq("id", t.id);
     setArquivando(false);
@@ -251,6 +252,7 @@ export default function DetalheTarefa({
       avisar("Não deu pra arquivar. Tenta de novo.");
       return;
     }
+    setConfirmandoArquivo(false);
     aoAtualizar?.();
     aoFechar();
   }
@@ -638,16 +640,40 @@ export default function DetalheTarefa({
           </div>
         </Bloco>
 
-        <div className="mt-5 border-t border-linha pt-3">
+        {/* Separada do resto: é a única ação da tela que tira a tarefa das
+            superfícies de trabalho. Reversível, então sem alarme — mas com
+            espaço próprio, rótulo em corpo e explicação do que acontece. */}
+        <div className="mt-6 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-t border-linha pt-4">
+          <p className="text-xs text-tinta/70">
+            Some do quadro e do calendário. O histórico fica, e dá para restaurar.
+          </p>
           <button
-            onClick={arquivar}
+            onClick={() => setConfirmandoArquivo(true)}
             disabled={arquivando}
-            className="font-mono text-xs text-tinta/70 transition duration-150 hover:text-trigo disabled:opacity-50"
+            className="shrink-0 border border-linha px-3 py-1.5 text-xs transition duration-150 hover:border-trigo hover:text-trigo disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-musgo"
           >
-            {arquivando ? "arquivando…" : "arquivar tarefa"}
+            {arquivando ? "arquivando…" : "Arquivar tarefa"}
           </button>
         </div>
       </div>
+
+      {confirmandoArquivo && (
+        <ConfirmarAcao
+          titulo="Arquivar esta tarefa?"
+          descricao={
+            <>
+              <strong className="font-semibold text-tinta">{t.titulo}</strong> sai do quadro, do
+              calendário, da Semana e do painel da frente, e passa a aparecer no filtro
+              “arquivadas” do quadro. Nada é apagado: o histórico dela continua na Trilha, e dá
+              para restaurar quando quiser.
+            </>
+          }
+          rotuloConfirmar="Arquivar"
+          executando={arquivando}
+          aoConfirmar={arquivar}
+          aoCancelar={() => setConfirmandoArquivo(false)}
+        />
+      )}
 
       {entregaAberta && (
         <ModalEntrega

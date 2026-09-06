@@ -4,12 +4,15 @@ import { useCallback, useEffect, useState } from "react";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
 import { PRIORIDADES, STATUS, responsaveisDe, type Frente, type Membro, type Tarefa } from "@/lib/types";
 import FormularioTarefa from "@/components/FormularioTarefa";
+import ConfirmarAcao from "@/components/ConfirmarAcao";
 import SeloIssue from "@/components/SeloIssue";
 
 type TarefaComAnexos = Tarefa & { anexos?: { count: number }[] };
 
 export default function Atribuicoes() {
   const [tarefas, setTarefas] = useState<TarefaComAnexos[]>([]);
+  const [arquivando, setArquivando] = useState<Tarefa | null>(null);
+  const [executandoArquivo, setExecutandoArquivo] = useState(false);
   const [membros, setMembros] = useState<Membro[]>([]);
   const [frentes, setFrentes] = useState<Frente[]>([]);
   const [carregando, setCarregando] = useState(true);
@@ -69,10 +72,13 @@ export default function Atribuicoes() {
     }
   }
 
-  async function arquivar(id: number) {
-    if (!confirm("Arquivar esta atribuição? Ela some da lista, mas o histórico continua.")) return;
-    setTarefas((atual) => atual.filter((t) => t.id !== id));
-    await supabase.from("tarefas").update({ arquivada: true }).eq("id", id);
+  async function arquivar(t: Tarefa) {
+    setExecutandoArquivo(true);
+    const { error } = await supabase.from("tarefas").update({ arquivada: true }).eq("id", t.id);
+    setExecutandoArquivo(false);
+    setArquivando(null);
+    if (error) return;
+    setTarefas((atual) => atual.filter((x) => x.id !== t.id));
   }
 
   return (
@@ -265,7 +271,7 @@ export default function Atribuicoes() {
                   </td>
                   <td className="sticky right-0 bg-campo px-3 py-2 text-right">
                     <button
-                      onClick={() => arquivar(t.id)}
+                      onClick={() => setArquivando(t)}
                       className="font-mono text-xs text-tinta/70 hover:text-trigo"
                     >
                       arquivar
@@ -283,6 +289,23 @@ export default function Atribuicoes() {
             </tbody>
           </table>
         </div>
+      )}
+      {arquivando && (
+        <ConfirmarAcao
+          titulo="Arquivar esta tarefa?"
+          descricao={
+            <>
+              <strong className="font-semibold text-tinta">{arquivando.titulo}</strong> sai desta
+              tabela, do quadro, do calendário e da Semana, e passa a aparecer no filtro
+              “arquivadas” do quadro. Nada é apagado: o histórico continua na Trilha, e dá para
+              restaurar.
+            </>
+          }
+          rotuloConfirmar="Arquivar"
+          executando={executandoArquivo}
+          aoConfirmar={() => arquivar(arquivando)}
+          aoCancelar={() => setArquivando(null)}
+        />
       )}
     </div>
   );

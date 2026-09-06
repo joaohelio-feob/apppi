@@ -7,11 +7,14 @@ import {
   type Escopo, type Frente, type Membro, type Status, type Tarefa,
 } from "@/lib/types";
 import CartaoTarefa from "@/components/CartaoTarefa";
+import ListaArquivadas from "@/components/ListaArquivadas";
+import ConfirmarAcao from "@/components/ConfirmarAcao";
 import { useNovaTarefa } from "@/components/NovaTarefaProvider";
 import { useToast } from "@/components/ToastProvider";
 
 const CHAVE_MINHAS = "pi-quadro-somente-minhas";
 const CHAVE_VISAO = "pi-quadro-visao";
+const CHAVE_ARQUIVADAS = "pi-quadro-arquivadas";
 
 /** Quantos cartões uma coluna mostra antes do "ver mais". */
 const CAP_COLUNA = 8;
@@ -36,6 +39,11 @@ export default function Quadro() {
   const [filtroPrioridade, setFiltroPrioridade] = useState("");
   const [filtroFrente, setFiltroFrente] = useState("");
   const [somenteMinhas, setSomenteMinhas] = useState(false);
+  /** Arquivadas é filtro de ESTADO, eixo diferente do escopo — por isso é um
+   *  controle à parte, e não uma terceira aba do tablist de escopo. */
+  const [verArquivadas, setVerArquivadas] = useState(false);
+  const [arquivando, setArquivando] = useState<Tarefa | null>(null);
+  const [executandoArquivo, setExecutandoArquivo] = useState(false);
 
   /**
    * Colunas expandidas ("ver mais"), por chave estável `grupo::status` — nunca
@@ -63,6 +71,7 @@ export default function Quadro() {
     setSomenteMinhas(localStorage.getItem(CHAVE_MINHAS) === "1");
     const visaoSalva = localStorage.getItem(CHAVE_VISAO);
     if (visaoSalva === "frente" || visaoSalva === "individual") setVisao(visaoSalva);
+    setVerArquivadas(localStorage.getItem(CHAVE_ARQUIVADAS) === "1");
   }, []);
 
   function alternarMinhas() {
@@ -151,10 +160,21 @@ export default function Quadro() {
     }
   }
 
-  async function arquivar(id: number) {
-    if (!confirm("Arquivar esta tarefa? Ela some do quadro, mas o histórico continua.")) return;
-    setTarefas((atual) => atual.filter((t) => t.id !== id));
-    await supabase.from("tarefas").update({ arquivada: true }).eq("id", id);
+  function pedirArquivamento(id: number) {
+    const t = tarefas.find((x) => x.id === id);
+    if (t) setArquivando(t);
+  }
+
+  async function arquivar(t: Tarefa) {
+    setExecutandoArquivo(true);
+    const { error } = await supabase.from("tarefas").update({ arquivada: true }).eq("id", t.id);
+    setExecutandoArquivo(false);
+    setArquivando(null);
+    if (error) {
+      avisar("Não deu pra arquivar. Tenta de novo.");
+      return;
+    }
+    setTarefas((atual) => atual.filter((x) => x.id !== t.id));
   }
 
   function alternarColuna(chave: string) {
@@ -297,6 +317,21 @@ export default function Quadro() {
           ))}
         </select>
         <button
+          onClick={() => {
+            setVerArquivadas((atual) => {
+              const novo = !atual;
+              localStorage.setItem(CHAVE_ARQUIVADAS, novo ? "1" : "0");
+              return novo;
+            });
+          }}
+          aria-pressed={verArquivadas}
+          className={`border px-3 py-2 text-xs transition duration-150 ${
+            verArquivadas ? "border-tinta bg-tinta text-campo" : "border-linha text-tinta/70 hover:bg-casca"
+          }`}
+        >
+          arquivadas
+        </button>
+        <button
           onClick={alternarMinhas}
           aria-pressed={somenteMinhas}
           className={`border px-3 py-2 font-mono text-xs uppercase transition duration-150 ${
@@ -308,7 +343,12 @@ export default function Quadro() {
       </div>
 
       <div id="painel-quadro" role="tabpanel" aria-labelledby={`aba-${visao}`} tabIndex={-1}>
-        {carregando ? (
+        {verArquivadas ? (
+          // Arquivada não se arrasta entre colunas de status, então aqui o
+          // quadro dá lugar a uma lista. O eixo de escopo do tablist continua
+          // valendo — a lista respeita a aba escolhida.
+          <ListaArquivadas escopo={visao} aoRestaurar={carregar} />
+        ) : carregando ? (
           <p className="mt-10 font-mono text-sm text-tinta/70">carregando…</p>
         ) : grupos.length === 0 ? (
           <p className="mt-10 text-sm text-tinta/70">
@@ -333,7 +373,7 @@ export default function Quadro() {
                   expandidas={expandidas}
                   aoAlternarColuna={alternarColuna}
                   aoMudarStatus={mudarStatus}
-                  aoArquivar={arquivar}
+                  aoArquivar={pedirArquivamento}
                   aoAtualizar={carregar}
                   membros={membros}
                   frentes={frentes}
@@ -343,6 +383,23 @@ export default function Quadro() {
           </div>
         )}
       </div>
+      {arquivando && (
+        <ConfirmarAcao
+          titulo="Arquivar esta tarefa?"
+          descricao={
+            <>
+              <strong className="font-semibold text-tinta">{arquivando.titulo}</strong> sai do
+              quadro, do calendário, da Semana e do painel da frente, e passa a aparecer no filtro
+              “arquivadas”. Nada é apagado: o histórico dela continua na Trilha, e dá para
+              restaurar quando quiser.
+            </>
+          }
+          rotuloConfirmar="Arquivar"
+          executando={executandoArquivo}
+          aoConfirmar={() => arquivar(arquivando)}
+          aoCancelar={() => setArquivando(null)}
+        />
+      )}
     </div>
   );
 }
