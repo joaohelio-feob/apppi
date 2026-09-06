@@ -44,7 +44,7 @@ ilegível e envelhece no dia em que alguém recriar a frente. Quem traduz nome �
 | `escopo` | `tarefas.escopo` | `text not null` ([:55](../supabase/schema.sql#L55)) | **sim** | `"individual"` ou `"frente"`. Único campo desta tabela com `check` de verdade no banco. |
 | `frente` | → `tarefas.frente_id` | nome, resolvido | **condicional** | Nome de uma frente existente. **Obrigatório** quando `escopo` é `"frente"` (constraint `tarefa_de_frente_tem_frente`, [:85](../supabase/schema.sql#L85)); opcional em `"individual"`, onde marca a matéria. |
 | `responsavel` | → `tarefa_responsaveis` | nome, resolvido | não | Nome de um membro. **Proibido** quando `escopo` é `"frente"` (ver A.4). No máximo um. |
-| `revisor` | → `tarefas.revisor_id` | nome, resolvido | não | Nome de um membro. Não pode ser o mesmo do `responsavel` (ver A.5). |
+| `revisor` | → `tarefas.revisor_id` | nome, resolvido | **não** | Nome de um membro, **ou ausente, ou `null`**. Sem revisor a entrega conclui a tarefa direto (ver A.5). Quando presente, não pode ser o `responsavel`. |
 | `prioridade` | `tarefas.prioridade` | `text not null` ([:63](../supabase/schema.sql#L63)) | não | `"baixa"`, `"media"` ou `"alta"`. Omitido, o banco usa `'media'`. **Sem check no banco** (ver A.3). |
 | `prazo` | `tarefas.prazo` | `date` ([:65](../supabase/schema.sql#L65)) | não | `"AAAA-MM-DD"`. |
 | `local_entrega` | `tarefas.local_entrega` | `text` ([:66](../supabase/schema.sql#L66)) | não | URL `http`/`https` para virar link; qualquer outra coisa vira anotação (ver A.6). |
@@ -153,7 +153,28 @@ fechar o ciclo.
 
 Por isso é validação de contrato, obrigatória antes de publicar.
 
-Sem revisor, a entrega conclui a tarefa direto, sem passar por revisão.
+#### Revisor é opcional, e omitir é uma escolha
+
+`revisor` pode vir **ausente** ou **`null`**. Não é erro, e não há valor
+padrão — o painel não escolhe revisor por você.
+
+O que muda ao omitir: **a entrega conclui a tarefa direto**, sem passar por
+revisão. Com revisor, a entrega leva a tarefa para `revisao` e ela só fecha
+quando essa pessoa revisar. É o trigger `aplicar_estado_pos_entrega`
+([:295-297](../supabase/schema.sql#L295-L297)) que decide, olhando se
+`revisor_id` é nulo.
+
+Quem publica precisa saber que está escolhendo entre esses dois fluxos, não
+apenas deixando um campo em branco.
+
+**As duas validações de revisor são condicionais**: revisor ≠ responsável e
+revisor fora da frente só se aplicam **quando há revisor**. Objeto sem a chave
+passa sem disparar nenhuma das duas.
+
+> **Para a skill `pi-despachante`:** ela hoje resolve revisor automaticamente e
+> nunca deixa em branco. Isso não é requisito do contrato — é decisão dela, e
+> precisa ser revista para permitir tarefa sem revisor. A skill não vive neste
+> repositório; fica só o registro.
 
 ### A.6 `local_entrega`: só `http`/`https` vira link
 
@@ -277,7 +298,7 @@ de objetos**.
   "escopo":        "individual | frente",
   "frente":        "nome da frente | null",     // obrigatório se escopo = frente
   "responsavel":   "nome do membro | null",     // proibido se escopo = frente
-  "revisor":       "nome do membro | null",     // ≠ responsavel
+  "revisor":       "nome do membro | null",     // opcional: ausente ou null = sem revisão
   "prioridade":    "baixa | media | alta",      // omitido = media
   "prazo":         "AAAA-MM-DD | null",
   "local_entrega": "URL http(s) ou anotação | null",
@@ -317,7 +338,6 @@ responsável continua sendo uma pessoa só.
   "descricao": "Slides e roteiro para a banca.\n\n- [ ] Estrutura dos slides\n- [ ] Ensaio cronometrado\n- [ ] Revisão da professora",
   "escopo": "frente",
   "frente": "Modelagem de Dados",
-  "revisor": "João Hélio",
   "prioridade": "media",
   "prazo": "2026-10-03",
   "local_entrega": null,
@@ -326,9 +346,14 @@ responsável continua sendo uma pessoa só.
 }
 ```
 
-Repare: **não há chave `responsavel`**. O trigger atribui todos os integrantes
-da frente. Incluí-la aqui seria erro de validação, e `revisor` precisa ser
-alguém que **não** está nessa frente.
+Repare em duas ausências, as duas propositais:
+
+- **não há `responsavel`** — o trigger atribui todos os integrantes da frente,
+  e incluir a chave seria erro de validação;
+- **não há `revisor`** — esta tarefa conclui direto na entrega, sem revisão.
+  Se você quiser revisor numa tarefa de frente, ele precisa ser alguém que
+  **não** está nessa frente, senão seria atribuído como responsável pelo
+  trigger e acabaria revisando a própria tarefa.
 
 ---
 
@@ -383,12 +408,15 @@ dela na Trilha fica para sempre.
 | 8 | `prioridade` ∈ {baixa, media, alta} | **o banco aceitaria lixo** — sem check nessa coluna |
 | 9 | `escopo: "frente"` ⟹ `frente` presente | constraint `tarefa_de_frente_tem_frente` |
 | 10 | `escopo: "frente"` ⟹ `responsavel` **ausente** | pessoa achando que escolheu uma pessoa, quando o trigger atribui a frente toda |
-| 11 | `frente` e `responsavel` e `revisor` resolvem para exatamente um registro | nome inexistente ou ambíguo (dois "João") |
-| 12 | `revisor` ≠ `responsavel` | **revisor igual ao responsável** — o banco só barra semanas depois, ao revisar |
-| 13 | `revisor` não está na frente, quando `escopo: "frente"` | mesma armadilha, pela via do trigger |
+| 11 | `frente`, `responsavel` e `revisor`, **quando presentes**, resolvem para exatamente um registro | nome inexistente ou ambíguo (dois "João") |
+| 12 | **Se houver revisor**, `revisor` ≠ `responsavel` | **revisor igual ao responsável** — o banco só barra semanas depois, ao revisar |
+| 13 | **Se houver revisor** e `escopo: "frente"`, ele não está nessa frente | mesma armadilha, pela via do trigger |
 | 14 | `prazo` casa `AAAA-MM-DD` e é data real | `"19/09/2026"` ou `"2026-02-30"` |
 | 15 | `local_entrega`, se pretende ser link, começa com `http://` ou `https://` | **local_entrega que não é URL** — vira texto morto sem aviso |
 | 16 | `revisor` não aparece dentro de `observacoes` | **revisor em observacoes** — segunda fonte de verdade |
 | 17 | `issue_numero` é inteiro ≥ 1 | `"#42"` como string |
 
 Itens 2, 3, 15 e 16 existem porque **já aconteceram** neste painel.
+
+Nenhum item exige revisor. Uma tarefa **sem** `revisor` passa no checklist
+inteiro — os itens 11, 12 e 13 simplesmente não se aplicam a ela.
