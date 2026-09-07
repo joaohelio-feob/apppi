@@ -180,9 +180,13 @@ export default function CartaoTarefa({
               aria-valuenow={progresso.feitos}
               aria-label={`${progresso.feitos} de ${progresso.total} critérios de aceite concluídos`}
             >
+              {/* scaleX em vez de width: animar largura força reflow a cada
+                  quadro. transform-origin na esquerda faz a barra crescer da
+                  esquerda, igual à versão anterior — a diferença é só que o
+                  compositor cuida disso, não o layout. */}
               <span
-                className="block h-full bg-musgo transition-[width] duration-150"
-                style={{ width: `${(progresso.feitos / progresso.total) * 100}%` }}
+                className="block h-full w-full origin-left bg-musgo transition-transform duration-micro ease-entrada"
+                style={{ transform: `scaleX(${progresso.feitos / progresso.total})` }}
               />
             </span>
             <span className="shrink-0 font-mono text-xs text-tinta/70">

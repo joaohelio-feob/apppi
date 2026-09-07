@@ -27,6 +27,25 @@ const config: Config = {
         mono:    ["var(--font-mono)", "ui-monospace", "monospace"],
       },
       borderRadius: { none: "0", sm: "2px", DEFAULT: "3px" },
+
+      // ---- Movimento: os tokens vivem só aqui ----------------------------
+      // "Adicionar fluidez" sem sistema produz três telas com três durações.
+      // Só existem estes dois tempos e estes dois easings; 240ms é teto
+      // absoluto e nada pode passar disso.
+      //
+      // E só se anima `opacity` e `transform`. Propriedade de layout (height,
+      // width, top, margin, padding) força reflow, produz jank e é o oposto do
+      // que se quer — nunca use `transition-all` nem `transition-[height]`.
+      transitionDuration: {
+        micro: "120ms",   // hover, foco, toggle — resposta a um dedo
+        entrada: "180ms", // um elemento entrando ou saindo da tela
+      },
+      transitionTimingFunction: {
+        // Desacelera ao chegar: o elemento "assenta" no lugar.
+        entrada: "cubic-bezier(0.16, 1, 0.3, 1)",
+        // Acelera ao sair: some rápido, sem pedir atenção.
+        saida: "cubic-bezier(0.4, 0, 1, 1)",
+      },
     },
   },
   plugins: [],
