@@ -16,17 +16,36 @@ import DetalheTarefa from "./DetalheTarefa";
  *
  * Mesma gramática de sinais do cartão e do calendário: prioridade é forma
  * (glifo), atraso soma "!" por cima. Nada aqui depende de cor para ser lido.
+ *
+ * As três props de exibição existem para a linha servir a duas telas sem
+ * virar dois componentes — o que criaria a segunda maneira de mostrar uma
+ * tarefa. Todas têm default igual ao comportamento da home, então a home
+ * não passa nenhuma delas e o HTML dela não muda.
  */
 export default function LinhaTarefa({
   tarefa,
   aoAtualizar,
   membros,
   frentes,
+  mostrarStatus = false,
+  mostrarQuem = true,
+  mostrarFrente = true,
 }: {
   tarefa: Tarefa;
   aoAtualizar?: () => void;
   membros?: Membro[];
   frentes?: Frente[];
+  /**
+   * Ligue onde a consulta NÃO filtra concluídas. Na home ela filtra
+   * (app/page.tsx: .neq("status","concluida")), então o sinal seria ruído;
+   * na /frentes/[id] ela não filtra, e sem isto uma tarefa concluída ficaria
+   * visualmente idêntica a uma pendente.
+   */
+  mostrarStatus?: boolean;
+  /** Desligue quando o cabeçalho do grupo já é a pessoa. */
+  mostrarQuem?: boolean;
+  /** Desligue quando a tela inteira já é de uma frente só. */
+  mostrarFrente?: boolean;
 }) {
   const [aberto, setAberto] = useState(false);
 
@@ -52,6 +71,35 @@ export default function LinhaTarefa({
     : dias === 0 ? "hoje"
     : `${dias}d`;
 
+  /**
+   * Concluída troca o prazo por "✓": dias restantes de tarefa concluída não
+   * informam nada, e a coluna de prazo é a única que existe em toda largura
+   * — a faixa de metadados some abaixo de sm. O título fica no peso normal:
+   * nesta tela o trabalho entregue é o resultado que se quer ver, não algo a
+   * apagar.
+   */
+  const concluida = mostrarStatus && tarefa.status === "concluida";
+
+  /**
+   * "A fazer" é o estado default e marcar o normal é ruído; "Concluída" já
+   * está dito pelo ✓. Sobram os dois estados intermediários, por extenso e
+   * sem caixa — do mesmo jeito que "frente" já entra aqui.
+   */
+  const palavraStatus =
+    mostrarStatus && (tarefa.status === "fazendo" || tarefa.status === "revisao")
+      ? nomeStatus.toLowerCase()
+      : null;
+
+  // O separador " · " fica colado ao literal de cada parte, e não numa
+  // expressão própria, porque é assim que o HTML da home continua igual ao
+  // de antes destas props — React quebra `{" · "}` num nó de texto separado.
+  const temFrente = mostrarFrente && !!tarefa.frentes;
+  const antesDaFrente = mostrarQuem || !!palavraStatus;
+  const antesDoProgresso = antesDaFrente || temFrente;
+
+  // Tudo que a forma comunica, repetido em palavras — o rótulo não depende
+  // de nenhuma das props acima: quem chega neste botão pelo teclado pode não
+  // ter passado pelo cabeçalho do grupo que tornou o dado redundante.
   const rotulo =
     `${tarefa.titulo} · ${nomeStatus} · prioridade ${nomePrio}` +
     `${atrasada ? " · atrasada" : ""} · ${quem}` +
@@ -79,22 +127,28 @@ export default function LinhaTarefa({
             o título. "frente" escrito por extenso é o que distingue pessoa de
             frente sem depender de cor nem de conhecer os nomes do time. */}
         <span className="hidden min-w-0 truncate text-xs text-tinta/70 sm:block">
-          {quem}
-          {tarefa.frentes && <> · frente {tarefa.frentes.nome}</>}
+          {mostrarQuem && quem}
+          {palavraStatus && (mostrarQuem ? <> · {palavraStatus}</> : palavraStatus)}
+          {temFrente && (
+            antesDaFrente
+              ? <> · frente {tarefa.frentes!.nome}</>
+              : <>frente {tarefa.frentes!.nome}</>
+          )}
           {progresso && (
             <>
-              {" · "}
+              {antesDoProgresso ? " · " : null}
               <span className="font-mono">{progresso.feitos}/{progresso.total}</span>
             </>
           )}
         </span>
 
         <span
+          title={concluida ? "Concluída" : undefined}
           className={`shrink-0 font-mono text-xs tabular-nums ${
             atrasada ? "font-semibold text-trigo" : "text-tinta/70"
           }`}
         >
-          {prazoCurto}
+          {concluida ? "✓" : prazoCurto}
         </span>
       </button>
 
