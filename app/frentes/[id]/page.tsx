@@ -5,7 +5,21 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
 import { UNIDADES_FRENTE, CORES_FRENTE, responsaveisDe, type CorFrente, type Frente, type Membro, type Tarefa, type Unidade } from "@/lib/types";
-import CartaoTarefa from "@/components/CartaoTarefa";
+import LinhaTarefa from "@/components/LinhaTarefa";
+
+/**
+ * Concluída por último, preservando a ordem por prazo entre as não concluídas
+ * — Array.prototype.sort é estável desde a ES2019, então o `.order("prazo")`
+ * da consulta continua valendo dentro de cada grupo.
+ *
+ * É ordenação, não filtro: nada some e nada depende de toggle. Concluída é a
+ * evidência que o PI avalia, e não é o mesmo caso de arquivada, que é
+ * descarte. Mas o que está em andamento fica em cima, onde a leitura começa.
+ */
+const concluidaPorUltimo = (lista: Tarefa[]) =>
+  [...lista].sort(
+    (a, b) => Number(a.status === "concluida") - Number(b.status === "concluida")
+  );
 
 const CAMPOS_TAREFA =
   "id, titulo, descricao, escopo, frente_id, status, prioridade, prazo, inicio, local_entrega, subiu_git, issue_numero, observacoes";
@@ -72,7 +86,9 @@ export default function PainelFrente() {
       if (!mapa.has(pessoa.id)) mapa.set(pessoa.id, { nome: pessoa.nome, itens: [] });
       mapa.get(pessoa.id)!.itens.push(t);
     });
-    return Array.from(mapa.values()).sort((a, b) => a.nome.localeCompare(b.nome));
+    return Array.from(mapa.values())
+      .map((p) => ({ ...p, itens: concluidaPorUltimo(p.itens) }))
+      .sort((a, b) => a.nome.localeCompare(b.nome));
   }, [tarefasIndividuais]);
 
   async function salvarEdicao(campos: Partial<Pick<Frente, "nome" | "unidade" | "cor" | "ordem">>) {
@@ -83,6 +99,12 @@ export default function PainelFrente() {
     await criarClienteNavegador().from("frentes").update(campos).eq("id", frente.id);
     setSalvando(false);
   }
+
+  const nomeUnidade = UNIDADES_FRENTE.find((u) => u.id === frente?.unidade)?.nome ?? null;
+
+  const daFrenteOrdenadas = concluidaPorUltimo(tarefasFrente);
+  const concluidasFrente = tarefasFrente.filter((t) => t.status === "concluida").length;
+  const concluidasIndividuais = tarefasIndividuais.filter((t) => t.status === "concluida").length;
 
   if (carregando) return <p className="mt-10 font-mono text-sm text-tinta/70">carregando…</p>;
 
@@ -101,11 +123,12 @@ export default function PainelFrente() {
         ← Frentes
       </Link>
       <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="font-mono text-xs uppercase tracking-widest text-musgo">
-            Frente{UNIDADES_FRENTE.find((u) => u.id === frente.unidade)?.nome ? ` · ${UNIDADES_FRENTE.find((u) => u.id === frente.unidade)?.nome}` : ""}
-          </p>
-          <h1 className="mt-1 font-display text-3xl font-extrabold tracking-tight">{frente.nome}</h1>
+        {/* Título e unidade numa faixa só, como na home. A sobrancelha em
+            mono maiúsculo gastava uma faixa inteira para dizer "Frente", que
+            o "← Frentes" logo acima já diz. */}
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <h1 className="font-display text-3xl font-extrabold tracking-tight">{frente.nome}</h1>
+          {nomeUnidade && <p className="text-sm text-tinta/70">{nomeUnidade}</p>}
         </div>
         <button
           onClick={() => setEditando((a) => !a)}
@@ -171,14 +194,28 @@ export default function PainelFrente() {
       <section className="mt-10">
         <h2 className="mb-3 border-b border-linha pb-1 font-display text-lg font-semibold">
           Tarefas da frente
-          <span className="ml-2 font-mono text-xs font-normal text-tinta/70">{tarefasFrente.length}</span>
+          {tarefasFrente.length > 0 && (
+            <Contagem total={tarefasFrente.length} concluidas={concluidasFrente} />
+          )}
         </h2>
         <p className="mb-3 text-xs text-tinta/70">Trabalho conjunto — pertence à frente inteira.</p>
         {tarefasFrente.length === 0 ? (
           <p className="text-sm text-tinta/70">Nenhuma tarefa de frente ainda.</p>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {tarefasFrente.map((t) => <CartaoTarefa key={t.id} tarefa={t} aoAtualizar={carregar} />)}
+          <div className="border-t border-linha">
+            {daFrenteOrdenadas.map((t) => (
+              <LinhaTarefa
+                key={t.id}
+                tarefa={t}
+                aoAtualizar={carregar}
+                mostrarStatus
+                // A frente é a tela inteira — repetir o chip em toda linha é
+                // tinta gasta. `quem` fica: atribuir_responsaveis_frente não
+                // é retroativo, então quem entrou depois não está nas tarefas
+                // antigas, e essa diferença é informação.
+                mostrarFrente={false}
+              />
+            ))}
           </div>
         )}
       </section>
@@ -186,7 +223,9 @@ export default function PainelFrente() {
       <section className="mt-10">
         <h2 className="mb-3 border-b border-linha pb-1 font-display text-lg font-semibold">
           Trabalho individual dos integrantes
-          <span className="ml-2 font-mono text-xs font-normal text-tinta/70">{tarefasIndividuais.length}</span>
+          {tarefasIndividuais.length > 0 && (
+            <Contagem total={tarefasIndividuais.length} concluidas={concluidasIndividuais} />
+          )}
         </h2>
         <p className="mb-3 text-xs text-tinta/70">
           Não fica escondido: conta pro relatório final e pra validação dos professores.
@@ -197,9 +236,23 @@ export default function PainelFrente() {
           <div className="space-y-8">
             {porPessoa.map((p) => (
               <div key={p.nome}>
-                <h3 className="mb-2 font-mono text-xs uppercase tracking-widest text-tinta/70">{p.nome}</h3>
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {p.itens.map((t) => <CartaoTarefa key={t.id} tarefa={t} aoAtualizar={carregar} />)}
+                {/* Nome de pessoa não é identificador técnico: sai do mono
+                    maiúsculo. */}
+                <h3 className="mb-1 font-display text-sm font-semibold">{p.nome}</h3>
+                <div className="border-t border-linha">
+                  {p.itens.map((t) => (
+                    <LinhaTarefa
+                      key={t.id}
+                      tarefa={t}
+                      aoAtualizar={carregar}
+                      mostrarStatus
+                      // O h3 acima já é a pessoa, e individual tem no máximo
+                      // 1 responsável por constraint. A frente fica: esta
+                      // consulta filtra por membro, então a individual pode
+                      // apontar para outra frente.
+                      mostrarQuem={false}
+                    />
+                  ))}
                 </div>
               </div>
             ))}
@@ -207,5 +260,27 @@ export default function PainelFrente() {
         )}
       </section>
     </div>
+  );
+}
+
+/**
+ * Contagem inline no texto, como na home — não badge. O volume de concluídas
+ * aparece junto do título para quem abre a página ver sem rolar.
+ *
+ * O número vai em mono (é contador); a palavra "concluídas" não vai, porque
+ * mono aqui é para dado, não para texto.
+ */
+function Contagem({ total, concluidas }: { total: number; concluidas: number }) {
+  return (
+    <span className="ml-2 text-xs font-normal text-tinta/70">
+      · <span className="font-mono">{total}</span>
+      {concluidas > 0 && (
+        <>
+          {" · "}
+          <span className="font-mono">{concluidas}</span>
+          {concluidas === 1 ? " concluída" : " concluídas"}
+        </>
+      )}
+    </span>
   );
 }
