@@ -7,6 +7,20 @@ import { criarClienteNavegador } from "@/lib/supabase-browser";
 import { UNIDADES_FRENTE, CORES_FRENTE, responsaveisDe, type CorFrente, type Frente, type Membro, type Tarefa, type Unidade } from "@/lib/types";
 import LinhaTarefa from "@/components/LinhaTarefa";
 
+/**
+ * Concluída por último, preservando a ordem por prazo entre as não concluídas
+ * — Array.prototype.sort é estável desde a ES2019, então o `.order("prazo")`
+ * da consulta continua valendo dentro de cada grupo.
+ *
+ * É ordenação, não filtro: nada some e nada depende de toggle. Concluída é a
+ * evidência que o PI avalia, e não é o mesmo caso de arquivada, que é
+ * descarte. Mas o que está em andamento fica em cima, onde a leitura começa.
+ */
+const concluidaPorUltimo = (lista: Tarefa[]) =>
+  [...lista].sort(
+    (a, b) => Number(a.status === "concluida") - Number(b.status === "concluida")
+  );
+
 const CAMPOS_TAREFA =
   "id, titulo, descricao, escopo, frente_id, status, prioridade, prazo, inicio, local_entrega, subiu_git, issue_numero, observacoes";
 
@@ -72,7 +86,9 @@ export default function PainelFrente() {
       if (!mapa.has(pessoa.id)) mapa.set(pessoa.id, { nome: pessoa.nome, itens: [] });
       mapa.get(pessoa.id)!.itens.push(t);
     });
-    return Array.from(mapa.values()).sort((a, b) => a.nome.localeCompare(b.nome));
+    return Array.from(mapa.values())
+      .map((p) => ({ ...p, itens: concluidaPorUltimo(p.itens) }))
+      .sort((a, b) => a.nome.localeCompare(b.nome));
   }, [tarefasIndividuais]);
 
   async function salvarEdicao(campos: Partial<Pick<Frente, "nome" | "unidade" | "cor" | "ordem">>) {
@@ -85,6 +101,10 @@ export default function PainelFrente() {
   }
 
   const nomeUnidade = UNIDADES_FRENTE.find((u) => u.id === frente?.unidade)?.nome ?? null;
+
+  const daFrenteOrdenadas = concluidaPorUltimo(tarefasFrente);
+  const concluidasFrente = tarefasFrente.filter((t) => t.status === "concluida").length;
+  const concluidasIndividuais = tarefasIndividuais.filter((t) => t.status === "concluida").length;
 
   if (carregando) return <p className="mt-10 font-mono text-sm text-tinta/70">carregando…</p>;
 
@@ -175,7 +195,7 @@ export default function PainelFrente() {
         <h2 className="mb-3 border-b border-linha pb-1 font-display text-lg font-semibold">
           Tarefas da frente
           {tarefasFrente.length > 0 && (
-            <span className="ml-2 font-mono text-xs font-normal text-tinta/70">· {tarefasFrente.length}</span>
+            <Contagem total={tarefasFrente.length} concluidas={concluidasFrente} />
           )}
         </h2>
         <p className="mb-3 text-xs text-tinta/70">Trabalho conjunto — pertence à frente inteira.</p>
@@ -183,7 +203,7 @@ export default function PainelFrente() {
           <p className="text-sm text-tinta/70">Nenhuma tarefa de frente ainda.</p>
         ) : (
           <div className="border-t border-linha">
-            {tarefasFrente.map((t) => (
+            {daFrenteOrdenadas.map((t) => (
               <LinhaTarefa
                 key={t.id}
                 tarefa={t}
@@ -204,7 +224,7 @@ export default function PainelFrente() {
         <h2 className="mb-3 border-b border-linha pb-1 font-display text-lg font-semibold">
           Trabalho individual dos integrantes
           {tarefasIndividuais.length > 0 && (
-            <span className="ml-2 font-mono text-xs font-normal text-tinta/70">· {tarefasIndividuais.length}</span>
+            <Contagem total={tarefasIndividuais.length} concluidas={concluidasIndividuais} />
           )}
         </h2>
         <p className="mb-3 text-xs text-tinta/70">
@@ -240,5 +260,27 @@ export default function PainelFrente() {
         )}
       </section>
     </div>
+  );
+}
+
+/**
+ * Contagem inline no texto, como na home — não badge. O volume de concluídas
+ * aparece junto do título para quem abre a página ver sem rolar.
+ *
+ * O número vai em mono (é contador); a palavra "concluídas" não vai, porque
+ * mono aqui é para dado, não para texto.
+ */
+function Contagem({ total, concluidas }: { total: number; concluidas: number }) {
+  return (
+    <span className="ml-2 text-xs font-normal text-tinta/70">
+      · <span className="font-mono">{total}</span>
+      {concluidas > 0 && (
+        <>
+          {" · "}
+          <span className="font-mono">{concluidas}</span>
+          {concluidas === 1 ? " concluída" : " concluídas"}
+        </>
+      )}
+    </span>
   );
 }
