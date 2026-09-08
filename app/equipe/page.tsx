@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
 import { PAPEIS, type Frente, type Membro } from "@/lib/types";
+import { dataCurta } from "@/lib/datas";
 
 export default function Equipe() {
   const [membros, setMembros] = useState<Membro[]>([]);
@@ -106,7 +107,7 @@ export default function Equipe() {
 
               {m.criado_em && (
                 <span className="font-mono text-xs text-tinta/70">
-                  entrou em {new Date(m.criado_em).toLocaleDateString("pt-BR")}
+                  entrou em {dataCurta(m.criado_em)}
                 </span>
               )}
             </div>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
 import type { Anexo } from "@/lib/types";
+import ConfirmarAcao from "./ConfirmarAcao";
 
 /** Lista + upload + remoção de anexos de uma tarefa. Usado em /entregas e no DetalheTarefa. */
 export default function GerenciadorAnexos({ tarefaId }: { tarefaId: number }) {
@@ -10,6 +11,11 @@ export default function GerenciadorAnexos({ tarefaId }: { tarefaId: number }) {
   const [carregando, setCarregando] = useState(true);
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  // Esta é a única ação irreversível do painel: o arquivo sai do bucket e
+  // não há como restaurar. Por isso a confirmação é do app, não o confirm
+  // nativo — que só cabe uma frase e não consegue dizer o que se perde.
+  const [apagando, setApagando] = useState<Anexo | null>(null);
+  const [executandoApagar, setExecutandoApagar] = useState(false);
 
   const supabase = criarClienteNavegador();
 
@@ -31,10 +37,12 @@ export default function GerenciadorAnexos({ tarefaId }: { tarefaId: number }) {
   }
 
   async function apagarAnexo(anexo: Anexo) {
-    if (!confirm(`Remover o anexo "${anexo.nome}"?`)) return;
+    setExecutandoApagar(true);
     await supabase.storage.from("entregas").remove([anexo.caminho]);
     await supabase.from("anexos").delete().eq("id", anexo.id);
     setAnexos((atual) => atual.filter((a) => a.id !== anexo.id));
+    setExecutandoApagar(false);
+    setApagando(null);
   }
 
   async function anexar(arquivo: File) {
@@ -101,8 +109,8 @@ export default function GerenciadorAnexos({ tarefaId }: { tarefaId: number }) {
                 {a.membros?.nome ?? "—"}
               </span>
               <button
-                onClick={() => apagarAnexo(a)}
-                className="shrink-0 font-mono text-xs text-tinta/70 hover:bg-trigo hover:text-tinta"
+                onClick={() => setApagando(a)}
+                className="shrink-0 px-1 py-0.5 text-xs text-tinta/70 transition-colors duration-micro ease-entrada hover:bg-trigo hover:text-tinta"
               >
                 remover
               </button>
@@ -110,6 +118,24 @@ export default function GerenciadorAnexos({ tarefaId }: { tarefaId: number }) {
           ))
         )}
       </div>
+
+      {apagando && (
+        <ConfirmarAcao
+          titulo="Remover este anexo?"
+          descricao={
+            <>
+              <strong className="font-semibold text-tinta">{apagando.nome}</strong> é apagado do
+              armazenamento e da lista. <strong className="font-semibold text-tinta">Não dá para
+              desfazer</strong> — diferente de arquivar uma tarefa, aqui o arquivo deixa de existir.
+              Se ele for a evidência de uma entrega, envie o substituto antes de remover.
+            </>
+          }
+          rotuloConfirmar="Remover"
+          executando={executandoApagar}
+          aoConfirmar={() => apagarAnexo(apagando)}
+          aoCancelar={() => setApagando(null)}
+        />
+      )}
     </div>
   );
 }
