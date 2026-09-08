@@ -73,6 +73,7 @@ export default function DetalheTarefa({
   const [estado, setEstado] = useState<EstadoEntrega | null>(null);
   const [entregaAberta, setEntregaAberta] = useState(false);
   const [confirmandoCommit, setConfirmandoCommit] = useState(false);
+  const [confirmandoSaida, setConfirmandoSaida] = useState(false);
 
   // Rascunho local da descrição. Marcar uma checkbox NÃO grava no banco: todo
   // UPDATE em tarefas vira linha em historico (append-only, é a evidência
@@ -146,7 +147,10 @@ export default function DetalheTarefa({
   }, []);
 
   function tentarFechar() {
-    if (descricaoSuja && !confirm("Os critérios de aceite têm alteração não salva. Fechar mesmo assim?")) {
+    // Rascunho pendente abre a confirmação do app em vez do confirm nativo,
+    // que não diz o que se perde nem oferece o caminho de volta.
+    if (descricaoSuja) {
+      setConfirmandoSaida(true);
       return;
     }
     aoFechar();
@@ -702,6 +706,25 @@ export default function DetalheTarefa({
             carregarEstadoEntrega();
             aoAtualizar?.();
           }}
+        />
+      )}
+
+      {confirmandoSaida && (
+        <ConfirmarAcao
+          titulo="Sair sem salvar os critérios?"
+          descricao={
+            <>
+              Os critérios de aceite têm alteração que ainda não foi para o banco. Fechar agora
+              descarta o rascunho — a descrição da tarefa continua como estava. Cancele e use
+              “Salvar critérios” para gravar.
+            </>
+          }
+          rotuloConfirmar="Descartar e fechar"
+          aoConfirmar={() => {
+            setConfirmandoSaida(false);
+            aoFechar();
+          }}
+          aoCancelar={() => setConfirmandoSaida(false)}
         />
       )}
     </div>
