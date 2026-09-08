@@ -81,6 +81,21 @@ export default function DetalheTarefa({
   const [rascunho, setRascunho] = useState(tarefa.descricao ?? "");
   const [salvandoDescricao, setSalvandoDescricao] = useState(false);
 
+  /**
+   * Entrada do painel. Começa em `false` e vira `true` num efeito: é isso que
+   * dá o quadro inicial para o navegador interpolar. Sem os dois quadros a
+   * transição não roda — e nada anima na primeira pintura da página, porque
+   * o painel só monta quando alguém abre.
+   *
+   * Só opacity e transform. `prefers-reduced-motion` desliga tudo pelo
+   * globals.css, e o estado final é o mesmo nos dois casos.
+   */
+  const [entrou, setEntrou] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setEntrou(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+
   const painel = useRef<HTMLDivElement>(null);
   const { avisar } = useToast();
   const supabase = criarClienteNavegador();
@@ -259,7 +274,9 @@ export default function DetalheTarefa({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-stretch justify-center bg-tinta/40 lg:items-center lg:p-4"
+      className={`fixed inset-0 z-50 flex items-stretch justify-center bg-tinta/40 transition-opacity duration-entrada ease-entrada lg:items-center lg:p-4 ${
+        entrou ? "opacity-100" : "opacity-0"
+      }`}
       onMouseDown={(e) => {
         // Só o clique que começa E termina no fundo fecha — arrastar uma
         // seleção de texto de dentro pra fora não deve fechar o painel.
@@ -273,7 +290,9 @@ export default function DetalheTarefa({
         aria-labelledby="detalhe-titulo"
         tabIndex={-1}
         onKeyDown={aoTeclar}
-        className="h-full w-full overflow-y-auto border-linha bg-campo p-4 focus:outline-none sm:p-6 lg:h-auto lg:max-h-[90vh] lg:max-w-2xl lg:border"
+        className={`h-full w-full overflow-y-auto border-linha bg-campo p-4 transition-transform duration-entrada ease-entrada focus:outline-none sm:p-6 lg:h-auto lg:max-h-[90vh] lg:max-w-2xl lg:border ${
+          entrou ? "translate-y-0" : "translate-y-1"
+        }`}
       >
         {/* ---------- 1. Cabeçalho e ciclo de vida ---------- */}
         <div className="flex items-start justify-between gap-3">
