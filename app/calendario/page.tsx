@@ -230,8 +230,8 @@ export default function Calendario() {
             {CLASSES_PRIORIDADE[p.id].glifo} prioridade {p.nome.toLowerCase()}
           </span>
         ))}
-        <span className="flex items-center gap-1.5 font-semibold text-trigo">
-          ! atrasada
+        <span className="flex items-center gap-1.5">
+          <span className="font-mono font-semibold ring-1 ring-inset ring-trigo">!</span> atrasada
         </span>
         <span className="flex items-center gap-1.5">
           <span className="font-mono font-semibold">↩</span> revisor pediu ajuste — clique pra ver o quê

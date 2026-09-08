@@ -125,7 +125,7 @@ export default function CartaoTarefa({
               className="block text-left after:absolute after:inset-0 after:content-[''] focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-musgo"
             >
               <span className="line-clamp-2 break-words">
-                {atrasada && <span className="font-mono text-trigo">! </span>}
+                {atrasada && <span className="font-mono font-bold text-tinta">! </span>}
                 <span className="font-mono" title={`Prioridade ${nomePrio.toLowerCase()}`}>
                   {prio.glifo}
                 </span>{" "}
@@ -244,7 +244,11 @@ export default function CartaoTarefa({
           )}
 
           {tarefa.prazo && (
-            <span className={`py-0.5 leading-none ${atrasada ? "font-semibold text-trigo" : ""}`}>
+            <span
+              className={`py-0.5 leading-none ${
+                atrasada ? "bg-trigo px-1 font-semibold text-tinta" : ""
+              }`}
+            >
               {textoDoPrazo(tarefa.prazo, atrasada, hoje)}
             </span>
           )}
@@ -302,7 +306,7 @@ export default function CartaoTarefa({
           {aoArquivar && (
             <button
               onClick={() => aoArquivar(tarefa.id)}
-              className="ml-auto px-1.5 py-0.5 text-xs text-tinta/70 transition-colors duration-micro ease-entrada hover:text-trigo"
+              className="ml-auto px-1.5 py-0.5 text-xs text-tinta/70 transition-colors duration-micro ease-entrada hover:bg-trigo hover:text-tinta"
             >
               arquivar
             </button>

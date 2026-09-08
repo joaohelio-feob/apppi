@@ -110,7 +110,7 @@ export default function GerenciadorAnexos({ tarefaId }: { tarefaId: number }) {
               </span>
               <button
                 onClick={() => setApagando(a)}
-                className="shrink-0 text-xs text-tinta/70 transition-colors duration-micro ease-entrada hover:text-trigo"
+                className="shrink-0 px-1 py-0.5 text-xs text-tinta/70 transition-colors duration-micro ease-entrada hover:bg-trigo hover:text-tinta"
               >
                 remover
               </button>

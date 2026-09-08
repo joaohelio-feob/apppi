@@ -272,7 +272,7 @@ export default function Atribuicoes() {
                   <td className="sticky right-0 bg-campo px-3 py-2 text-right">
                     <button
                       onClick={() => setArquivando(t)}
-                      className="font-mono text-xs text-tinta/70 hover:text-trigo"
+                      className="px-1 py-0.5 font-mono text-xs text-tinta/70 transition-colors duration-micro ease-entrada hover:bg-trigo hover:text-tinta"
                     >
                       arquivar
                     </button>
