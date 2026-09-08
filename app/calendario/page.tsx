@@ -107,7 +107,7 @@ export default function Calendario() {
     <div>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="font-mono text-xs uppercase tracking-widest text-musgo">
+          <p className="text-sm text-tinta/70">
             {responsavel
               ? `Calendário pessoal · ${membros.find((m) => m.id === responsavel)?.nome ?? ""}`
               : "Calendário geral"}
@@ -120,7 +120,7 @@ export default function Calendario() {
           <select
             value={responsavel}
             onChange={(e) => setResponsavel(e.target.value)}
-            className="border border-linha bg-casca px-3 py-1.5 font-mono text-xs uppercase"
+            className="border border-linha bg-casca px-3 py-1.5 text-xs"
           >
             <option value="">Todo mundo</option>
             {membros.map((m) => (
@@ -144,7 +144,7 @@ export default function Calendario() {
 
       <div className="mt-6 grid grid-cols-7 gap-px border border-linha bg-linha">
         {DIAS.map((d) => (
-          <div key={d} className="bg-campo px-2 py-1.5 font-mono text-xs uppercase text-tinta/70">
+          <div key={d} className="bg-campo px-2 py-1.5 text-xs text-tinta/70">
             {d}
           </div>
         ))}

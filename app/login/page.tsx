@@ -38,7 +38,7 @@ export default function Login() {
 
   return (
     <div className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-6">
-      <p className="font-mono text-xs uppercase tracking-widest text-musgo">
+      <p className="text-sm text-tinta/70">
         Projeto Integrador · 2026
       </p>
       <h1 className="mt-2 font-display text-4xl font-extrabold leading-none tracking-tight">
@@ -85,7 +85,7 @@ export default function Login() {
 
         <button
           onClick={() => { setCadastrando(!cadastrando); setErro(null); }}
-          className="w-full font-mono text-xs text-tinta/70 underline underline-offset-4"
+          className="w-full text-xs text-tinta/70 underline underline-offset-4"
         >
           {cadastrando ? "já tenho conta" : "primeiro acesso? criar conta"}
         </button>

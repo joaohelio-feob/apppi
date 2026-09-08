@@ -51,8 +51,7 @@ export default function Frentes() {
 
   return (
     <div>
-      <p className="font-mono text-xs uppercase tracking-widest text-musgo">Frentes</p>
-      <h1 className="mt-1 font-display text-3xl font-extrabold tracking-tight">
+      <h1 className="font-display text-3xl font-extrabold tracking-tight">
         Os sub-times do projeto
       </h1>
       <p className="mt-2 max-w-prose text-sm text-tinta/70">
@@ -72,7 +71,7 @@ export default function Frentes() {
         <select
           value={unidadeNova}
           onChange={(e) => setUnidadeNova(e.target.value as Unidade)}
-          className="border border-linha bg-campo px-2 py-2 font-mono text-xs uppercase"
+          className="border border-linha bg-campo px-2 py-2 text-xs"
         >
           <option value="">Sem unidade</option>
           {UNIDADES_FRENTE.map((u) => (
@@ -82,13 +81,13 @@ export default function Frentes() {
         <select
           value={corNova}
           onChange={(e) => setCorNova(e.target.value as CorFrente)}
-          className="border border-linha bg-campo px-2 py-2 font-mono text-xs uppercase"
+          className="border border-linha bg-campo px-2 py-2 text-xs"
         >
           {CORES_FRENTE.map((c) => (
             <option key={c.id} value={c.id}>{c.nome}</option>
           ))}
         </select>
-        <label className="font-mono text-xs uppercase text-tinta/70">
+        <label className="text-xs text-tinta/70">
           Ordem
           <input
             type="number"
@@ -107,7 +106,7 @@ export default function Frentes() {
       </div>
 
       {carregando ? (
-        <p className="mt-10 font-mono text-sm text-tinta/70">carregando…</p>
+        <p className="mt-10 text-sm text-tinta/70">carregando…</p>
       ) : (
         <div className="mt-8 divide-y divide-linha border border-linha bg-casca">
           {frentes.map((f) => {

@@ -372,7 +372,7 @@ export default function Quadro() {
           // valendo — a lista respeita a aba escolhida.
           <ListaArquivadas escopo={visao} aoRestaurar={carregar} />
         ) : carregando ? (
-          <p className="mt-10 font-mono text-sm text-tinta/70">carregando…</p>
+          <p className="mt-10 text-sm text-tinta/70">carregando…</p>
         ) : grupos.length === 0 ? (
           <p className="mt-10 text-sm text-tinta/70">
             {visao === "frente"

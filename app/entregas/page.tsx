@@ -33,20 +33,22 @@ export default function Entregas() {
 
   return (
     <div>
-      <p className="font-mono text-xs uppercase tracking-widest text-musgo">Relatório final</p>
-      <h1 className="mt-1 font-display text-3xl font-extrabold tracking-tight">Entregas</h1>
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <h1 className="font-display text-3xl font-extrabold tracking-tight">Entregas</h1>
+        <p className="text-sm text-tinta/70">para o relatório final</p>
+      </div>
       <p className="mt-2 max-w-prose text-sm text-tinta/70">
         Toda tarefa, quem fez, quando terminou e se já está no Git. Clique numa linha para ver
         observações, anexos e marcar a entrega.
       </p>
 
       {carregando ? (
-        <p className="mt-10 font-mono text-sm text-tinta/70">carregando…</p>
+        <p className="mt-10 text-sm text-tinta/70">carregando…</p>
       ) : (
         <div className="mt-6 overflow-x-auto border border-linha">
           <table className="w-full min-w-[640px] border-collapse text-sm">
             <thead>
-              <tr className="border-b border-linha bg-casca font-mono text-xs uppercase tracking-wide text-tinta/70">
+              <tr className="border-b border-linha bg-casca font-display text-xs font-semibold text-tinta/70">
                 <th className="px-3 py-2 text-left">Tarefa</th>
                 <th className="px-3 py-2 text-left">Quem fez</th>
                 <th className="px-3 py-2 text-left">Data</th>
@@ -141,7 +143,7 @@ function PainelEntrega({
       <div className="max-h-[85vh] w-full max-w-lg overflow-y-auto border border-linha bg-campo p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="font-mono text-xs uppercase tracking-widest text-musgo">
+            <p className="text-xs text-tinta/70">
               {responsaveisDe(tarefa).map((m) => m.nome).join(", ") || "sem responsável"}
             </p>
             <h2 className="mt-0.5 font-display text-xl font-bold">{tarefa.titulo}</h2>
@@ -163,7 +165,7 @@ function PainelEntrega({
         </label>
 
         <div className="mt-4">
-          <label className="block font-mono text-xs uppercase text-tinta/70">Observações</label>
+          <label className="block text-xs text-tinta/70">Observações</label>
           <textarea
             defaultValue={tarefa.observacoes ?? ""}
             rows={3}

@@ -58,8 +58,7 @@ export default function Reunioes() {
 
   return (
     <div>
-      <p className="font-mono text-xs uppercase tracking-widest text-musgo">Reuniões</p>
-      <h1 className="mt-1 font-display text-3xl font-extrabold tracking-tight">
+      <h1 className="font-display text-3xl font-extrabold tracking-tight">
         Ata das reuniões da equipe
       </h1>
       <p className="mt-2 max-w-prose text-sm text-tinta/70">
@@ -67,9 +66,9 @@ export default function Reunioes() {
       </p>
 
       <div className="mt-6 border border-linha bg-casca p-4">
-        <h2 className="font-mono text-xs uppercase tracking-widest text-tinta/70">Nova reunião</h2>
+        <h2 className="font-display text-xs font-semibold text-tinta/70">Nova reunião</h2>
         <div className="mt-3 space-y-3">
-          <label className="block font-mono text-xs uppercase text-tinta/70">
+          <label className="block text-xs text-tinta/70">
             Data
             <input
               type="date"
@@ -78,18 +77,18 @@ export default function Reunioes() {
               className="mt-1 w-full border border-linha bg-campo px-3 py-2 font-corpo text-sm text-tinta sm:w-48"
             />
           </label>
-          <label className="block font-mono text-xs uppercase text-tinta/70">
+          <label className="block text-xs text-tinta/70">
             Pauta
             <textarea
               rows={2}
               value={pauta}
               onChange={(e) => setPauta(e.target.value)}
               placeholder="O que foi discutido, ajustes e desafios enfrentados…"
-              className="mt-1 w-full border border-linha bg-campo px-3 py-2 text-sm normal-case text-tinta"
+              className="mt-1 w-full border border-linha bg-campo px-3 py-2 text-sm text-tinta"
             />
           </label>
           <div>
-            <p className="font-mono text-xs uppercase text-tinta/70">Presentes</p>
+            <p className="text-xs text-tinta/70">Presentes</p>
             <div className="mt-1 flex flex-wrap gap-2">
               {membros.map((m) => (
                 <button
@@ -108,14 +107,14 @@ export default function Reunioes() {
               {membros.length === 0 && <p className="text-xs text-tinta/70">Ninguém cadastrado ainda.</p>}
             </div>
           </div>
-          <label className="block font-mono text-xs uppercase text-tinta/70">
+          <label className="block text-xs text-tinta/70">
             Decisões
             <textarea
               rows={2}
               value={decisoes}
               onChange={(e) => setDecisoes(e.target.value)}
               placeholder="O que ficou combinado (opcional)…"
-              className="mt-1 w-full border border-linha bg-campo px-3 py-2 text-sm normal-case text-tinta"
+              className="mt-1 w-full border border-linha bg-campo px-3 py-2 text-sm text-tinta"
             />
           </label>
 
@@ -132,12 +131,12 @@ export default function Reunioes() {
       </div>
 
       {carregando ? (
-        <p className="mt-10 font-mono text-sm text-tinta/70">carregando…</p>
+        <p className="mt-10 text-sm text-tinta/70">carregando…</p>
       ) : (
         <div className="mt-8 space-y-4">
           {reunioes.map((r) => (
             <article key={r.id} className="border border-linha bg-casca p-4">
-              <p className="font-mono text-xs uppercase tracking-widest text-musgo">
+              <p className="font-mono text-xs text-tinta/70">
                 {new Date(r.data + "T12:00:00").toLocaleDateString("pt-BR", {
                   weekday: "short", day: "2-digit", month: "short", year: "numeric",
                 })}

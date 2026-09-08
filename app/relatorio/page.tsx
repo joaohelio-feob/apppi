@@ -110,10 +110,7 @@ export default async function Trilha() {
     <div>
       <div className="flex flex-wrap items-end justify-between gap-4 print:block">
         <div>
-          <p className="font-mono text-xs uppercase tracking-widest text-musgo">
-            Trilha de atividades
-          </p>
-          <h1 className="mt-1 font-display text-3xl font-extrabold tracking-tight">
+          <h1 className="font-display text-3xl font-extrabold tracking-tight">
             Tudo que aconteceu, na ordem
           </h1>
           <p className="mt-2 max-w-prose text-sm text-tinta/70">
@@ -137,7 +134,7 @@ export default async function Trilha() {
       </p>
 
       <section className="mt-8 border border-linha bg-casca p-4">
-        <h2 className="font-mono text-xs uppercase tracking-widest text-tinta/70">
+        <h2 className="font-display text-xs font-semibold text-tinta/70">
           Registros por integrante
         </h2>
         <div className="mt-3 space-y-2">
@@ -164,12 +161,12 @@ export default async function Trilha() {
       </section>
 
       <section className="mt-8 overflow-x-auto border border-linha">
-        <h2 className="border-b border-linha bg-casca px-4 py-2 font-mono text-xs uppercase tracking-widest text-tinta/70">
+        <h2 className="border-b border-linha bg-casca px-4 py-2 font-display text-xs font-semibold text-tinta/70">
           Resumo por pessoa
         </h2>
         <table className="w-full min-w-[640px] border-collapse text-sm">
           <thead>
-            <tr className="border-b border-linha bg-casca font-mono text-xs uppercase tracking-wide text-tinta/70">
+            <tr className="border-b border-linha bg-casca font-display text-xs font-semibold text-tinta/70">
               <th className="px-3 py-2 text-left">Pessoa</th>
               <th className="px-3 py-2 text-left">Frente</th>
               <th className="px-3 py-2 text-left">Concluídas individuais</th>
@@ -206,7 +203,7 @@ export default async function Trilha() {
       <div className="mt-10 space-y-8">
         {Object.entries(porDia).map(([dia, itens]) => (
           <section key={dia}>
-            <h2 className="sticky top-0 z-10 -mx-1 bg-campo/90 px-1 py-1 font-mono text-xs uppercase tracking-widest text-musgo backdrop-blur">
+            <h2 className="sticky top-0 z-10 -mx-1 bg-campo/90 px-1 py-1 font-display text-xs font-semibold text-musgo backdrop-blur">
               {new Date(dia + "T12:00:00").toLocaleDateString("pt-BR", {
                 weekday: "short", day: "2-digit", month: "short", year: "numeric",
               })}
@@ -233,7 +230,7 @@ export default async function Trilha() {
                       </span>
                     )}
                     {r.frente && (
-                      <span className="border border-musgo px-1 py-0.5 font-mono text-xs uppercase text-musgo">
+                      <span className="border border-musgo px-1 py-0.5 text-xs text-musgo">
                         {r.escopo === "frente" ? "frente" : "tema"} · {r.frente}
                         {r.frente_unidade && ` (${UNIDADES_FRENTE.find((u) => u.id === r.frente_unidade)?.nome ?? r.frente_unidade})`}
                       </span>
@@ -245,7 +242,7 @@ export default async function Trilha() {
 
             {porDiaGithub[dia]?.length > 0 && (
               <div className="mt-3 border-l border-linha pl-4">
-                <p className="font-mono text-xs uppercase tracking-widest text-tinta/70">
+                <p className="text-xs text-tinta/70">
                   No GitHub, no mesmo dia
                 </p>
                 <ul className="mt-1 space-y-1">

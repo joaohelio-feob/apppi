@@ -153,7 +153,7 @@ export default function FormularioTarefa({
             <button
               type="button"
               onClick={() => setEscopo("individual")}
-              className={`flex-1 py-1.5 font-mono text-xs uppercase ${
+              className={`flex-1 py-1.5 text-xs ${
                 escopo === "individual" ? "bg-tinta text-campo" : "text-tinta/70 hover:bg-casca"
               }`}
             >
@@ -162,7 +162,7 @@ export default function FormularioTarefa({
             <button
               type="button"
               onClick={() => setEscopo("frente")}
-              className={`flex-1 py-1.5 font-mono text-xs uppercase ${
+              className={`flex-1 py-1.5 text-xs ${
                 escopo === "frente" ? "bg-tinta text-campo" : "text-tinta/70 hover:bg-casca"
               }`}
             >
@@ -172,10 +172,10 @@ export default function FormularioTarefa({
 
           {escopo === "individual" ? (
             <>
-              <label className="block font-mono text-xs uppercase text-tinta/70">
+              <label className="block text-xs text-tinta/70">
                 Responsável
                 <select
-                  className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-sm normal-case text-tinta"
+                  className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-sm text-tinta"
                   value={responsavel}
                   onChange={(e) => setResponsavel(e.target.value)}
                 >
@@ -185,10 +185,10 @@ export default function FormularioTarefa({
                   ))}
                 </select>
               </label>
-              <label className="block font-mono text-xs uppercase text-tinta/70">
+              <label className="block text-xs text-tinta/70">
                 Frente (opcional)
                 <select
-                  className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-sm normal-case text-tinta"
+                  className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-sm text-tinta"
                   value={frenteId}
                   onChange={(e) => setFrenteId(e.target.value)}
                 >
@@ -200,10 +200,10 @@ export default function FormularioTarefa({
               </label>
             </>
           ) : (
-            <label className="block font-mono text-xs uppercase text-tinta/70">
+            <label className="block text-xs text-tinta/70">
               Frente
               <select
-                className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-sm normal-case text-tinta"
+                className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-sm text-tinta"
                 value={frenteId}
                 onChange={(e) => setFrenteId(e.target.value)}
               >
@@ -213,7 +213,7 @@ export default function FormularioTarefa({
                 ))}
               </select>
               {frenteId && (
-                <span className="mt-1 block font-corpo text-xs normal-case text-tinta/70">
+                <span className="mt-1 block font-corpo text-xs text-tinta/70">
                   {membrosDaFrente.length > 0
                     ? `Será atribuída a: ${membrosDaFrente.map((m) => m.nome).join(", ")}`
                     : "Essa frente ainda não tem ninguém."}
@@ -222,10 +222,10 @@ export default function FormularioTarefa({
             </label>
           )}
 
-          <label className="block font-mono text-xs uppercase text-tinta/70">
+          <label className="block text-xs text-tinta/70">
             Revisor (opcional)
             <select
-              className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-sm normal-case text-tinta"
+              className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-sm text-tinta"
               value={revisor}
               onChange={(e) => setRevisor(e.target.value)}
             >
@@ -234,15 +234,15 @@ export default function FormularioTarefa({
                 <option key={m.id} value={m.id}>{m.nome}</option>
               ))}
             </select>
-            <span className="mt-1 block font-corpo text-xs normal-case text-tinta/70">
+            <span className="mt-1 block font-corpo text-xs text-tinta/70">
               Sem revisor, a tarefa conclui direto quando for entregue.
             </span>
           </label>
 
-          <label className="block font-mono text-xs uppercase text-tinta/70">
+          <label className="block text-xs text-tinta/70">
             Prioridade
             <select
-              className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-sm normal-case text-tinta"
+              className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-sm text-tinta"
               value={prioridade}
               onChange={(e) => setPrioridade(e.target.value as Prioridade)}
             >
@@ -252,7 +252,7 @@ export default function FormularioTarefa({
             </select>
           </label>
           <div className="grid grid-cols-2 gap-2">
-            <label className="block font-mono text-xs uppercase text-tinta/70">
+            <label className="block text-xs text-tinta/70">
               Início
               <input
                 type="date"
@@ -261,7 +261,7 @@ export default function FormularioTarefa({
                 onChange={(e) => setInicio(e.target.value)}
               />
             </label>
-            <label className="block font-mono text-xs uppercase text-tinta/70">
+            <label className="block text-xs text-tinta/70">
               Prazo
               <input
                 type="date"
@@ -277,23 +277,23 @@ export default function FormularioTarefa({
             value={localEntrega}
             onChange={(e) => setLocalEntrega(e.target.value)}
           />
-          <label className="block font-mono text-xs uppercase text-tinta/70">
+          <label className="block text-xs text-tinta/70">
             Nº da issue no GitHub (opcional)
             <input
               type="number"
               min={1}
-              className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-sm normal-case text-tinta"
+              className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-sm text-tinta"
               placeholder="Ex.: 42"
               value={issueNumero}
               onChange={(e) => setIssueNumero(e.target.value)}
             />
           </label>
-          <label className="block font-mono text-xs uppercase text-tinta/70">
+          <label className="block text-xs text-tinta/70">
             Anexar documento (opcional)
             <input
               type="file"
               onChange={(e) => setAnexo(e.target.files?.[0] ?? null)}
-              className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-xs normal-case text-tinta file:mr-2 file:border-0 file:bg-tinta file:px-2 file:py-1 file:text-xs file:text-campo"
+              className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-xs text-tinta file:mr-2 file:border-0 file:bg-tinta file:px-2 file:py-1 file:text-xs file:text-campo"
             />
           </label>
 

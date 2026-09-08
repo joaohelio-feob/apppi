@@ -136,7 +136,7 @@ export default function PainelFrente() {
   const concluidasFrente = tarefasFrente.filter((t) => t.status === "concluida").length;
   const concluidasIndividuais = tarefasIndividuais.filter((t) => t.status === "concluida").length;
 
-  if (carregando) return <p className="mt-10 font-mono text-sm text-tinta/70">carregando…</p>;
+  if (carregando) return <p className="mt-10 text-sm text-tinta/70">carregando…</p>;
 
   if (!frente) {
     return (
@@ -173,21 +173,21 @@ export default function PainelFrente() {
 
       {editando && (
         <div className="mt-4 flex flex-wrap items-end gap-2 border border-linha bg-casca p-3">
-          <label className="font-mono text-xs uppercase text-tinta/70">
+          <label className="text-xs text-tinta/70">
             Nome
             <input
               defaultValue={frente.nome}
               onBlur={(e) => e.target.value.trim() && e.target.value !== frente.nome && salvarEdicao({ nome: e.target.value })}
-              className="mt-1 block min-w-[160px] border border-linha bg-campo px-3 py-2 font-corpo text-sm normal-case text-tinta"
+              className="mt-1 block min-w-[160px] border border-linha bg-campo px-3 py-2 font-corpo text-sm text-tinta"
             />
           </label>
-          <label className="font-mono text-xs uppercase text-tinta/70">
+          <label className="text-xs text-tinta/70">
             Unidade
             <select
               value={frente.unidade ?? ""}
               disabled={salvando}
               onChange={(e) => salvarEdicao({ unidade: (e.target.value || null) as Unidade | null })}
-              className="mt-1 block border border-linha bg-campo px-2 py-2 font-mono text-xs uppercase disabled:opacity-50"
+              className="mt-1 block border border-linha bg-campo px-2 py-2 text-xs disabled:opacity-50"
             >
               <option value="">Sem unidade</option>
               {UNIDADES_FRENTE.map((u) => (
@@ -195,20 +195,20 @@ export default function PainelFrente() {
               ))}
             </select>
           </label>
-          <label className="font-mono text-xs uppercase text-tinta/70">
+          <label className="text-xs text-tinta/70">
             Cor
             <select
               value={frente.cor}
               disabled={salvando}
               onChange={(e) => salvarEdicao({ cor: e.target.value as CorFrente })}
-              className="mt-1 block border border-linha bg-campo px-2 py-2 font-mono text-xs uppercase disabled:opacity-50"
+              className="mt-1 block border border-linha bg-campo px-2 py-2 text-xs disabled:opacity-50"
             >
               {CORES_FRENTE.map((c) => (
                 <option key={c.id} value={c.id}>{c.nome}</option>
               ))}
             </select>
           </label>
-          <label className="font-mono text-xs uppercase text-tinta/70">
+          <label className="text-xs text-tinta/70">
             Ordem
             <input
               type="number"
