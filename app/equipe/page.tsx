@@ -47,8 +47,7 @@ export default function Equipe() {
 
   return (
     <div>
-      <p className="font-mono text-xs uppercase tracking-widest text-musgo">Equipe</p>
-      <h1 className="mt-1 font-display text-3xl font-extrabold tracking-tight">
+      <h1 className="font-display text-3xl font-extrabold tracking-tight">
         Quem está no time
       </h1>
       <p className="mt-2 max-w-prose text-sm text-tinta/70">
@@ -57,7 +56,7 @@ export default function Equipe() {
       </p>
 
       {carregando ? (
-        <p className="mt-10 font-mono text-sm text-tinta/70">carregando…</p>
+        <p className="mt-10 text-sm text-tinta/70">carregando…</p>
       ) : (
         <div className="mt-8 divide-y divide-linha border border-linha bg-casca">
           {membros.map((m) => (
@@ -76,7 +75,7 @@ export default function Equipe() {
                     value={m.papel}
                     disabled={salvandoId === m.id}
                     onChange={(e) => mudarPapel(m.id, e.target.value)}
-                    className="border border-linha bg-campo px-2 py-1 font-mono text-xs uppercase disabled:opacity-50"
+                    className="border border-linha bg-campo px-2 py-1 text-xs disabled:opacity-50"
                   >
                     {PAPEIS.map((p) => (
                       <option key={p.id} value={p.id}>{p.nome}</option>
@@ -86,7 +85,7 @@ export default function Equipe() {
                     value={m.frente_id ?? ""}
                     disabled={salvandoId === m.id}
                     onChange={(e) => mudarFrente(m.id, e.target.value)}
-                    className="border border-linha bg-campo px-2 py-1 font-mono text-xs uppercase disabled:opacity-50"
+                    className="border border-linha bg-campo px-2 py-1 text-xs disabled:opacity-50"
                   >
                     <option value="">sem frente</option>
                     {frentes.map((f) => (
@@ -96,7 +95,7 @@ export default function Equipe() {
                 </>
               ) : (
                 <>
-                  <span className="bg-linha px-2 py-0.5 font-mono text-xs uppercase tracking-wide text-tinta">
+                  <span className="bg-linha px-2 py-0.5 text-xs text-tinta">
                     {PAPEIS.find((p) => p.id === m.papel)?.nome ?? m.papel}
                   </span>
                   <span className="font-mono text-xs text-tinta/70">

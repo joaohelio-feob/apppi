@@ -32,7 +32,7 @@ function Bloco({
 }) {
   return (
     <section aria-labelledby={id} className="mt-5 border-t border-linha pt-4">
-      <h3 id={id} className="font-mono text-xs uppercase tracking-widest text-musgo">
+      <h3 id={id} className="font-display text-xs font-semibold text-musgo">
         {titulo}
       </h3>
       <div className="mt-3">{children}</div>
@@ -301,12 +301,12 @@ export default function DetalheTarefa({
         {/* ---------- 1. Cabeçalho e ciclo de vida ---------- */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <span className="font-mono text-xs uppercase tracking-widest text-tinta/70">
+            <span className="text-xs text-tinta/70">
               {ESCOPOS.find((e) => e.id === t.escopo)?.nome ?? t.escopo}
             </span>
             {t.frentes && (
               <span
-                className={`flex max-w-[12rem] items-center gap-1 border px-1.5 py-0.5 font-mono text-xs uppercase tracking-wide ${
+                className={`flex max-w-[12rem] items-center gap-1 border px-1.5 py-0.5 text-xs ${
                   CLASSES_COR_FRENTE[t.frentes.cor ?? "ferro"]
                 }`}
               >
@@ -322,7 +322,7 @@ export default function DetalheTarefa({
               </span>
             )}
             {unidade && (
-              <span className="border border-linha px-1.5 py-0.5 font-mono text-xs uppercase text-tinta/70">
+              <span className="border border-linha px-1.5 py-0.5 text-xs text-tinta/70">
                 {unidade}
               </span>
             )}
@@ -330,7 +330,7 @@ export default function DetalheTarefa({
           <button
             onClick={tentarFechar}
             aria-label="Fechar detalhes da tarefa"
-            className="shrink-0 border border-linha px-2 py-1 font-mono text-xs uppercase text-tinta/70 transition duration-150 hover:bg-casca hover:text-tinta"
+            className="shrink-0 border border-linha px-2 py-1 text-xs text-tinta/70 transition duration-150 hover:bg-casca hover:text-tinta"
           >
             fechar
           </button>
@@ -348,31 +348,31 @@ export default function DetalheTarefa({
         </label>
 
         <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <label className="block font-mono text-xs uppercase text-tinta/70">
+          <label className="block text-xs text-tinta/70">
             Status
             <select
               value={t.status}
               onChange={(e) => salvarCampo("status", e.target.value)}
-              className="mt-1 block w-full border border-linha bg-casca px-2 py-2 font-mono text-xs uppercase"
+              className="mt-1 block w-full border border-linha bg-casca px-2 py-2 text-xs"
             >
               {STATUS.map((s) => (
                 <option key={s.id} value={s.id}>{s.nome}</option>
               ))}
             </select>
           </label>
-          <label className="block font-mono text-xs uppercase text-tinta/70">
+          <label className="block text-xs text-tinta/70">
             Prioridade
             <select
               value={t.prioridade}
               onChange={(e) => salvarCampo("prioridade", e.target.value)}
-              className="mt-1 block w-full border border-linha bg-casca px-2 py-2 font-mono text-xs uppercase"
+              className="mt-1 block w-full border border-linha bg-casca px-2 py-2 text-xs"
             >
               {PRIORIDADES.map((p) => (
                 <option key={p.id} value={p.id}>{p.nome}</option>
               ))}
             </select>
           </label>
-          <label className="block font-mono text-xs uppercase text-tinta/70">
+          <label className="block text-xs text-tinta/70">
             Início
             <input
               type="date"
@@ -381,7 +381,7 @@ export default function DetalheTarefa({
               className="mt-1 block w-full border border-linha bg-casca px-2 py-2 font-mono text-xs text-tinta"
             />
           </label>
-          <label className="block font-mono text-xs uppercase text-tinta/70">
+          <label className="block text-xs text-tinta/70">
             Prazo
             <input
               type="date"
@@ -394,23 +394,23 @@ export default function DetalheTarefa({
 
         <div className="mt-2 grid gap-2 sm:grid-cols-2">
           {t.escopo === "frente" ? (
-            <p className="font-mono text-xs uppercase text-tinta/70">
+            <p className="text-xs text-tinta/70">
               Responsáveis ({responsaveis.length})
-              <span className="mt-1 block font-corpo text-sm normal-case text-tinta">
+              <span className="mt-1 block font-corpo text-sm text-tinta">
                 {responsaveis.map((m) => m.nome).join(", ") || "sem responsável"}
               </span>
-              <span className="mt-1 block font-corpo text-xs normal-case text-tinta/70">
+              <span className="mt-1 block font-corpo text-xs text-tinta/70">
                 Tarefa de frente: quem responde é toda a frente, atribuída pelo banco.
               </span>
             </p>
           ) : (
             <>
-              <label className="block font-mono text-xs uppercase text-tinta/70">
+              <label className="block text-xs text-tinta/70">
                 Responsável
                 <select
                   value={responsaveis[0]?.id ?? ""}
                   onChange={(e) => salvarResponsavel(e.target.value)}
-                  className="mt-1 block w-full border border-linha bg-casca px-2 py-2 font-corpo text-sm normal-case text-tinta"
+                  className="mt-1 block w-full border border-linha bg-casca px-2 py-2 font-corpo text-sm text-tinta"
                 >
                   <option value="">sem dono</option>
                   {membros.map((m) => (
@@ -418,12 +418,12 @@ export default function DetalheTarefa({
                   ))}
                 </select>
               </label>
-              <label className="block font-mono text-xs uppercase text-tinta/70">
+              <label className="block text-xs text-tinta/70">
                 Frente (matéria)
                 <select
                   value={t.frente_id ?? ""}
                   onChange={(e) => salvarFrente(e.target.value)}
-                  className="mt-1 block w-full border border-linha bg-casca px-2 py-2 font-corpo text-sm normal-case text-tinta"
+                  className="mt-1 block w-full border border-linha bg-casca px-2 py-2 font-corpo text-sm text-tinta"
                 >
                   <option value="">sem frente</option>
                   {frentes.map((f) => (
@@ -434,12 +434,12 @@ export default function DetalheTarefa({
             </>
           )}
 
-          <label className="block font-mono text-xs uppercase text-tinta/70">
+          <label className="block text-xs text-tinta/70">
             Revisor (opcional)
             <select
               value={t.revisor_id ?? ""}
               onChange={(e) => salvarCampo("revisor_id", e.target.value || null)}
-              className="mt-1 block w-full border border-linha bg-casca px-2 py-2 font-corpo text-sm normal-case text-tinta"
+              className="mt-1 block w-full border border-linha bg-casca px-2 py-2 font-corpo text-sm text-tinta"
             >
               <option value="">Sem revisor</option>
               {membros
@@ -448,7 +448,7 @@ export default function DetalheTarefa({
                   <option key={m.id} value={m.id}>{m.nome}</option>
                 ))}
             </select>
-            <span className="mt-1 block font-corpo text-xs normal-case text-tinta/70">
+            <span className="mt-1 block font-corpo text-xs text-tinta/70">
               Sem revisor, a tarefa conclui direto quando for entregue.
             </span>
           </label>
@@ -481,14 +481,14 @@ export default function DetalheTarefa({
             </>
           )}
 
-          <label className="mt-3 block font-mono text-xs uppercase text-tinta/70">
+          <label className="mt-3 block text-xs text-tinta/70">
             Descrição
             <textarea
               value={rascunho}
               onChange={(e) => setRascunho(e.target.value)}
               rows={criterios.length > 0 ? 3 : 4}
               placeholder={"Detalhes da tarefa.\nUma linha \"- [ ] ...\" vira critério de aceite marcável aqui em cima."}
-              className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-sm normal-case text-tinta"
+              className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-sm text-tinta"
             />
           </label>
 
@@ -500,13 +500,13 @@ export default function DetalheTarefa({
                 <button
                   onClick={salvarDescricao}
                   disabled={salvandoDescricao}
-                  className="bg-tinta px-3 py-1.5 font-mono text-xs uppercase text-campo transition duration-150 hover:bg-musgo disabled:opacity-50"
+                  className="bg-tinta px-3 py-1.5 text-xs text-campo transition duration-150 hover:bg-musgo disabled:opacity-50"
                 >
                   {salvandoDescricao ? "salvando…" : "Salvar critérios"}
                 </button>
                 <button
                   onClick={() => setRascunho(t.descricao ?? "")}
-                  className="font-mono text-xs uppercase text-tinta/70 underline underline-offset-4 hover:text-tinta"
+                  className="text-xs text-tinta/70 underline underline-offset-4 hover:text-tinta"
                 >
                   descartar
                 </button>
@@ -532,14 +532,14 @@ export default function DetalheTarefa({
 
         {/* ---------- 4. Entregáveis e evidências ---------- */}
         <Bloco id="bloco-entregaveis" titulo="Entregáveis e evidências">
-          <label className="block font-mono text-xs uppercase text-tinta/70">
+          <label className="block text-xs text-tinta/70">
             Local de entrega
             <input
               value={t.local_entrega ?? ""}
               onChange={(e) => setT((atual) => ({ ...atual, local_entrega: e.target.value }))}
               onBlur={(e) => e.target.value !== (tarefa.local_entrega ?? "") && salvarCampo("local_entrega", e.target.value || null)}
               placeholder="Link do Drive, Forms, PR do GitHub… (opcional)"
-              className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-sm normal-case text-tinta"
+              className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-sm text-tinta"
             />
           </label>
           {local && (
@@ -565,11 +565,11 @@ export default function DetalheTarefa({
           )}
 
           <div className="mt-4 flex items-center justify-between gap-2">
-            <span className="font-mono text-xs uppercase text-tinta/70">Entrega</span>
+            <span className="text-xs text-tinta/70">Entrega</span>
             {souResponsavel && (
               <button
                 onClick={() => setEntregaAberta(true)}
-                className="bg-tinta px-3 py-1.5 font-mono text-xs uppercase text-campo transition duration-150 hover:bg-musgo"
+                className="bg-tinta px-3 py-1.5 text-xs text-campo transition duration-150 hover:bg-musgo"
               >
                 Entregar
               </button>
@@ -584,7 +584,7 @@ export default function DetalheTarefa({
               aqui, com o significado escrito, e nenhuma delas no cartão. */}
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
             <div className={`border px-3 py-2 ${estado?.pendente_git ? "border-trigo bg-trigo/10" : "border-linha bg-casca"}`}>
-              <p className="text-xs uppercase tracking-wide text-tinta/70">Falta commitar?</p>
+              <p className="text-xs text-tinta/70">Falta commitar?</p>
               <p className="mt-1 text-sm font-semibold">
                 {estado?.pendente_git ? "Sim — a entrega pede commit e ele ainda não foi confirmado" : "Não"}
               </p>
@@ -608,7 +608,7 @@ export default function DetalheTarefa({
             </div>
 
             <label className="block cursor-pointer border border-linha bg-casca px-3 py-2">
-              <p className="text-xs uppercase tracking-wide text-tinta/70">Alguém marcou que subiu?</p>
+              <p className="text-xs text-tinta/70">Alguém marcou que subiu?</p>
               <span className="mt-1 flex items-center gap-2 text-sm font-semibold">
                 <input
                   type="checkbox"
@@ -639,7 +639,7 @@ export default function DetalheTarefa({
           <NotaRevisor tarefaId={t.id} entregueEm={estado?.entregue_em ?? null} />
 
           <div className="mt-4">
-            <label className="block font-mono text-xs uppercase text-tinta/70">
+            <label className="block text-xs text-tinta/70">
               Nº da issue no GitHub
               <span className="mt-1 flex items-center gap-2">
                 <input
@@ -647,10 +647,10 @@ export default function DetalheTarefa({
                   min={1}
                   value={t.issue_numero ?? ""}
                   onChange={(e) => salvarCampo("issue_numero", e.target.value ? Number(e.target.value) : null)}
-                  className="block w-full border border-linha bg-casca px-2 py-2 font-mono text-xs normal-case text-tinta"
+                  className="block w-full border border-linha bg-casca px-2 py-2 font-mono text-xs text-tinta"
                 />
                 {t.issue_numero && (
-                  <span className="shrink-0 font-mono text-xs normal-case">
+                  <span className="shrink-0 font-mono text-xs">
                     <SeloIssue numero={t.issue_numero} />
                   </span>
                 )}

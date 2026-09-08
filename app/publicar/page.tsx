@@ -264,7 +264,7 @@ export default function Publicar() {
 
           <div className="mt-3 space-y-4">
             <div>
-              <h3 className="font-mono text-xs uppercase tracking-wide text-musgo">
+              <h3 className="font-display text-xs font-semibold text-musgo">
                 criadas · {criadas.length}
               </h3>
               {criadas.length === 0 ? (
@@ -287,7 +287,7 @@ export default function Publicar() {
 
             {falhou && (
               <div className="border-l-2 border-trigo pl-3">
-                <h3 className="font-mono text-xs uppercase tracking-wide text-trigo">falhou · 1</h3>
+                <h3 className="font-display text-xs font-semibold text-trigo">falhou · 1</h3>
                 <p className="mt-1 text-sm">{falhou.titulo}</p>
                 <p className="mt-0.5 text-sm text-tinta/70">{falhou.erro}</p>
               </div>
@@ -295,7 +295,7 @@ export default function Publicar() {
 
             {naoTentadas.length > 0 && (
               <div>
-                <h3 className="font-mono text-xs uppercase tracking-wide text-tinta/70">
+                <h3 className="font-display text-xs font-semibold text-tinta/70">
                   não tentadas · {naoTentadas.length}
                 </h3>
                 <p className="mt-1 text-sm text-tinta/70">
@@ -349,7 +349,7 @@ export default function Publicar() {
           </div>
 
           <label className="mt-3 block">
-            <span className="font-mono text-xs uppercase text-tinta/70">JSON da tarefa ou lista de tarefas</span>
+            <span className="text-xs text-tinta/70">JSON da tarefa ou lista de tarefas</span>
             <textarea
               value={texto}
               onChange={(e) => { setTexto(e.target.value); setNomeArquivo(null); }}

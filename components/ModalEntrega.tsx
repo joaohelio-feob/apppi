@@ -77,10 +77,10 @@ export default function ModalEntrega({
         </p>
 
         <div className="mt-4 space-y-3">
-          <label className="block font-mono text-xs uppercase text-tinta/70">
+          <label className="block text-xs text-tinta/70">
             Nome do arquivo no Drive
             <input
-              className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-sm normal-case text-tinta"
+              className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-sm text-tinta"
               placeholder="Ex.: relatorio-sprint-3.pdf"
               value={arquivoDrive}
               onChange={(e) => setArquivoDrive(e.target.value)}
@@ -93,7 +93,7 @@ export default function ModalEntrega({
               <button
                 type="button"
                 onClick={() => setPrecisaCommit(false)}
-                className={`px-3 py-1 font-mono text-xs uppercase ${
+                className={`px-3 py-1 text-xs ${
                   !precisaCommit ? "bg-tinta text-campo" : "text-tinta/70 hover:bg-campo"
                 }`}
               >
@@ -102,7 +102,7 @@ export default function ModalEntrega({
               <button
                 type="button"
                 onClick={() => setPrecisaCommit(true)}
-                className={`px-3 py-1 font-mono text-xs uppercase ${
+                className={`px-3 py-1 text-xs ${
                   precisaCommit ? "bg-tinta text-campo" : "text-tinta/70 hover:bg-campo"
                 }`}
               >
@@ -112,10 +112,10 @@ export default function ModalEntrega({
           </div>
 
           {precisaCommit && (
-            <label className="block font-mono text-xs uppercase text-tinta/70">
+            <label className="block text-xs text-tinta/70">
               Nome do commit
               <input
-                className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-sm normal-case text-tinta"
+                className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-sm text-tinta"
                 placeholder="Ex.: fix: corrige cálculo de dias até o prazo"
                 value={commitNome}
                 onChange={(e) => setCommitNome(e.target.value)}
@@ -123,10 +123,10 @@ export default function ModalEntrega({
             </label>
           )}
 
-          <label className="block font-mono text-xs uppercase text-tinta/70">
+          <label className="block text-xs text-tinta/70">
             O que mudou
             <textarea
-              className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-sm normal-case text-tinta"
+              className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-sm text-tinta"
               rows={3}
               placeholder="Descreva o que foi feito nessa entrega…"
               value={oQueMudou}

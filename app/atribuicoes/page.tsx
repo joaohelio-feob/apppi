@@ -83,8 +83,7 @@ export default function Atribuicoes() {
 
   return (
     <div>
-      <p className="font-mono text-xs uppercase tracking-widest text-musgo">Atribuições</p>
-      <h1 className="mt-1 font-display text-3xl font-extrabold tracking-tight">
+      <h1 className="font-display text-3xl font-extrabold tracking-tight">
         Quem faz o quê, até quando, e onde entrega
       </h1>
       <p className="mt-2 max-w-prose text-sm text-tinta/70">
@@ -111,12 +110,12 @@ export default function Atribuicoes() {
       )}
 
       {carregando ? (
-        <p className="mt-10 font-mono text-sm text-tinta/70">carregando…</p>
+        <p className="mt-10 text-sm text-tinta/70">carregando…</p>
       ) : (
         <div className="mt-6 overflow-x-auto border border-linha">
           <table className="w-full min-w-[960px] border-collapse text-sm">
             <thead>
-              <tr className="border-b border-linha bg-casca font-mono text-xs uppercase tracking-wide text-tinta/70">
+              <tr className="border-b border-linha bg-casca font-display text-xs font-semibold text-tinta/70">
                 <th className="px-3 py-2 text-left">Tarefa</th>
                 <th className="px-3 py-2 text-left">Responsável</th>
                 <th className="px-3 py-2 text-left">Dia</th>
@@ -218,7 +217,7 @@ export default function Atribuicoes() {
                   </td>
                   <td className="px-3 py-2">
                     {t.escopo === "frente" ? (
-                      <span className="font-mono text-xs uppercase text-tinta/70">
+                      <span className="text-xs text-tinta/70">
                         {t.frentes?.nome ?? "—"}
                       </span>
                     ) : (
@@ -230,7 +229,7 @@ export default function Atribuicoes() {
                           atualizarLocal(t.id, { frente_id: valor, frentes: frente });
                           salvarCampo(t.id, "frente_id", valor);
                         }}
-                        className="border border-linha bg-campo px-2 py-1 font-mono text-xs uppercase"
+                        className="border border-linha bg-campo px-2 py-1 text-xs"
                       >
                         <option value="">sem frente</option>
                         {frentes.map((f) => (
@@ -247,7 +246,7 @@ export default function Atribuicoes() {
                         atualizarLocal(t.id, { prioridade: valor });
                         salvarCampo(t.id, "prioridade", valor);
                       }}
-                      className="border border-linha bg-campo px-2 py-1 font-mono text-xs uppercase"
+                      className="border border-linha bg-campo px-2 py-1 text-xs"
                     >
                       {PRIORIDADES.map((p) => (
                         <option key={p.id} value={p.id}>{p.nome}</option>
@@ -262,7 +261,7 @@ export default function Atribuicoes() {
                         atualizarLocal(t.id, { status: valor });
                         salvarCampo(t.id, "status", valor);
                       }}
-                      className="border border-linha bg-campo px-2 py-1 font-mono text-xs uppercase"
+                      className="border border-linha bg-campo px-2 py-1 text-xs"
                     >
                       {STATUS.map((s) => (
                         <option key={s.id} value={s.id}>{s.nome}</option>

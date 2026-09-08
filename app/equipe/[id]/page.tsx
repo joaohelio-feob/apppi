@@ -33,7 +33,7 @@ export default function PainelMembro() {
     });
   }, [id]);
 
-  if (carregando) return <p className="mt-10 font-mono text-sm text-tinta/70">carregando…</p>;
+  if (carregando) return <p className="mt-10 text-sm text-tinta/70">carregando…</p>;
 
   if (!membro) {
     return (
@@ -49,8 +49,10 @@ export default function PainelMembro() {
       <Link href="/equipe" className="font-mono text-xs text-tinta/70 underline underline-offset-4">
         ← Equipe
       </Link>
-      <p className="mt-3 font-mono text-xs uppercase tracking-widest text-musgo">Painel individual</p>
-      <h1 className="mt-1 font-display text-3xl font-extrabold tracking-tight">{membro.nome}</h1>
+      <div className="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <h1 className="font-display text-3xl font-extrabold tracking-tight">{membro.nome}</h1>
+        <p className="text-sm text-tinta/70">painel individual</p>
+      </div>
       <p className="mt-2 max-w-prose text-sm text-tinta/70">
         O que {membro.nome.split(" ")[0]} fez sozinho, separado do que fez junto com a frente.
       </p>
@@ -100,7 +102,7 @@ function BlocoTarefas({ titulo, tarefas }: { titulo: string; tarefas: Tarefa[] }
       </div>
 
       <div className="mt-4">
-        <h3 className="mb-2 font-mono text-xs uppercase tracking-widest text-tinta/70">
+        <h3 className="mb-2 font-display text-xs font-semibold text-tinta/70">
           Distribuição por unidade de estudo
         </h3>
         {Object.keys(porUnidade).length === 0 ? (
@@ -128,7 +130,7 @@ function BlocoTarefas({ titulo, tarefas }: { titulo: string; tarefas: Tarefa[] }
 function Estatistica({ rotulo, valor }: { rotulo: string; valor: string | number }) {
   return (
     <div className="border border-linha bg-casca p-3">
-      <p className="font-mono text-xs uppercase tracking-widest text-tinta/70">{rotulo}</p>
+      <p className="text-xs text-tinta/70">{rotulo}</p>
       <p className="mt-1 font-display text-2xl font-bold">{valor}</p>
     </div>
   );

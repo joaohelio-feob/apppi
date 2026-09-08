@@ -141,8 +141,7 @@ export default function SprintReport() {
     <div>
       <div className="flex flex-wrap items-end justify-between gap-4 print:block">
         <div>
-          <p className="font-mono text-xs uppercase tracking-widest text-musgo">Sprint Report</p>
-          <h1 className="mt-1 font-display text-3xl font-extrabold tracking-tight">
+          <h1 className="font-display text-3xl font-extrabold tracking-tight">
             O que a equipe entregou no período
           </h1>
         </div>
@@ -172,7 +171,7 @@ export default function SprintReport() {
       </p>
 
       <div className="mt-6 flex flex-wrap items-end gap-2 print:hidden">
-        <label className="font-mono text-xs uppercase text-tinta/70">
+        <label className="text-xs text-tinta/70">
           De
           <input
             type="date"
@@ -181,7 +180,7 @@ export default function SprintReport() {
             className="mt-1 block border border-linha bg-casca px-3 py-2 font-corpo text-sm text-tinta"
           />
         </label>
-        <label className="font-mono text-xs uppercase text-tinta/70">
+        <label className="text-xs text-tinta/70">
           Até
           <input
             type="date"
@@ -260,12 +259,12 @@ export default function SprintReport() {
           </div>
 
           <section className="overflow-x-auto border border-linha">
-            <h2 className="border-b border-linha bg-casca px-4 py-2 font-mono text-xs uppercase tracking-widest text-tinta/70">
+            <h2 className="border-b border-linha bg-casca px-4 py-2 font-display text-xs font-semibold text-tinta/70">
               Resumo por pessoa no período
             </h2>
             <table className="w-full min-w-[640px] border-collapse text-sm">
               <thead>
-                <tr className="border-b border-linha bg-casca font-mono text-xs uppercase tracking-wide text-tinta/70">
+                <tr className="border-b border-linha bg-casca font-display text-xs font-semibold text-tinta/70">
                   <th className="px-3 py-2 text-left">Pessoa</th>
                   <th className="px-3 py-2 text-left">Frente</th>
                   <th className="px-3 py-2 text-left">Concluídas individuais</th>

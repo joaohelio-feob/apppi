@@ -73,7 +73,7 @@ export default function GerenciadorAnexos({ tarefaId }: { tarefaId: number }) {
   return (
     <div>
       <div className="flex items-center justify-between">
-        <label className="font-mono text-xs uppercase text-tinta/70">Anexos</label>
+        <label className="text-xs text-tinta/70">Anexos</label>
         <label className="cursor-pointer font-mono text-xs text-musgo underline underline-offset-4">
           {enviando ? "enviando…" : "+ anexar arquivo"}
           <input
@@ -93,7 +93,7 @@ export default function GerenciadorAnexos({ tarefaId }: { tarefaId: number }) {
 
       <div className="mt-2 space-y-1.5">
         {carregando ? (
-          <p className="font-mono text-xs text-tinta/70">carregando…</p>
+          <p className="text-xs text-tinta/70">carregando…</p>
         ) : anexos.length === 0 ? (
           <p className="text-xs text-tinta/70">Nenhum documento anexado ainda.</p>
         ) : (

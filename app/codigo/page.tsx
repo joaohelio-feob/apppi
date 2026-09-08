@@ -38,8 +38,7 @@ export default function Codigo() {
 
   return (
     <div>
-      <p className="font-mono text-xs uppercase tracking-widest text-musgo">Código</p>
-      <h1 className="mt-1 font-display text-3xl font-extrabold tracking-tight">
+      <h1 className="font-display text-3xl font-extrabold tracking-tight">
         O que está acontecendo no repositório
       </h1>
       <p className="mt-2 max-w-prose text-sm text-tinta/70">
@@ -47,7 +46,7 @@ export default function Codigo() {
         máquina; isso aqui é só o espelho do que já está no GitHub.
       </p>
 
-      {carregando && <p className="mt-10 font-mono text-sm text-tinta/70">carregando…</p>}
+      {carregando && <p className="mt-10 text-sm text-tinta/70">carregando…</p>}
 
       {naoConfigurado && (
         <div className="mt-8 border border-trigo bg-casca p-4">
@@ -65,7 +64,7 @@ export default function Codigo() {
         <div className="mt-8 space-y-10">
           <section>
             <h2 className="mb-3 border-b border-linha pb-1 font-display text-lg font-semibold">
-              Commits por pessoa <span className="font-mono text-xs font-normal text-tinta/70">últimos 30 dias</span>
+              Commits por pessoa <span className="text-xs font-normal text-tinta/70">últimos 30 dias</span>
             </h2>
             {commits?.erro ? (
               <p className="text-sm text-trigo">{commits.erro}</p>

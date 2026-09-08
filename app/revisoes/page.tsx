@@ -88,8 +88,7 @@ export default function Revisoes() {
 
   return (
     <div>
-      <p className="font-mono text-xs uppercase tracking-widest text-musgo">Revisões</p>
-      <h1 className="mt-1 font-display text-3xl font-extrabold tracking-tight">
+      <h1 className="font-display text-3xl font-extrabold tracking-tight">
         O que precisa da sua aprovação
       </h1>
       <p className="mt-2 max-w-prose text-sm text-tinta/70">
@@ -98,7 +97,7 @@ export default function Revisoes() {
       </p>
 
       {carregando ? (
-        <p className="mt-10 font-mono text-sm text-tinta/70">carregando…</p>
+        <p className="mt-10 text-sm text-tinta/70">carregando…</p>
       ) : (
         <div className="mt-8 space-y-12">
           <section>
@@ -172,7 +171,7 @@ function CartaoParaRevisar({
       <div className="flex flex-wrap items-start justify-between gap-2">
         <h3 className="font-display text-base font-semibold">{item.titulo}</h3>
         {nomeFrente && (
-          <span className="border border-linha px-1.5 py-0.5 font-mono text-xs uppercase text-tinta/70">
+          <span className="border border-linha px-1.5 py-0.5 text-xs text-tinta/70">
             {nomeFrente}{nomeUnidade ? ` · ${nomeUnidade}` : ""}
           </span>
         )}
@@ -205,7 +204,7 @@ function CartaoParaRevisar({
             <button
               onClick={() => confirmar(pedindoComentario)}
               disabled={enviando || !comentario.trim()}
-              className="bg-tinta px-3 py-1.5 font-mono text-xs uppercase text-campo hover:bg-musgo disabled:opacity-50"
+              className="bg-tinta px-3 py-1.5 text-xs text-campo hover:bg-musgo disabled:opacity-50"
             >
               {enviando ? "Enviando…" : `Confirmar ${RESULTADOS_REVISAO.find((r) => r.id === pedindoComentario)?.nome.toLowerCase()}`}
             </button>
@@ -222,19 +221,19 @@ function CartaoParaRevisar({
           <button
             onClick={() => confirmar("concluido")}
             disabled={enviando}
-            className="bg-musgo px-3 py-1.5 font-mono text-xs uppercase text-campo hover:opacity-90 disabled:opacity-50"
+            className="bg-musgo px-3 py-1.5 text-xs text-campo hover:opacity-90 disabled:opacity-50"
           >
             Concluído
           </button>
           <button
             onClick={() => setPedindoComentario("observacao")}
-            className="border border-linha px-3 py-1.5 font-mono text-xs uppercase text-tinta/70 hover:bg-campo"
+            className="border border-linha px-3 py-1.5 text-xs text-tinta/70 hover:bg-campo"
           >
             Observações
           </button>
           <button
             onClick={() => setPedindoComentario("falta_algo")}
-            className="border border-trigo px-3 py-1.5 font-mono text-xs uppercase text-trigo hover:bg-trigo/10"
+            className="border border-trigo px-3 py-1.5 text-xs text-trigo hover:bg-trigo/10"
           >
             Falta algo
           </button>

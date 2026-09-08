@@ -43,7 +43,7 @@ export default function NotaRevisor({ tarefaId, entregueEm }: { tarefaId: number
             maisRecente.resultado === "falta_algo" ? "border-trigo bg-trigo/10" : "border-musgo bg-musgo/10"
           }`}
         >
-          <p className={`font-mono text-xs uppercase tracking-wide ${
+          <p className={`text-xs ${
             maisRecente.resultado === "falta_algo" ? "text-trigo" : "text-musgo"
           }`}>
             {maisRecente.resultado === "falta_algo" ? "Falta isso:" : "Nota do revisor"}
@@ -57,14 +57,14 @@ export default function NotaRevisor({ tarefaId, entregueEm }: { tarefaId: number
 
       {historico.length > 1 && (
         <details className="border border-linha bg-casca px-3 py-2">
-          <summary className="cursor-pointer font-mono text-xs uppercase text-tinta/70">
+          <summary className="cursor-pointer text-xs text-tinta/70">
             Histórico de revisões
             <span className="ml-1 text-tinta/70">({anteriores.length})</span>
           </summary>
           <ul className="mt-2 space-y-2">
             {anteriores.map((r) => (
               <li key={r.id} className="border-t border-linha pt-2 text-sm first:border-t-0 first:pt-0">
-                <p className="font-mono text-xs uppercase text-tinta/70">
+                <p className="text-xs text-tinta/70">
                   {r.resultado === "concluido" ? "Concluído" : r.resultado === "falta_algo" ? "Falta algo" : "Observações"}
                   {" · "}{r.membros?.nome ?? "—"} · {dataCurta(r.criado_em)}
                 </p>
