@@ -117,7 +117,7 @@ export default function LinhaTarefa({
         className="grid w-full grid-cols-[1.1rem_minmax(0,1fr)_auto] items-baseline gap-x-2 border-b border-linha py-2 text-left transition duration-150 hover:bg-casca focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-musgo sm:grid-cols-[1.1rem_minmax(0,1fr)_minmax(0,17rem)_auto]"
       >
         <span aria-hidden="true" className="font-mono text-xs text-tinta/70">
-          {atrasada ? <span className="font-semibold text-trigo">!</span> : prio.glifo}
+          {atrasada ? <span className="font-semibold text-tinta">!</span> : prio.glifo}
         </span>
 
         <span className="min-w-0 truncate text-sm">{tarefa.titulo}</span>
@@ -142,10 +142,14 @@ export default function LinhaTarefa({
           )}
         </span>
 
+        {/* Atraso deixou de ser texto trigo sobre o fundo: 2,42:1 não é
+            legível (o piso é 4,5:1). O trigo vira o FUNDO do marcador, com o
+            texto em tinta — 6,12:1 —, então a cor continua significando
+            atraso e passa a ser lida. Mesmo par que o selo "Fazendo" já usa. */}
         <span
           title={concluida ? "Concluída" : undefined}
           className={`shrink-0 font-mono text-xs tabular-nums ${
-            atrasada ? "font-semibold text-trigo" : "text-tinta/70"
+            atrasada ? "bg-trigo px-1 font-semibold text-tinta" : "text-tinta/70"
           }`}
         >
           {concluida ? "✓" : prazoCurto}

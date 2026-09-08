@@ -102,7 +102,7 @@ export default function GerenciadorAnexos({ tarefaId }: { tarefaId: number }) {
               </span>
               <button
                 onClick={() => apagarAnexo(a)}
-                className="shrink-0 font-mono text-xs text-tinta/70 hover:text-trigo"
+                className="shrink-0 font-mono text-xs text-tinta/70 hover:bg-trigo hover:text-tinta"
               >
                 remover
               </button>
