@@ -235,11 +235,17 @@ export default function Quadro() {
   return (
     <div>
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="font-mono text-xs uppercase tracking-widest text-musgo">Quadro</p>
-          <h1 className="mt-1 font-display text-3xl font-extrabold tracking-tight">
+        {/* Título e volume numa faixa só. A sobrancelha em mono maiúsculo
+            gastava uma faixa para dizer "Quadro", que a navegação já diz. */}
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <h1 className="font-display text-3xl font-extrabold tracking-tight">
             Todas as tarefas
           </h1>
+          {!carregando && (
+            <p className="text-sm text-tinta/70">
+              <span className="font-mono">{visiveis.length}</span> na visão
+            </p>
+          )}
         </div>
         {/* Criar é ação do quadro, então "em lote" mora aqui e não na
             navegação: /publicar é a mesma intenção em outro volume. */}
@@ -276,7 +282,7 @@ export default function Quadro() {
               tabIndex={ativa ? 0 : -1}
               onClick={() => mudarVisao(v)}
               onKeyDown={teclasDaAba}
-              className={`flex-1 px-4 py-1.5 font-mono text-xs uppercase transition duration-150 sm:flex-none ${
+              className={`flex-1 px-4 py-1.5 text-sm transition-colors duration-micro ease-entrada sm:flex-none ${
                 ativa ? "bg-campo font-semibold text-tinta shadow-sm" : "text-tinta/70 hover:bg-campo/60"
               }`}
             >
@@ -286,19 +292,25 @@ export default function Quadro() {
         })}
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-2">
+      {/* Cinco controles com o mesmo peso não dizem por onde começar. Busca
+          fica sozinha na primeira faixa; os quatro filtros descem para a
+          segunda, menores e sem caixa alta. */}
+      <div className="mt-4">
         <input
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
           placeholder="Buscar por título…"
           aria-label="Buscar tarefa por título"
-          className="min-w-[200px] flex-1 border border-linha bg-casca px-3 py-2 text-sm"
+          className="w-full border border-linha bg-casca px-3 py-2 text-sm transition-colors duration-micro ease-entrada focus:border-musgo focus:outline-none"
         />
+      </div>
+
+      <div className="mt-2 flex flex-wrap items-center gap-2">
         <select
           value={filtroResponsavel}
           onChange={(e) => setFiltroResponsavel(e.target.value)}
           aria-label="Filtrar por responsável"
-          className="border border-linha bg-casca px-2 py-2 font-mono text-xs uppercase"
+          className="border border-linha bg-casca px-2 py-1.5 text-xs text-tinta/70"
         >
           <option value="">Todo mundo</option>
           {membros.map((m) => (
@@ -309,7 +321,7 @@ export default function Quadro() {
           value={filtroPrioridade}
           onChange={(e) => setFiltroPrioridade(e.target.value)}
           aria-label="Filtrar por prioridade"
-          className="border border-linha bg-casca px-2 py-2 font-mono text-xs uppercase"
+          className="border border-linha bg-casca px-2 py-1.5 text-xs text-tinta/70"
         >
           <option value="">Toda prioridade</option>
           {PRIORIDADES.map((p) => (
@@ -320,7 +332,7 @@ export default function Quadro() {
           value={filtroFrente}
           onChange={(e) => setFiltroFrente(e.target.value)}
           aria-label="Filtrar por frente"
-          className="border border-linha bg-casca px-2 py-2 font-mono text-xs uppercase"
+          className="border border-linha bg-casca px-2 py-1.5 text-xs text-tinta/70"
         >
           <option value="">Toda frente</option>
           {frentes.map((f) => (
@@ -336,7 +348,7 @@ export default function Quadro() {
             });
           }}
           aria-pressed={verArquivadas}
-          className={`border px-3 py-2 text-xs transition duration-150 ${
+          className={`border px-3 py-1.5 text-xs transition-colors duration-micro ease-entrada ${
             verArquivadas ? "border-tinta bg-tinta text-campo" : "border-linha text-tinta/70 hover:bg-casca"
           }`}
         >
@@ -345,7 +357,7 @@ export default function Quadro() {
         <button
           onClick={alternarMinhas}
           aria-pressed={somenteMinhas}
-          className={`border px-3 py-2 font-mono text-xs uppercase transition duration-150 ${
+          className={`border px-3 py-1.5 text-xs transition-colors duration-micro ease-entrada ${
             somenteMinhas ? "border-tinta bg-tinta text-campo" : "border-linha text-tinta/70 hover:bg-casca"
           }`}
         >
@@ -373,8 +385,8 @@ export default function Quadro() {
               <section key={g.chave} aria-labelledby={`grupo-${g.chave}`}>
                 <h2 id={`grupo-${g.chave}`} className="mb-3 font-display text-lg font-semibold">
                   {g.titulo}
-                  <span className="ml-2 font-mono text-xs font-normal text-tinta/70">
-                    {g.itens.length}
+                  <span className="ml-2 text-xs font-normal text-tinta/70">
+                    · <span className="font-mono">{g.itens.length}</span>
                   </span>
                 </h2>
                 <MiniQuadro
@@ -471,8 +483,8 @@ function MiniQuadro({
             <h3 className="sticky top-0 z-10 mb-3 flex items-baseline gap-2 border-b border-linha bg-campo pb-1 pt-1 font-display text-sm font-semibold uppercase tracking-wide">
               {coluna.nome}
               {/* Sempre o total real da coluna — nunca o que sobrou do cap. */}
-              <span className="border border-linha bg-casca px-1.5 py-0.5 font-mono text-xs font-normal text-tinta/70">
-                {daColuna.length}
+              <span className="font-mono text-xs font-normal normal-case tracking-normal text-tinta/70">
+                · {daColuna.length}
               </span>
             </h3>
 
@@ -481,6 +493,9 @@ function MiniQuadro({
                 <CartaoTarefa
                   key={t.id}
                   tarefa={t}
+                  // O cabeçalho da coluna já diz o status, uma vez, e é
+                  // sticky — repeti-lo em cada cartão é tinta e altura.
+                  mostrarStatus={false}
                   aoMudarStatus={aoMudarStatus}
                   aoArquivar={aoArquivar}
                   aoAtualizar={aoAtualizar}
@@ -503,7 +518,7 @@ function MiniQuadro({
                       ? `ver menos em ${coluna.nome}, ${nomeDoGrupo}`
                       : `ver mais ${escondidos} em ${coluna.nome}, ${nomeDoGrupo}`
                   }
-                  className="w-full border border-linha bg-casca px-3 py-2 font-mono text-xs uppercase text-tinta/70 transition duration-150 hover:border-musgo hover:text-tinta"
+                  className="w-full border border-linha bg-casca px-3 py-1.5 text-xs text-tinta/70 transition-colors duration-micro ease-entrada hover:border-musgo hover:text-tinta"
                 >
                   {expandida ? "ver menos" : `ver mais ${escondidos}`}
                 </button>

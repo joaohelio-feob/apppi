@@ -52,12 +52,19 @@ export default function CartaoTarefa({
   arrastavel,
   membros,
   frentes,
+  mostrarStatus = true,
 }: {
   tarefa: Tarefa;
   aoMudarStatus?: (id: number, status: Status) => void;
   aoArquivar?: (id: number) => void;
   aoAtualizar?: () => void;
   arrastavel?: boolean;
+  /**
+   * Desligue onde a coluna já diz o status — no quadro o selo repete, em todo
+   * cartão, o que o cabeçalho da coluna diz uma vez. Fica ligado por padrão
+   * porque fora do quadro (a Semana, por exemplo) não há coluna nenhuma.
+   */
+  mostrarStatus?: boolean;
   /** Repassados ao painel de detalhe pra não duplicar a consulta quando a página já tem essas listas. */
   membros?: Membro[];
   frentes?: Frente[];
@@ -103,7 +110,7 @@ export default function CartaoTarefa({
     >
       {/* `relative` aqui delimita até onde o overlay do botão-título alcança:
           o corpo do cartão, nunca a barra de ações lá embaixo. */}
-      <div className="relative p-3">
+      <div className="relative p-2.5">
         <div className="flex items-start justify-between gap-2">
           <h3 className="min-w-0 font-display text-sm font-semibold leading-snug">
             <button
@@ -128,10 +135,10 @@ export default function CartaoTarefa({
           </h3>
 
           <div className="flex shrink-0 flex-col items-end gap-1">
-            <Selo status={tarefa.status} />
+            {mostrarStatus && <Selo status={tarefa.status} />}
             {tarefa.frentes && (
               <span
-                className={`flex max-w-[12rem] items-center gap-1 border px-1.5 py-0.5 font-mono text-xs uppercase tracking-wide ${
+                className={`flex max-w-[12rem] items-center gap-1 border px-1.5 py-0.5 text-xs ${
                   CLASSES_COR_FRENTE[tarefa.frentes.cor ?? "ferro"]
                 }`}
                 // O nome inteiro fica sempre no title: 12rem acomoda os nomes
@@ -157,7 +164,7 @@ export default function CartaoTarefa({
           </div>
         </div>
 
-        {resumo && <p className="mt-1.5 line-clamp-2 break-words text-xs text-tinta/70">{resumo}</p>}
+        {resumo && <p className="mt-1 line-clamp-2 break-words text-xs text-tinta/70">{resumo}</p>}
 
         {/* Progresso zero não ganha trilho: barra vazia em largura total não
             comunica nada. Fica só o contador, que ocupa a linha nos dois
@@ -216,18 +223,20 @@ export default function CartaoTarefa({
             dentro de uma mesma linha (tops 415/416/418).
             --------------------------------------------------------------- */}
 
-        <div className="mt-3 flex items-center gap-2 font-mono text-xs leading-none text-tinta/70">
+        {/* A faixa não é mais toda mono: "sem dono" e "faltam 3d" são texto,
+            não dado. Mono fica nas iniciais (identificador) e no contador. */}
+        <div className="mt-2.5 flex items-center gap-2 text-xs leading-none text-tinta/70">
           {responsaveis.length === 0 ? (
             <span className="border border-dashed border-linha px-1.5 py-0.5 leading-none">sem dono</span>
           ) : (
             <span className="flex shrink-0 items-center gap-1" title={textoResponsaveis}>
               {visiveis.map((m) => (
-                <span key={m.id} className="rounded bg-linha px-1.5 py-0.5 leading-none text-tinta" title={m.nome}>
+                <span key={m.id} className="rounded bg-linha px-1.5 py-0.5 font-mono leading-none text-tinta" title={m.nome}>
                   {iniciais(m.nome)}
                 </span>
               ))}
               {excedente > 0 && (
-                <span className="rounded border border-linha px-1.5 py-0.5 leading-none" aria-label={textoResponsaveis}>
+                <span className="rounded border border-linha px-1.5 py-0.5 font-mono leading-none" aria-label={textoResponsaveis}>
                   +{excedente}
                 </span>
               )}
@@ -285,7 +294,7 @@ export default function CartaoTarefa({
                 key={s.id}
                 onClick={() => aoMudarStatus(tarefa.id, s.id)}
                 disabled={s.id === tarefa.status}
-                className="px-1.5 py-0.5 font-mono text-xs uppercase text-tinta/70 transition duration-150 hover:bg-linha hover:text-tinta disabled:opacity-25"
+                className="px-1.5 py-0.5 text-xs text-tinta/70 transition-colors duration-micro ease-entrada hover:bg-linha hover:text-tinta disabled:opacity-25"
               >
                 {s.nome}
               </button>
@@ -293,7 +302,7 @@ export default function CartaoTarefa({
           {aoArquivar && (
             <button
               onClick={() => aoArquivar(tarefa.id)}
-              className="ml-auto px-1.5 py-0.5 font-mono text-xs uppercase text-tinta/70 transition duration-150 hover:text-trigo"
+              className="ml-auto px-1.5 py-0.5 text-xs text-tinta/70 transition-colors duration-micro ease-entrada hover:text-trigo"
             >
               arquivar
             </button>
