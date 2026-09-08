@@ -78,17 +78,47 @@ export default function PainelFrente() {
 
   useEffect(() => { carregar(); }, [carregar]);
 
-  const porPessoa = useMemo(() => {
+  /**
+   * A seção individual agrupa por pessoa só o que está EM ANDAMENTO, e junta
+   * as concluídas de todo mundo num bloco único no fim.
+   *
+   * O motivo é de leitura, não de descarte: ordenar concluída por último
+   * protege dentro de um grupo, mas não entre grupos — as concluídas de uma
+   * pessoa empurravam o trabalho em andamento da pessoa seguinte para fora da
+   * primeira tela (medido: y=1121 com 8+6 concluídas antes).
+   *
+   * Nada some. No bloco, cada linha mostra quem fez, porque a avaliação do PI
+   * é por pessoa: sem o nome, juntar todo mundo transformaria a evidência de
+   * trabalho entregue numa pilha anônima. Por isso ele também vai ordenado
+   * por nome — sort estável, então a ordem por prazo se mantém dentro de cada
+   * pessoa.
+   *
+   * Quem não tem nada em andamento não vira grupo vazio aqui em cima:
+   * aparece só no bloco, identificado pelo nome na linha.
+   */
+  const { emAndamentoPorPessoa, individuaisConcluidas } = useMemo(() => {
     const mapa = new Map<string, { nome: string; itens: Tarefa[] }>();
+    const concluidas: { nome: string; tarefa: Tarefa }[] = [];
+
     tarefasIndividuais.forEach((t) => {
       const pessoa = responsaveisDe(t)[0];
       if (!pessoa) return;
+      if (t.status === "concluida") {
+        concluidas.push({ nome: pessoa.nome, tarefa: t });
+        return;
+      }
       if (!mapa.has(pessoa.id)) mapa.set(pessoa.id, { nome: pessoa.nome, itens: [] });
       mapa.get(pessoa.id)!.itens.push(t);
     });
-    return Array.from(mapa.values())
-      .map((p) => ({ ...p, itens: concluidaPorUltimo(p.itens) }))
-      .sort((a, b) => a.nome.localeCompare(b.nome));
+
+    return {
+      emAndamentoPorPessoa: Array.from(mapa.values()).sort((a, b) =>
+        a.nome.localeCompare(b.nome)
+      ),
+      individuaisConcluidas: [...concluidas]
+        .sort((a, b) => a.nome.localeCompare(b.nome))
+        .map((c) => c.tarefa),
+    };
   }, [tarefasIndividuais]);
 
   async function salvarEdicao(campos: Partial<Pick<Frente, "nome" | "unidade" | "cor" | "ordem">>) {
@@ -230,33 +260,59 @@ export default function PainelFrente() {
         <p className="mb-3 text-xs text-tinta/70">
           Não fica escondido: conta pro relatório final e pra validação dos professores.
         </p>
-        {porPessoa.length === 0 ? (
+        {tarefasIndividuais.length === 0 ? (
           <p className="text-sm text-tinta/70">Ninguém tem tarefa individual ainda.</p>
         ) : (
-          <div className="space-y-8">
-            {porPessoa.map((p) => (
-              <div key={p.nome}>
-                {/* Nome de pessoa não é identificador técnico: sai do mono
-                    maiúsculo. */}
-                <h3 className="mb-1 font-display text-sm font-semibold">{p.nome}</h3>
+          <>
+            {emAndamentoPorPessoa.length === 0 ? (
+              <p className="text-sm text-tinta/70">
+                Nada em andamento — o trabalho individual da frente está todo entregue.
+              </p>
+            ) : (
+              <div className="space-y-8">
+                {emAndamentoPorPessoa.map((p) => (
+                  <div key={p.nome}>
+                    {/* Nome de pessoa não é identificador técnico: sai do mono
+                        maiúsculo. */}
+                    <h3 className="mb-1 font-display text-sm font-semibold">{p.nome}</h3>
+                    <div className="border-t border-linha">
+                      {p.itens.map((t) => (
+                        <LinhaTarefa
+                          key={t.id}
+                          tarefa={t}
+                          aoAtualizar={carregar}
+                          mostrarStatus
+                          // O h3 acima já é a pessoa, e individual tem no
+                          // máximo 1 responsável por constraint. A frente
+                          // fica: esta consulta filtra por membro, então a
+                          // individual pode apontar para outra frente.
+                          mostrarQuem={false}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {individuaisConcluidas.length > 0 && (
+              <div className="mt-10 border-t border-linha pt-5">
+                <h3 className="mb-1 font-display text-sm font-semibold">
+                  Concluídas
+                  <span className="ml-2 text-xs font-normal text-tinta/70">
+                    · <span className="font-mono">{individuaisConcluidas.length}</span>
+                  </span>
+                </h3>
                 <div className="border-t border-linha">
-                  {p.itens.map((t) => (
-                    <LinhaTarefa
-                      key={t.id}
-                      tarefa={t}
-                      aoAtualizar={carregar}
-                      mostrarStatus
-                      // O h3 acima já é a pessoa, e individual tem no máximo
-                      // 1 responsável por constraint. A frente fica: esta
-                      // consulta filtra por membro, então a individual pode
-                      // apontar para outra frente.
-                      mostrarQuem={false}
-                    />
+                  {individuaisConcluidas.map((t) => (
+                    // `mostrarQuem` fica no default (true): aqui o nome é a
+                    // única coisa que recupera de quem é cada entrega.
+                    <LinhaTarefa key={t.id} tarefa={t} aoAtualizar={carregar} mostrarStatus />
                   ))}
                 </div>
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
       </section>
     </div>
