@@ -85,7 +85,7 @@ export default function Navegacao() {
 
   /** Sublinhado espesso, não cor: o estado ativo não pode depender de cor. */
   const classeDestino = (ativo: boolean) =>
-    `whitespace-nowrap border-b-2 px-1 py-1 text-sm transition duration-150 ${
+    `whitespace-nowrap border-b-2 px-1 py-1 text-sm transition-colors duration-micro ease-entrada ${
       ativo
         ? "border-tinta font-semibold text-tinta"
         : "border-transparent text-tinta/70 hover:border-linha hover:text-tinta"
@@ -150,7 +150,7 @@ export default function Navegacao() {
                     href={d.href}
                     role="menuitem"
                     aria-current={caminho === d.href ? "page" : undefined}
-                    className={`block px-3 py-1.5 text-sm transition duration-150 ${
+                    className={`block px-3 py-1.5 text-sm transition-colors duration-micro ease-entrada ${
                       caminho === d.href
                         ? "bg-casca font-semibold text-tinta"
                         : "text-tinta/70 hover:bg-casca hover:text-tinta"
@@ -170,7 +170,7 @@ export default function Navegacao() {
           <span aria-hidden="true" className="h-5 w-px bg-linha" />
           <button
             onClick={sair}
-            className="whitespace-nowrap border border-linha px-3 py-1 text-xs text-tinta/70 transition duration-150 hover:bg-casca hover:text-tinta"
+            className="whitespace-nowrap border border-linha px-3 py-1 text-xs text-tinta/70 transition-colors duration-micro ease-entrada hover:bg-casca hover:text-tinta"
           >
             sair
           </button>
@@ -182,9 +182,9 @@ export default function Navegacao() {
           aria-label="Abrir menu"
           className="ml-auto flex h-9 w-9 flex-col items-center justify-center gap-1 border border-linha md:hidden"
         >
-          <span className={`h-px w-5 bg-tinta transition-transform duration-150 ${menuMovel ? "translate-y-[3px] rotate-45" : ""}`} />
-          <span className={`h-px w-5 bg-tinta transition-opacity duration-150 ${menuMovel ? "opacity-0" : ""}`} />
-          <span className={`h-px w-5 bg-tinta transition-transform duration-150 ${menuMovel ? "-translate-y-[3px] -rotate-45" : ""}`} />
+          <span className={`h-px w-5 bg-tinta transition-transform duration-micro ease-entrada ${menuMovel ? "translate-y-[3px] rotate-45" : ""}`} />
+          <span className={`h-px w-5 bg-tinta transition-opacity duration-micro ease-entrada ${menuMovel ? "opacity-0" : ""}`} />
+          <span className={`h-px w-5 bg-tinta transition-transform duration-micro ease-entrada ${menuMovel ? "-translate-y-[3px] -rotate-45" : ""}`} />
         </button>
       </div>
 

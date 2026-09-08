@@ -182,7 +182,7 @@ export default function Calendario() {
                       // outra: antes eles eram texto no mesmo fluxo, e "falta: " +
                       // "! " + glifo comiam até 45px dos 145px da célula — num
                       // chip que já cortava o título pela metade.
-                      className={`grid w-full grid-cols-[auto_minmax(0,1fr)] items-start gap-x-1 px-1 py-0.5 text-left text-xs leading-tight transition-opacity duration-150 hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-tinta ${cor} ${prio.borda} ${
+                      className={`grid w-full grid-cols-[auto_minmax(0,1fr)] items-start gap-x-1 px-1 py-0.5 text-left text-xs leading-tight transition-opacity duration-micro ease-entrada hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-tinta ${cor} ${prio.borda} ${
                         atrasada ? "font-semibold ring-1 ring-inset ring-trigo" : ""
                       }`}
                     >
@@ -205,7 +205,7 @@ export default function Calendario() {
                         ? `ver menos no dia ${dia}`
                         : `ver mais ${doDia.length - VISIVEIS_POR_DIA} no dia ${dia}`
                     }
-                    className="w-full px-1 py-0.5 text-left font-mono text-xs text-tinta/70 underline underline-offset-2 transition-opacity duration-150 hover:text-tinta focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-tinta"
+                    className="w-full px-1 py-0.5 text-left font-mono text-xs text-tinta/70 underline underline-offset-2 transition-opacity duration-micro ease-entrada hover:text-tinta focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-tinta"
                   >
                     {expandido ? "ver menos" : `+${doDia.length - VISIVEIS_POR_DIA}`}
                   </button>

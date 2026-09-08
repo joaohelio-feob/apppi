@@ -104,7 +104,7 @@ export default function CartaoTarefa({
         setArrastando(true);
       }}
       onDragEnd={() => setArrastando(false)}
-      className={`border border-linha bg-casca transition duration-150 ${prio.borda} ${
+      className={`border border-linha bg-casca transition-opacity duration-micro ease-entrada ${prio.borda} ${
         atrasada ? "ring-1 ring-trigo" : ""
       } ${arrastando ? "opacity-40" : ""} ${arrastavel ? "cursor-grab active:cursor-grabbing" : ""}`}
     >

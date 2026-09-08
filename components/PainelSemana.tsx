@@ -66,7 +66,7 @@ export default function PainelSemana({
             onClick={alternar}
             disabled={!meuId}
             aria-pressed={somenteMinhas}
-            className={`border px-3 py-1.5 text-xs transition duration-150 disabled:opacity-40 ${
+            className={`border px-3 py-1.5 text-xs transition-colors duration-micro ease-entrada disabled:opacity-40 ${
               somenteMinhas
                 ? "border-tinta bg-tinta text-campo"
                 : "border-linha text-tinta/70 hover:bg-casca hover:text-tinta"

@@ -114,7 +114,7 @@ export default function LinhaTarefa({
         type="button"
         onClick={() => setAberto(true)}
         aria-label={rotulo}
-        className="grid w-full grid-cols-[1.1rem_minmax(0,1fr)_auto] items-baseline gap-x-2 border-b border-linha py-2 text-left transition duration-150 hover:bg-casca focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-musgo sm:grid-cols-[1.1rem_minmax(0,1fr)_minmax(0,17rem)_auto]"
+        className="grid w-full grid-cols-[1.1rem_minmax(0,1fr)_auto] items-baseline gap-x-2 border-b border-linha py-2 text-left transition-colors duration-micro ease-entrada hover:bg-casca focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-musgo sm:grid-cols-[1.1rem_minmax(0,1fr)_minmax(0,17rem)_auto]"
       >
         <span aria-hidden="true" className="font-mono text-xs text-tinta/70">
           {atrasada ? <span className="font-semibold text-tinta">!</span> : prio.glifo}

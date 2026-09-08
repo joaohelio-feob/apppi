@@ -252,13 +252,13 @@ export default function Quadro() {
         <div className="flex items-center gap-3">
           <button
             onClick={abrir}
-            className="bg-tinta px-4 py-2 text-sm font-semibold text-campo transition duration-150 hover:bg-musgo"
+            className="bg-tinta px-4 py-2 text-sm font-semibold text-campo transition-colors duration-micro ease-entrada hover:bg-musgo"
           >
             Nova tarefa <span className="font-mono text-xs opacity-70">(n)</span>
           </button>
           <Link
             href="/publicar"
-            className="text-sm text-tinta/70 underline underline-offset-4 transition duration-150 hover:text-tinta"
+            className="text-sm text-tinta/70 underline underline-offset-4 transition-colors duration-micro ease-entrada hover:text-tinta"
           >
             em lote
           </Link>

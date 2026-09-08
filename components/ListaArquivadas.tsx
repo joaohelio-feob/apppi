@@ -152,7 +152,7 @@ export default function ListaArquivadas({
               </div>
               <button
                 onClick={() => setConfirmando(t)}
-                className="shrink-0 border border-linha px-3 py-1 text-xs transition-opacity duration-150 hover:bg-casca focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-musgo"
+                className="shrink-0 border border-linha px-3 py-1 text-xs transition-opacity duration-micro ease-entrada hover:bg-casca focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-musgo"
               >
                 restaurar
               </button>

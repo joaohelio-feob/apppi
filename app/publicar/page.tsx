@@ -312,7 +312,7 @@ export default function Publicar() {
 
           <button
             onClick={() => { setResultados(null); setTexto(""); setNomeArquivo(null); }}
-            className="mt-4 border border-linha px-3 py-1.5 text-xs transition-opacity duration-150 hover:bg-campo"
+            className="mt-4 border border-linha px-3 py-1.5 text-xs transition-opacity duration-micro ease-entrada hover:bg-campo"
           >
             publicar outro lote
           </button>
@@ -323,7 +323,7 @@ export default function Publicar() {
       {!resultados && (
         <>
           <div className="mt-6 flex flex-wrap items-center gap-3">
-            <label className="cursor-pointer border border-linha bg-casca px-3 py-1.5 text-xs transition-opacity duration-150 hover:bg-campo">
+            <label className="cursor-pointer border border-linha bg-casca px-3 py-1.5 text-xs transition-opacity duration-micro ease-entrada hover:bg-campo">
               escolher arquivo .json
               <input
                 ref={campoArquivo}
@@ -342,7 +342,7 @@ export default function Publicar() {
             )}
             <button
               onClick={() => { setTexto(EXEMPLO); setNomeArquivo(null); }}
-              className="text-xs text-tinta/70 underline underline-offset-4 transition-opacity duration-150 hover:text-tinta"
+              className="text-xs text-tinta/70 underline underline-offset-4 transition-opacity duration-micro ease-entrada hover:text-tinta"
             >
               usar um exemplo
             </button>
@@ -447,7 +447,7 @@ export default function Publicar() {
                 <button
                   onClick={publicar}
                   disabled={!podePublicar}
-                  className="bg-tinta px-4 py-2 text-sm font-semibold text-campo transition-opacity duration-150 hover:bg-musgo disabled:opacity-40"
+                  className="bg-tinta px-4 py-2 text-sm font-semibold text-campo transition-opacity duration-micro ease-entrada hover:bg-musgo disabled:opacity-40"
                 >
                   {publicando ? "publicando…" : `Publicar ${previa.length === 1 ? "1 tarefa" : `${previa.length} tarefas`}`}
                 </button>
