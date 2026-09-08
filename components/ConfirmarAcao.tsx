@@ -90,14 +90,14 @@ export default function ConfirmarAcao({
             ref={confirmar}
             onClick={aoConfirmar}
             disabled={executando}
-            className="bg-tinta px-4 py-2 text-sm font-semibold text-campo transition-opacity duration-150 hover:bg-musgo disabled:opacity-50"
+            className="bg-tinta px-4 py-2 text-sm font-semibold text-campo transition-opacity duration-micro ease-entrada hover:bg-musgo disabled:opacity-50"
           >
             {executando ? "…" : rotuloConfirmar}
           </button>
           <button
             onClick={aoCancelar}
             disabled={executando}
-            className="border border-linha px-4 py-2 text-sm transition-opacity duration-150 hover:bg-casca disabled:opacity-50"
+            className="border border-linha px-4 py-2 text-sm transition-opacity duration-micro ease-entrada hover:bg-casca disabled:opacity-50"
           >
             Cancelar
           </button>

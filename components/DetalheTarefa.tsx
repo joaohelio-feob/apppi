@@ -330,7 +330,7 @@ export default function DetalheTarefa({
           <button
             onClick={tentarFechar}
             aria-label="Fechar detalhes da tarefa"
-            className="shrink-0 border border-linha px-2 py-1 text-xs text-tinta/70 transition duration-150 hover:bg-casca hover:text-tinta"
+            className="shrink-0 border border-linha px-2 py-1 text-xs text-tinta/70 transition-colors duration-micro ease-entrada hover:bg-casca hover:text-tinta"
           >
             fechar
           </button>
@@ -343,7 +343,7 @@ export default function DetalheTarefa({
             value={t.titulo}
             onChange={(e) => setT((atual) => ({ ...atual, titulo: e.target.value }))}
             onBlur={(e) => e.target.value.trim() && e.target.value !== tarefa.titulo && salvarCampo("titulo", e.target.value)}
-            className="w-full border border-transparent bg-transparent font-display text-xl font-bold transition duration-150 hover:border-linha focus:border-linha focus:outline-none"
+            className="w-full border border-transparent bg-transparent font-display text-xl font-bold transition-colors duration-micro ease-entrada hover:border-linha focus:border-linha focus:outline-none"
           />
         </label>
 
@@ -464,7 +464,7 @@ export default function DetalheTarefa({
               <ul className="mt-2 space-y-1">
                 {criterios.map((c) => (
                   <li key={c.linha}>
-                    <label className="flex cursor-pointer items-start gap-2 border border-linha bg-casca px-3 py-1.5 text-sm transition duration-150 hover:border-musgo">
+                    <label className="flex cursor-pointer items-start gap-2 border border-linha bg-casca px-3 py-1.5 text-sm transition-colors duration-micro ease-entrada hover:border-musgo">
                       <input
                         type="checkbox"
                         checked={c.feito}
@@ -500,7 +500,7 @@ export default function DetalheTarefa({
                 <button
                   onClick={salvarDescricao}
                   disabled={salvandoDescricao}
-                  className="bg-tinta px-3 py-1.5 text-xs text-campo transition duration-150 hover:bg-musgo disabled:opacity-50"
+                  className="bg-tinta px-3 py-1.5 text-xs text-campo transition-colors duration-micro ease-entrada hover:bg-musgo disabled:opacity-50"
                 >
                   {salvandoDescricao ? "salvando…" : "Salvar critérios"}
                 </button>
@@ -569,7 +569,7 @@ export default function DetalheTarefa({
             {souResponsavel && (
               <button
                 onClick={() => setEntregaAberta(true)}
-                className="bg-tinta px-3 py-1.5 text-xs text-campo transition duration-150 hover:bg-musgo"
+                className="bg-tinta px-3 py-1.5 text-xs text-campo transition-colors duration-micro ease-entrada hover:bg-musgo"
               >
                 Entregar
               </button>
@@ -673,7 +673,7 @@ export default function DetalheTarefa({
           <button
             onClick={() => setConfirmandoArquivo(true)}
             disabled={arquivando}
-            className="shrink-0 border border-linha px-3 py-1.5 text-xs transition duration-150 hover:border-trigo hover:text-trigo disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-musgo"
+            className="shrink-0 border border-linha px-3 py-1.5 text-xs transition-colors duration-micro ease-entrada hover:border-trigo hover:text-trigo disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-musgo"
           >
             {arquivando ? "arquivando…" : "Arquivar tarefa"}
           </button>
