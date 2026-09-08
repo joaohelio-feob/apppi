@@ -7,6 +7,7 @@ import {
   type EstadoEntrega, type ResultadoRevisao, type Tarefa,
 } from "@/lib/types";
 import { useToast } from "@/components/ToastProvider";
+import { dataCurta } from "@/lib/datas";
 
 type ItemRevisao = Tarefa & { estado: EstadoEntrega };
 
@@ -131,7 +132,7 @@ export default function Revisoes() {
                     <p className="text-sm font-semibold">{t.titulo}</p>
                     <p className="mt-1 font-mono text-xs text-tinta/70">
                       revisando: {t.estado.revisor_nome ?? "—"} · entregue em{" "}
-                      {t.estado.entregue_em && new Date(t.estado.entregue_em).toLocaleDateString("pt-BR")}
+                      {t.estado.entregue_em && dataCurta(t.estado.entregue_em)}
                     </p>
                   </div>
                 ))}
@@ -180,7 +181,7 @@ function CartaoParaRevisar({
         responsável: {responsaveisDe(item).map((m) => m.nome).join(", ") || "sem responsável"}
       </p>
       <p className="mt-2 font-mono text-xs text-tinta/70">
-        entregue em {item.estado.entregue_em && new Date(item.estado.entregue_em).toLocaleDateString("pt-BR")}
+        entregue em {item.estado.entregue_em && dataCurta(item.estado.entregue_em)}
         {" · "}arquivo: <span className="text-tinta">{item.estado.arquivo_drive}</span>
         {item.estado.commit_nome && (
           <>

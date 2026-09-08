@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
-import { dataLocalISO } from "@/lib/datas";
+import { dataCurta, dataLocalISO } from "@/lib/datas";
 import { UNIDADES_FRENTE, responsaveisDe, type Frente, type Membro, type Reuniao, type Tarefa } from "@/lib/types";
 import BotaoExportarCSV from "@/components/BotaoExportarCSV";
 import BotaoExportarPDF from "@/components/BotaoExportarPDF";
@@ -215,7 +215,7 @@ export default function SprintReport() {
                     <span className="font-semibold">{t.titulo}</span>
                     <span className="font-mono text-xs text-tinta/70">
                       {responsaveisDe(t).map((m) => m.nome).join(", ") || "sem responsável"} ·{" "}
-                      {t.concluido_em && new Date(t.concluido_em).toLocaleDateString("pt-BR")}
+                      {t.concluido_em && dataCurta(t.concluido_em)}
                     </span>
                   </li>
                 ))}
@@ -328,7 +328,7 @@ export default function SprintReport() {
             <ul className="max-h-96 space-y-1 overflow-y-auto print:max-h-none print:overflow-visible">
               {movimentacoes.slice(0, 40).map((m, i) => (
                 <li key={i} className="font-mono text-xs text-tinta/70">
-                  {new Date(m.em).toLocaleDateString("pt-BR")} · {m.autor ?? "—"} · {m.acao}
+                  {dataCurta(m.em)} · {m.autor ?? "—"} · {m.acao}
                   {m.tarefa ? ` · ${m.tarefa}` : ""}
                   {m.frente
                     ? ` · ${m.escopo === "frente" ? "frente" : "tema"}: ${m.frente}${

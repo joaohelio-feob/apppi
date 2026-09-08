@@ -5,6 +5,7 @@ import { criarClienteNavegador } from "@/lib/supabase-browser";
 import { responsaveisDe, type Tarefa } from "@/lib/types";
 import GerenciadorAnexos from "@/components/GerenciadorAnexos";
 import NotaRevisor from "@/components/NotaRevisor";
+import { dataCurta } from "@/lib/datas";
 
 export default function Entregas() {
   const [tarefas, setTarefas] = useState<Tarefa[]>([]);
@@ -65,7 +66,7 @@ export default function Entregas() {
                   </td>
                   <td className="px-3 py-2 font-mono text-xs text-tinta/70">
                     {t.concluido_em
-                      ? new Date(t.concluido_em).toLocaleDateString("pt-BR")
+                      ? dataCurta(t.concluido_em)
                       : t.prazo
                       ? `prazo ${new Date(t.prazo + "T12:00:00").toLocaleDateString("pt-BR")}`
                       : "—"}
