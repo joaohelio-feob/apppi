@@ -1,5 +1,8 @@
 "use client";
 
+import { useToast } from "@/components/ToastProvider";
+import AvisoErro from "@/components/ui/AvisoErro";
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
@@ -7,6 +10,8 @@ import { PAPEIS, type Frente, type Membro } from "@/lib/types";
 import { dataCurta } from "@/lib/datas";
 
 export default function Equipe() {
+  const { avisar } = useToast();
+  const [erroCarga, setErroCarga] = useState(false);
   const [membros, setMembros] = useState<Membro[]>([]);
   const [frentes, setFrentes] = useState<Frente[]>([]);
   const [meuId, setMeuId] = useState<string | null>(null);
@@ -17,11 +22,13 @@ export default function Equipe() {
     const supabase = criarClienteNavegador();
 
     async function carregar() {
-      const [{ data: sessao }, { data: lista }, { data: listaFrentes }] = await Promise.all([
+      const [{ data: sessao }, { data: lista, error: erroLista }, { data: listaFrentes, error: erroFrentes }] = await Promise.all([
         supabase.auth.getUser(),
         supabase.from("membros").select("id, nome, papel, frente_id, criado_em").order("nome"),
         supabase.from("frentes").select("id, nome").order("nome"),
       ]);
+    setErroCarga(!!(erroLista || erroFrentes));
+    if (erroLista || erroFrentes) { setCarregando(false); return; }
       setMeuId(sessao.user?.id ?? null);
       setMembros((lista ?? []) as Membro[]);
       setFrentes((listaFrentes ?? []) as Frente[]);
@@ -31,34 +38,39 @@ export default function Equipe() {
   }, []);
 
   async function mudarPapel(id: string, papel: string) {
+    const anterior = membros.find((m) => m.id === id);
     setSalvandoId(id);
     setMembros((atual) => atual.map((m) => (m.id === id ? { ...m, papel } : m)));
-    await criarClienteNavegador().from("membros").update({ papel }).eq("id", id);
+    const { error } = await criarClienteNavegador().from("membros").update({ papel }).eq("id", id);
+    if (error) { if (anterior) setMembros((lista) => lista.map((m) => m.id === id ? anterior : m)); avisar("Não foi possível salvar o papel."); }
     setSalvandoId(null);
   }
 
   async function mudarFrente(id: string, frenteId: string) {
+    const anterior = membros.find((m) => m.id === id);
     setSalvandoId(id);
     const valor = frenteId ? Number(frenteId) : null;
     setMembros((atual) => atual.map((m) => (m.id === id ? { ...m, frente_id: valor } : m)));
-    await criarClienteNavegador().from("membros").update({ frente_id: valor }).eq("id", id);
+    const { error } = await criarClienteNavegador().from("membros").update({ frente_id: valor }).eq("id", id);
+    if (error) { if (anterior) setMembros((lista) => lista.map((m) => m.id === id ? anterior : m)); avisar("Não foi possível salvar a frente."); }
     setSalvandoId(null);
   }
 
   return (
     <div>
       <h1 className="font-display text-3xl font-extrabold tracking-tight">
-        Quem está no time
+        Equipe
       </h1>
       <p className="mt-2 max-w-prose text-sm text-tinta/70">
         A lista vem de quem já criou conta em <span className="font-mono text-xs">/login</span>.
         Cada integrante escolhe o próprio papel — ninguém edita o papel de outra pessoa.
       </p>
 
+      {erroCarga && <AvisoErro mensagem="Não foi possível carregar os dados. Tente novamente." />}
       {carregando ? (
         <p className="mt-10 text-sm text-tinta/70">carregando…</p>
-      ) : (
-        <div className="mt-8 divide-y divide-linha border border-linha bg-casca">
+      ) : erroCarga ? null : (
+        <div className="mt-6 divide-y divide-linha border border-linha bg-casca">
           {membros.map((m) => (
             <div key={m.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
               <Link
@@ -72,6 +84,7 @@ export default function Equipe() {
               {m.id === meuId ? (
                 <>
                   <select
+                    aria-label={`Papel de ${m.nome}`}
                     value={m.papel}
                     disabled={salvandoId === m.id}
                     onChange={(e) => mudarPapel(m.id, e.target.value)}
@@ -82,6 +95,7 @@ export default function Equipe() {
                     ))}
                   </select>
                   <select
+                    aria-label={`Frente de ${m.nome}`}
                     value={m.frente_id ?? ""}
                     disabled={salvandoId === m.id}
                     onChange={(e) => mudarFrente(m.id, e.target.value)}

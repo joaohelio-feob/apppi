@@ -233,7 +233,7 @@ export default function SprintReport() {
               <ul className="space-y-1">
                 {atrasadas.map((t) => (
                   <li key={t.id} className="flex flex-wrap items-baseline gap-x-2 text-sm">
-                    <span className="font-semibold text-trigo">{t.titulo}</span>
+                    <span className="font-semibold text-tinta">{t.titulo}</span>
                     <span className="font-mono text-xs text-tinta/70">
                       {responsaveisDe(t).map((m) => m.nome).join(", ") || "sem responsável"} · prazo {t.prazo && new Date(t.prazo + "T12:00:00").toLocaleDateString("pt-BR")}
                     </span>
@@ -258,11 +258,11 @@ export default function SprintReport() {
             </section>
           </div>
 
-          <section className="overflow-x-auto border border-linha">
+          <section className="max-h-[70vh] overflow-auto border border-linha print:max-h-none print:overflow-visible">
             <h2 className="border-b border-linha bg-casca px-4 py-2 font-display text-xs font-semibold text-tinta/70">
               Resumo por pessoa no período
             </h2>
-            <table className="w-full min-w-[640px] border-collapse text-sm">
+            <table className="tabela-edicao min-w-[640px]">
               <thead>
                 <tr className="border-b border-linha bg-casca font-display text-xs font-semibold text-tinta/70">
                   <th className="px-3 py-2 text-left">Pessoa</th>

@@ -5,6 +5,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
 
+import { useToast } from "./ToastProvider";
+
 type Destino = { href: string; rotulo: string };
 
 /**
@@ -18,31 +20,33 @@ type Destino = { href: string; rotulo: string };
  * prazo, entregar, revisar. Cinco cabem numa linha com folga.
  */
 const PRIMARIOS: Destino[] = [
-  { href: "/",            rotulo: "Semana" },
-  { href: "/tarefas",     rotulo: "Quadro" },
-  { href: "/calendario",  rotulo: "Calendário" },
-  { href: "/entregas",    rotulo: "Entregas" },
-  { href: "/revisoes",    rotulo: "Revisões" },
+  { href: "/", rotulo: "Semana" },
+  { href: "/tarefas", rotulo: "Quadro" },
+  { href: "/calendario", rotulo: "Calendário" },
+  { href: "/entregas", rotulo: "Entregas" },
+  { href: "/revisoes", rotulo: "Revisões" },
 ];
 
 /** SECUNDÁRIOS são consulta, configuração e relatório: semanal, não diário. */
 const SECUNDARIOS: Destino[] = [
   { href: "/atribuicoes", rotulo: "Atribuições" },
-  { href: "/equipe",      rotulo: "Equipe" },
-  { href: "/frentes",     rotulo: "Frentes" },
-  { href: "/codigo",      rotulo: "Código" },
-  { href: "/relatorio",   rotulo: "Trilha" },
-  { href: "/reunioes",    rotulo: "Reuniões" },
-  { href: "/sprint",      rotulo: "Sprint Report" },
+  { href: "/equipe", rotulo: "Equipe" },
+  { href: "/frentes", rotulo: "Frentes" },
+  { href: "/codigo", rotulo: "Código" },
+  { href: "/relatorio", rotulo: "Trilha" },
+  { href: "/reunioes", rotulo: "Reuniões" },
+  { href: "/sprint", rotulo: "Sprint Report" },
 ];
 
-const TODOS = [...PRIMARIOS, ...SECUNDARIOS];
-
 export default function Navegacao() {
+  const { avisar } = useToast();
+  const [saindo, setSaindo] = useState(false);
   const caminho = usePathname();
   const router = useRouter();
   const [menuMovel, setMenuMovel] = useState(false);
   const [mais, setMais] = useState(false);
+  const botaoMais = useRef<HTMLButtonElement>(null);
+  const botaoMovel = useRef<HTMLButtonElement>(null);
   const areaMais = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -53,12 +57,22 @@ export default function Navegacao() {
   // "Mais" abre por clique, nunca por hover — hover não existe em toque. Fecha
   // com Esc e com clique fora, como qualquer disclosure.
   useEffect(() => {
-    if (!mais) return;
+    if (!mais && !menuMovel) return;
     function noDocumento(e: MouseEvent) {
-      if (areaMais.current && !areaMais.current.contains(e.target as Node)) setMais(false);
+      if (areaMais.current && !areaMais.current.contains(e.target as Node))
+        setMais(false);
     }
     function naTecla(e: KeyboardEvent) {
-      if (e.key === "Escape") setMais(false);
+      if (e.key === "Escape") {
+        if (mais) {
+          setMais(false);
+          botaoMais.current?.focus();
+        }
+        if (menuMovel) {
+          setMenuMovel(false);
+          botaoMovel.current?.focus();
+        }
+      }
     }
     document.addEventListener("mousedown", noDocumento);
     document.addEventListener("keydown", naTecla);
@@ -66,13 +80,20 @@ export default function Navegacao() {
       document.removeEventListener("mousedown", noDocumento);
       document.removeEventListener("keydown", naTecla);
     };
-  }, [mais]);
+  }, [mais, menuMovel]);
 
   if (caminho === "/login") return null;
 
   async function sair() {
-    await criarClienteNavegador().auth.signOut();
-    router.push("/login");
+    if (saindo) return;
+    setSaindo(true);
+    const { error } = await criarClienteNavegador().auth.signOut();
+    setSaindo(false);
+    if (error) {
+      avisar("Não foi possível sair. Tente novamente.");
+      return;
+    }
+    router.replace("/login");
     router.refresh();
   }
 
@@ -81,11 +102,14 @@ export default function Navegacao() {
    * e fica marcado. Sem isto o usuário perde a indicação de onde está — é a
    * forma clássica desse padrão falhar.
    */
-  const secundarioAtivo = SECUNDARIOS.find((d) => d.href === caminho) ?? null;
+  const secundarioAtivo =
+    SECUNDARIOS.find(
+      (d) => d.href === caminho || caminho.startsWith(`${d.href}/`),
+    ) ?? null;
 
   /** Sublinhado espesso, não cor: o estado ativo não pode depender de cor. */
   const classeDestino = (ativo: boolean) =>
-    `whitespace-nowrap border-b-2 px-1 py-1 text-sm transition-colors duration-micro ease-entrada ${
+    `whitespace-nowrap border-b-2 min-h-10 px-1 py-2 text-xs sm:text-sm transition-colors duration-micro ease-entrada ${
       ativo
         ? "border-tinta font-semibold text-tinta"
         : "border-transparent text-tinta/70 hover:border-linha hover:text-tinta"
@@ -95,17 +119,20 @@ export default function Navegacao() {
     if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
     e.preventDefault();
     const itens = Array.from(
-      areaMais.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []
+      areaMais.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ??
+        [],
     );
     if (itens.length === 0) return;
     const i = itens.indexOf(document.activeElement as HTMLElement);
     const proximo =
-      e.key === "ArrowDown" ? itens[(i + 1) % itens.length] : itens[(i - 1 + itens.length) % itens.length];
+      e.key === "ArrowDown"
+        ? itens[(i + 1) % itens.length]
+        : itens[(i - 1 + itens.length) % itens.length];
     proximo.focus();
   }
 
   return (
-    <header className="border-b border-linha bg-campo/80 backdrop-blur print:hidden">
+    <header className="border-b border-linha bg-campo print:hidden">
       <div className="mx-auto flex max-w-6xl items-center gap-x-4 px-4 py-3 sm:px-6">
         {/* whitespace-nowrap: o logo quebrava em duas linhas e empurrava a nav. */}
         <Link
@@ -115,12 +142,20 @@ export default function Navegacao() {
           Caderno de Campo
         </Link>
 
-        <nav aria-label="Seções do painel" className="hidden items-center gap-x-3 md:flex">
+        <nav
+          aria-label="Seções do painel"
+          className="hidden items-center gap-x-3 lg:flex"
+        >
           {PRIMARIOS.map((d) => (
             <Link
               key={d.href}
               href={d.href}
-              aria-current={caminho === d.href ? "page" : undefined}
+              aria-current={
+                caminho === d.href ||
+                (d.href !== "/" && caminho.startsWith(`${d.href}/`))
+                  ? "page"
+                  : undefined
+              }
               className={classeDestino(caminho === d.href)}
             >
               {d.rotulo}
@@ -129,13 +164,16 @@ export default function Navegacao() {
 
           <div ref={areaMais} className="relative" onKeyDown={teclasDoMenu}>
             <button
+              ref={botaoMais}
               onClick={() => setMais((a) => !a)}
               aria-expanded={mais}
               aria-haspopup="menu"
               className={classeDestino(!!secundarioAtivo)}
             >
               {secundarioAtivo ? `Mais · ${secundarioAtivo.rotulo}` : "Mais"}
-              <span aria-hidden="true" className="ml-1 font-mono text-xs">▾</span>
+              <span aria-hidden="true" className="ml-1 font-mono text-xs">
+                ▾
+              </span>
             </button>
 
             {mais && (
@@ -149,7 +187,12 @@ export default function Navegacao() {
                     key={d.href}
                     href={d.href}
                     role="menuitem"
-                    aria-current={caminho === d.href ? "page" : undefined}
+                    aria-current={
+                      caminho === d.href ||
+                      (d.href !== "/" && caminho.startsWith(`${d.href}/`))
+                        ? "page"
+                        : undefined
+                    }
                     className={`block px-3 py-1.5 text-sm transition-colors duration-micro ease-entrada ${
                       caminho === d.href
                         ? "bg-casca font-semibold text-tinta"
@@ -166,10 +209,11 @@ export default function Navegacao() {
 
         {/* "sair" é ação, não destino: separado por um divisor e com a mesma
             forma dos outros controles do app — não mais sublinhado solto. */}
-        <div className="ml-auto hidden items-center gap-x-4 md:flex">
+        <div className="ml-auto hidden items-center gap-x-4 lg:flex">
           <span aria-hidden="true" className="h-5 w-px bg-linha" />
           <button
             onClick={sair}
+            disabled={saindo}
             className="whitespace-nowrap border border-linha px-3 py-1 text-xs text-tinta/70 transition-colors duration-micro ease-entrada hover:bg-casca hover:text-tinta"
           >
             sair
@@ -177,25 +221,59 @@ export default function Navegacao() {
         </div>
 
         <button
+          ref={botaoMovel}
           onClick={() => setMenuMovel((a) => !a)}
           aria-expanded={menuMovel}
-          aria-label="Abrir menu"
-          className="ml-auto flex h-9 w-9 flex-col items-center justify-center gap-1 border border-linha md:hidden"
+          aria-label={menuMovel ? "Fechar mais seções" : "Abrir mais seções"}
+          className="ml-auto flex h-10 w-10 flex-col items-center justify-center gap-1 border border-linha lg:hidden"
         >
-          <span className={`h-px w-5 bg-tinta transition-transform duration-micro ease-entrada ${menuMovel ? "translate-y-[3px] rotate-45" : ""}`} />
-          <span className={`h-px w-5 bg-tinta transition-opacity duration-micro ease-entrada ${menuMovel ? "opacity-0" : ""}`} />
-          <span className={`h-px w-5 bg-tinta transition-transform duration-micro ease-entrada ${menuMovel ? "-translate-y-[3px] -rotate-45" : ""}`} />
+          <span
+            className={`h-px w-5 bg-tinta transition-transform duration-micro ease-entrada ${menuMovel ? "translate-y-[3px] rotate-45" : ""}`}
+          />
+          <span
+            className={`h-px w-5 bg-tinta transition-opacity duration-micro ease-entrada ${menuMovel ? "opacity-0" : ""}`}
+          />
+          <span
+            className={`h-px w-5 bg-tinta transition-transform duration-micro ease-entrada ${menuMovel ? "-translate-y-[3px] -rotate-45" : ""}`}
+          />
         </button>
       </div>
 
-      {/* No celular a hierarquia não ajuda — a lista já rola. Mostra tudo. */}
+      <nav
+        aria-label="Navegação diária"
+        className="flex gap-2 overflow-x-auto border-t border-linha px-4 lg:hidden"
+      >
+        {PRIMARIOS.map((d) => (
+          <Link
+            key={d.href}
+            href={d.href}
+            aria-current={
+              caminho === d.href ||
+              (d.href !== "/" && caminho.startsWith(`${d.href}/`))
+                ? "page"
+                : undefined
+            }
+            className={classeDestino(caminho === d.href)}
+          >
+            {d.rotulo}
+          </Link>
+        ))}
+      </nav>
       {menuMovel && (
-        <nav aria-label="Seções do painel" className="flex flex-col border-t border-linha px-4 py-2 text-sm md:hidden">
-          {TODOS.map((d) => (
+        <nav
+          aria-label="Seções do painel"
+          className="flex flex-col border-t border-linha px-4 py-2 text-sm lg:hidden"
+        >
+          {SECUNDARIOS.map((d) => (
             <Link
               key={d.href}
               href={d.href}
-              aria-current={caminho === d.href ? "page" : undefined}
+              aria-current={
+                caminho === d.href ||
+                (d.href !== "/" && caminho.startsWith(`${d.href}/`))
+                  ? "page"
+                  : undefined
+              }
               className={`px-2 py-2.5 ${caminho === d.href ? "font-semibold text-tinta" : "text-tinta/70"}`}
             >
               {d.rotulo}
@@ -203,6 +281,7 @@ export default function Navegacao() {
           ))}
           <button
             onClick={sair}
+            disabled={saindo}
             className="mt-1 border-t border-linha px-2 py-2.5 text-left text-xs text-tinta/70"
           >
             sair

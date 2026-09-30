@@ -1,13 +1,17 @@
 "use client";
 
-import { useState } from "react";
 import { dataLocalISO, diasEntre, estaAtrasada } from "@/lib/datas";
 import { progressoCriterios } from "@/lib/criterios";
 import {
-  CLASSES_PRIORIDADE, PRIORIDADES, STATUS, responsaveisDe,
-  type Frente, type Membro, type Tarefa,
+  CLASSES_PRIORIDADE,
+  PRIORIDADES,
+  STATUS,
+  responsaveisDe,
+  type Frente,
+  type Membro,
+  type Tarefa,
 } from "@/lib/types";
-import DetalheTarefa from "./DetalheTarefa";
+import { useDetalheTarefa } from "./DetalheTarefaProvider";
 
 /**
  * Uma tarefa como linha de caderno, para filas onde o cartão pesa demais:
@@ -47,29 +51,37 @@ export default function LinhaTarefa({
   /** Desligue quando a tela inteira já é de uma frente só. */
   mostrarFrente?: boolean;
 }) {
-  const [aberto, setAberto] = useState(false);
+  const abrirDetalhe = useDetalheTarefa();
 
   const hoje = dataLocalISO();
   const atrasada = estaAtrasada(tarefa.status, tarefa.prazo, hoje);
   const prio = CLASSES_PRIORIDADE[tarefa.prioridade];
-  const nomePrio = PRIORIDADES.find((p) => p.id === tarefa.prioridade)?.nome ?? tarefa.prioridade;
-  const nomeStatus = STATUS.find((s) => s.id === tarefa.status)?.nome ?? tarefa.status;
+  const nomePrio =
+    PRIORIDADES.find((p) => p.id === tarefa.prioridade)?.nome ??
+    tarefa.prioridade;
+  const nomeStatus =
+    STATUS.find((s) => s.id === tarefa.status)?.nome ?? tarefa.status;
   const responsaveis = responsaveisDe(tarefa);
   const progresso = progressoCriterios(tarefa.descricao);
 
   const nomes = responsaveis.map((m) => m.nome);
   // Duas pessoas por extenso; a partir daí, a primeira e o resto contado.
   const quem =
-    nomes.length === 0 ? "sem dono"
-    : nomes.length <= 2 ? nomes.join(" e ")
-    : `${nomes[0]} +${nomes.length - 1}`;
+    nomes.length === 0
+      ? "sem dono"
+      : nomes.length <= 2
+        ? nomes.join(" e ")
+        : `${nomes[0]} +${nomes.length - 1}`;
 
   const dias = tarefa.prazo ? diasEntre(tarefa.prazo, hoje) : null;
   const prazoCurto =
-    dias === null ? "—"
-    : atrasada ? `${Math.abs(dias)}d`
-    : dias === 0 ? "hoje"
-    : `${dias}d`;
+    dias === null
+      ? "—"
+      : atrasada
+        ? `${Math.abs(dias)}d`
+        : dias === 0
+          ? "hoje"
+          : `${dias}d`;
 
   /**
    * Concluída troca o prazo por "✓": dias restantes de tarefa concluída não
@@ -86,7 +98,8 @@ export default function LinhaTarefa({
    * sem caixa — do mesmo jeito que "frente" já entra aqui.
    */
   const palavraStatus =
-    mostrarStatus && (tarefa.status === "fazendo" || tarefa.status === "revisao")
+    mostrarStatus &&
+    (tarefa.status === "fazendo" || tarefa.status === "revisao")
       ? nomeStatus.toLowerCase()
       : null;
 
@@ -112,32 +125,40 @@ export default function LinhaTarefa({
     <>
       <button
         type="button"
-        onClick={() => setAberto(true)}
+        onClick={() =>
+          abrirDetalhe({
+            tarefa,
+            aoAtualizar,
+            membrosIniciais: membros,
+            frentesIniciais: frentes,
+          })
+        }
         aria-label={rotulo}
-        className="grid w-full grid-cols-[1.1rem_minmax(0,1fr)_auto] items-baseline gap-x-2 border-b border-linha py-2 text-left transition-colors duration-micro ease-entrada hover:bg-casca focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-musgo sm:grid-cols-[1.1rem_minmax(0,1fr)_minmax(0,17rem)_auto]"
+        className="grid w-full grid-cols-[1.5rem_minmax(0,1fr)_auto] items-baseline gap-x-2 border-b border-linha px-2 py-3 text-left transition-colors duration-micro ease-entrada hover:bg-casca focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-musgo sm:grid-cols-[1.1rem_minmax(0,1fr)_minmax(0,17rem)_auto]"
       >
         <span aria-hidden="true" className="font-mono text-xs text-tinta/70">
-          {atrasada ? <span className="font-semibold text-tinta">!</span> : prio.glifo}
+          {atrasada && <span className="font-semibold text-tinta">! </span>}
+          {prio.glifo}
         </span>
 
-        <span className="min-w-0 truncate text-sm">{tarefa.titulo}</span>
+        <span className="min-w-0 break-words text-sm">{tarefa.titulo}</span>
 
-        {/* Metadados na mesma linha, não numa segunda: é o que mantém a linha
-            com altura de linha. Abaixo de sm eles somem — largura ali é para
-            o título. "frente" escrito por extenso é o que distingue pessoa de
-            frente sem depender de cor nem de conhecer os nomes do time. */}
-        <span className="hidden min-w-0 truncate text-xs text-tinta/70 sm:block">
+        <span className="col-start-2 row-start-2 min-w-0 break-words text-xs text-tinta/70 sm:col-auto sm:row-auto">
           {mostrarQuem && quem}
-          {palavraStatus && (mostrarQuem ? <> · {palavraStatus}</> : palavraStatus)}
-          {temFrente && (
-            antesDaFrente
-              ? <> · frente {tarefa.frentes!.nome}</>
-              : <>frente {tarefa.frentes!.nome}</>
-          )}
+          {palavraStatus &&
+            (mostrarQuem ? <> · {palavraStatus}</> : palavraStatus)}
+          {temFrente &&
+            (antesDaFrente ? (
+              <> · frente {tarefa.frentes!.nome}</>
+            ) : (
+              <>frente {tarefa.frentes!.nome}</>
+            ))}
           {progresso && (
             <>
               {antesDoProgresso ? " · " : null}
-              <span className="font-mono">{progresso.feitos}/{progresso.total}</span>
+              <span className="font-mono">
+                {progresso.feitos}/{progresso.total}
+              </span>
             </>
           )}
         </span>
@@ -148,23 +169,15 @@ export default function LinhaTarefa({
             atraso e passa a ser lida. Mesmo par que o selo "Fazendo" já usa. */}
         <span
           title={concluida ? "Concluída" : undefined}
-          className={`shrink-0 font-mono text-xs tabular-nums ${
-            atrasada ? "bg-trigo px-1 font-semibold text-tinta" : "text-tinta/70"
+          className={`col-start-3 row-start-1 shrink-0 font-mono text-xs tabular-nums sm:col-auto sm:row-auto ${
+            atrasada
+              ? "bg-trigo px-1 font-semibold text-tinta"
+              : "text-tinta/70"
           }`}
         >
           {concluida ? "✓" : prazoCurto}
         </span>
       </button>
-
-      {aberto && (
-        <DetalheTarefa
-          tarefa={tarefa}
-          aoFechar={() => setAberto(false)}
-          aoAtualizar={aoAtualizar}
-          membrosIniciais={membros}
-          frentesIniciais={frentes}
-        />
-      )}
     </>
   );
 }

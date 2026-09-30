@@ -1,5 +1,6 @@
 "use client";
 
+import { useAtualizacaoTarefas } from "@/lib/useAtualizacaoTarefas";
 import { useCallback, useEffect, useState } from "react";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
 import { dataCurta } from "@/lib/datas";
@@ -21,14 +22,18 @@ type Arquivamento = { em: string; autor: string | null };
 export default function ListaArquivadas({
   escopo,
   aoRestaurar,
+  filtrarTarefa,
 }: {
   /** O eixo de escopo do quadro continua valendo aqui: "arquivadas" é filtro
    *  de estado, e os dois se combinam em vez de um anular o outro. */
   escopo: Escopo;
   aoRestaurar?: () => void;
+  filtrarTarefa?: (tarefa: Tarefa) => boolean;
 }) {
   const [tarefas, setTarefas] = useState<Tarefa[]>([]);
-  const [quandoArquivou, setQuandoArquivou] = useState<Map<number, Arquivamento>>(new Map());
+  const [quandoArquivou, setQuandoArquivou] = useState<
+    Map<number, Arquivamento>
+  >(new Map());
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [confirmando, setConfirmando] = useState<Tarefa | null>(null);
@@ -40,7 +45,9 @@ export default function ListaArquivadas({
   const carregar = useCallback(async () => {
     const { data, error } = await supabase
       .from("tarefas")
-      .select("id, titulo, escopo, frente_id, status, prioridade, prazo, arquivada, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel)), frentes(id, nome, cor, unidade)")
+      .select(
+        "id, titulo, escopo, frente_id, status, prioridade, prazo, arquivada, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel)), frentes(id, nome, cor, unidade)",
+      )
       .eq("arquivada", true)
       .eq("escopo", escopo)
       .order("atualizado_em", { ascending: false });
@@ -64,34 +71,41 @@ export default function ListaArquivadas({
         .from("historico")
         .select("tarefa_id, em, membros:autor_id(nome)")
         .eq("acao", "arquivou")
-        .in("tarefa_id", lista.map((t) => t.id))
+        .in(
+          "tarefa_id",
+          lista.map((t) => t.id),
+        )
         .order("em", { ascending: false });
 
       const mapa = new Map<number, Arquivamento>();
-      ((eventos ?? []) as unknown as { tarefa_id: number; em: string; membros: { nome: string } | null }[])
-        .forEach((e) => {
-          if (!mapa.has(e.tarefa_id)) mapa.set(e.tarefa_id, { em: e.em, autor: e.membros?.nome ?? null });
-        });
+      (
+        (eventos ?? []) as unknown as {
+          tarefa_id: number;
+          em: string;
+          membros: { nome: string } | null;
+        }[]
+      ).forEach((e) => {
+        if (!mapa.has(e.tarefa_id))
+          mapa.set(e.tarefa_id, { em: e.em, autor: e.membros?.nome ?? null });
+      });
       setQuandoArquivou(mapa);
     }
 
     setCarregando(false);
   }, [escopo]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { carregar(); }, [carregar]);
-
-  // Mesma publicação do quadro: arquivar numa aba some da outra sem F5.
   useEffect(() => {
-    const canal = supabase
-      .channel("arquivadas")
-      .on("postgres_changes", { event: "*", schema: "public", table: "tarefas" }, carregar)
-      .subscribe();
-    return () => { supabase.removeChannel(canal); };
-  }, [carregar]); // eslint-disable-line react-hooks/exhaustive-deps
+    carregar();
+  }, [carregar]);
+
+  useAtualizacaoTarefas("arquivadas", carregar);
 
   async function restaurar(t: Tarefa) {
     setRestaurando(true);
-    const { error } = await supabase.from("tarefas").update({ arquivada: false }).eq("id", t.id);
+    const { error } = await supabase
+      .from("tarefas")
+      .update({ arquivada: false })
+      .eq("id", t.id);
     setRestaurando(false);
     setConfirmando(null);
     if (error) {
@@ -114,10 +128,12 @@ export default function ListaArquivadas({
     );
   }
 
-  if (tarefas.length === 0) {
+  const visiveis = filtrarTarefa ? tarefas.filter(filtrarTarefa) : tarefas;
+  if (visiveis.length === 0) {
     return (
       <p className="mt-6 text-sm text-tinta/70">
-        Nenhuma tarefa {escopo === "frente" ? "de frente" : "individual"} arquivada.
+        Nenhuma tarefa {escopo === "frente" ? "de frente" : "individual"}{" "}
+        arquivada com estes filtros.
       </p>
     );
   }
@@ -125,22 +141,29 @@ export default function ListaArquivadas({
   return (
     <>
       <div className="mt-6 border-t border-linha">
-        {tarefas.map((t) => {
+        {visiveis.map((t) => {
           const quando = quandoArquivou.get(t.id);
           const nomes = responsaveisDe(t).map((m) => m.nome);
-          const status = STATUS.find((s) => s.id === t.status)?.nome ?? t.status;
+          const status =
+            STATUS.find((s) => s.id === t.status)?.nome ?? t.status;
           return (
             <div
               key={t.id}
               className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-linha py-2"
             >
               <div className="min-w-0">
-                <p className="truncate text-sm">{t.titulo}</p>
+                <p className="break-words text-sm">{t.titulo}</p>
                 <p className="mt-0.5 text-xs text-tinta/70">
                   {nomes.length > 0 ? nomes.join(", ") : "sem dono"}
                   {t.frentes && <> · frente {t.frentes.nome}</>}
-                  {" · estava em "}{status.toLowerCase()}
-                  {t.prazo && <> · prazo <span className="font-mono">{t.prazo}</span></>}
+                  {" · estava em "}
+                  {status.toLowerCase()}
+                  {t.prazo && (
+                    <>
+                      {" "}
+                      · prazo <span className="font-mono">{t.prazo}</span>
+                    </>
+                  )}
                   {quando && (
                     <>
                       {" · arquivada em "}
@@ -166,10 +189,16 @@ export default function ListaArquivadas({
           titulo="Restaurar esta tarefa?"
           descricao={
             <>
-              <strong className="font-semibold text-tinta">{confirmando.titulo}</strong> volta a
-              aparecer no quadro, no calendário, na Semana e no painel da frente, no status em que
-              estava ({(STATUS.find((s) => s.id === confirmando.status)?.nome ?? confirmando.status).toLowerCase()}).
-              Dá para arquivar de novo a qualquer momento.
+              <strong className="font-semibold text-tinta">
+                {confirmando.titulo}
+              </strong>{" "}
+              volta a aparecer no quadro, no calendário, na Semana e no painel
+              da frente, no status em que estava (
+              {(
+                STATUS.find((s) => s.id === confirmando.status)?.nome ??
+                confirmando.status
+              ).toLowerCase()}
+              ). Dá para arquivar de novo a qualquer momento.
             </>
           }
           rotuloConfirmar="Restaurar"

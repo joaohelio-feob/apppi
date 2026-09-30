@@ -30,7 +30,8 @@ export default function ToastProvider({ children }: { children: ReactNode }) {
         {avisos.map((a) => (
           <div
             key={a.id}
-            className={`px-4 py-2 text-sm font-semibold shadow-lg ${
+            role={a.tipo === "erro" ? "alert" : "status"}
+            className={`px-4 py-2 text-sm font-semibold shadow-sm ${
               a.tipo === "erro" ? "bg-trigo text-tinta" : "bg-tinta text-campo"
             }`}
           >

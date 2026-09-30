@@ -22,7 +22,7 @@ body::before {
     linear-gradient(theme('colors.linha') 1px, transparent 1px),
     linear-gradient(90deg, theme('colors.linha') 1px, transparent 1px);
   background-size: 32px 32px;
-  opacity: 0.35;
+  opacity: 0.18;
 }
 
 *:focus-visible {
@@ -43,4 +43,30 @@ body::before {
   body::before { display: none; }
   body { background-color: theme('colors.campo'); }
   main { padding: 0 !important; max-width: none !important; }
+}
+
+@layer base {
+  button, input, select, textarea { border-radius: 3px; }
+  button, select { touch-action: manipulation; }
+  button:disabled { cursor: not-allowed; }
+  input, select, textarea { max-width: 100%; }
+  input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid theme('colors.musgo'); outline-offset: 2px; }
+  button { transition-property: background-color, color, border-color; transition-duration: 120ms; }
+  button:active:not(:disabled) { transform: translateY(1px); }
+  tbody tr:hover { background-color: theme('colors.casca'); }
+  @media (pointer: coarse) {
+    button, select, input:not([type="checkbox"]):not([type="radio"]), summary { min-height: 40px; }
+  }
+}
+@layer components {
+  .botao { @apply inline-flex min-h-10 items-center justify-center gap-2 rounded border px-3 py-2 text-sm font-medium disabled:opacity-50; }
+  .botao-primario { @apply border-tinta bg-tinta text-campo hover:bg-musgo; }
+  .botao-secundario { @apply border-linha bg-campo text-tinta hover:bg-casca; }
+  .botao-discreto { @apply border-transparent text-tinta/70 hover:bg-casca hover:text-tinta; }
+  .campo { @apply w-full min-w-0 rounded border border-linha bg-campo px-3 py-2 text-sm text-tinta; }
+  .dialogo { @apply m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-lg overflow-y-auto border border-linha bg-campo p-5 text-tinta; }
+  .dialogo::backdrop { background: theme('colors.tinta / 40%'); }
+  .tabela-edicao { @apply w-full border-collapse text-sm; }
+  .tabela-edicao thead { @apply sticky top-0 z-10 bg-casca; }
+  .tabela-edicao :is(input, select) { @apply border-transparent bg-transparent hover:border-linha focus:border-musgo; }
 }

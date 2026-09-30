@@ -65,8 +65,8 @@ export const CORES_FRENTE: { id: CorFrente; nome: string }[] = [
 // porque o texto "bg-musgo" precisa existir de verdade em algum arquivo.
 export const CLASSES_COR_FRENTE: Record<CorFrente, string> = {
   musgo: "border-musgo text-musgo",
-  trigo: "border-trigo text-trigo",
-  broto: "border-broto text-broto",
+  trigo: "border-trigo text-tinta",
+  broto: "border-broto text-tinta",
   ferro: "border-ferro text-ferro",
 };
 

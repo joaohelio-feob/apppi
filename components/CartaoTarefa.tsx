@@ -2,24 +2,19 @@
 
 import { useState } from "react";
 import { dataLocalISO, diasEntre, estaAtrasada } from "@/lib/datas";
-import { progressoCriterios, textoSemCriterios } from "@/lib/criterios";
-import { lerLocalEntrega } from "@/lib/links";
+import { progressoCriterios } from "@/lib/criterios";
 import {
-  CLASSES_COR_FRENTE, CLASSES_COR_FRENTE_PREENCHIDA, CLASSES_PRIORIDADE,
-  PRIORIDADES, STATUS, responsaveisDe,
-  type Frente, type Membro, type Tarefa, type Status,
+  CLASSES_PRIORIDADE,
+  PRIORIDADES,
+  STATUS,
+  responsaveisDe,
+  type Frente,
+  type Membro,
+  type Tarefa,
+  type Status,
 } from "@/lib/types";
-import DetalheTarefa from "./DetalheTarefa";
+import { useDetalheTarefa } from "./DetalheTarefaProvider";
 import Selo from "./Selo";
-import SeloIssue from "./SeloIssue";
-
-/** Duas letras: primeira do primeiro nome, primeira do último. "Ana" -> "AN". */
-function iniciais(nome: string) {
-  const partes = nome.trim().split(/\s+/).filter(Boolean);
-  if (partes.length === 0) return "??";
-  if (partes.length === 1) return partes[0].slice(0, 2).toUpperCase();
-  return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
-}
 
 function textoDoPrazo(prazo: string, atrasada: boolean, hoje: string) {
   const dias = diasEntre(prazo, hoje);
@@ -27,21 +22,6 @@ function textoDoPrazo(prazo: string, atrasada: boolean, hoje: string) {
   if (dias === 0) return "entrega hoje";
   if (dias === 1) return "falta 1d";
   return `faltam ${dias}d`;
-}
-
-/** Ícone de link — SVG inline porque o projeto não tem (nem vai ter) biblioteca de ícones. */
-function IconeLink() {
-  return (
-    <svg
-      viewBox="0 0 16 16" width="12" height="12" fill="none"
-      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"
-      aria-hidden="true" focusable="false" className="shrink-0"
-    >
-      <path d="M6.5 9.5 9.5 6.5" />
-      <path d="M7 4.5 8.6 2.9a2.7 2.7 0 0 1 3.8 3.8L10.8 8.3" />
-      <path d="M9 11.5 7.4 13.1a2.7 2.7 0 0 1-3.8-3.8L5.2 7.7" />
-    </svg>
-  );
 }
 
 export default function CartaoTarefa({
@@ -70,7 +50,7 @@ export default function CartaoTarefa({
   frentes?: Frente[];
 }) {
   const [arrastando, setArrastando] = useState(false);
-  const [detalheAberto, setDetalheAberto] = useState(false);
+  const abrirDetalhe = useDetalheTarefa();
 
   // Um `hoje` só para o cartão inteiro: se "está atrasada?" e "faltam N dias"
   // chamassem dataLocalISO() cada um por sua conta, um cartão renderizado
@@ -78,15 +58,14 @@ export default function CartaoTarefa({
   const hoje = dataLocalISO();
   const atrasada = estaAtrasada(tarefa.status, tarefa.prazo, hoje);
   const prio = CLASSES_PRIORIDADE[tarefa.prioridade];
-  const nomePrio = PRIORIDADES.find((p) => p.id === tarefa.prioridade)?.nome ?? tarefa.prioridade;
+  const nomePrio =
+    PRIORIDADES.find((p) => p.id === tarefa.prioridade)?.nome ??
+    tarefa.prioridade;
   const responsaveis = responsaveisDe(tarefa);
   const progresso = progressoCriterios(tarefa.descricao);
-  const resumo = textoSemCriterios(tarefa.descricao);
-  const local = lerLocalEntrega(tarefa.local_entrega);
   const nomes = responsaveis.map((m) => m.nome);
-  const visiveis = responsaveis.slice(0, 3);
-  const excedente = responsaveis.length - visiveis.length;
-  const textoResponsaveis = nomes.length > 0 ? nomes.join(", ") : "sem responsável";
+  const textoResponsaveis =
+    nomes.length > 0 ? nomes.join(", ") : "sem responsável";
 
   // Tudo que a cor comunica, repetido em palavras — o leitor de tela (e quem
   // não distingue as cores) recebe status, prioridade e atraso pelo texto.
@@ -111,11 +90,18 @@ export default function CartaoTarefa({
       {/* `relative` aqui delimita até onde o overlay do botão-título alcança:
           o corpo do cartão, nunca a barra de ações lá embaixo. */}
       <div className="relative p-2.5">
-        <div className="flex items-start justify-between gap-2">
+        <div className="flex flex-wrap items-start justify-between gap-2">
           <h3 className="min-w-0 font-display text-sm font-semibold leading-snug">
             <button
               type="button"
-              onClick={() => setDetalheAberto(true)}
+              onClick={() =>
+                abrirDetalhe({
+                  tarefa,
+                  aoAtualizar,
+                  membrosIniciais: membros,
+                  frentesIniciais: frentes,
+                })
+              }
               aria-label={rotuloBotao}
               // O botão é só o título, mas o `after` estica a área clicável
               // por cima do cartão inteiro — é o que faz clicar em qualquer
@@ -124,47 +110,42 @@ export default function CartaoTarefa({
               // sobem pra cima do overlay com `relative z-10`.
               className="block text-left after:absolute after:inset-0 after:content-[''] focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-musgo"
             >
-              <span className="line-clamp-2 break-words">
-                {atrasada && <span className="font-mono font-bold text-tinta">! </span>}
-                <span className="font-mono" title={`Prioridade ${nomePrio.toLowerCase()}`}>
+              <span className="break-words">
+                {atrasada && (
+                  <span className="font-mono font-bold text-tinta">! </span>
+                )}
+                <span
+                  className="font-mono"
+                  title={`Prioridade ${nomePrio.toLowerCase()}`}
+                >
                   {prio.glifo}
                 </span>{" "}
                 {tarefa.titulo}
               </span>
             </button>
           </h3>
-
-          <div className="flex shrink-0 flex-col items-end gap-1">
-            {mostrarStatus && <Selo status={tarefa.status} />}
-            {tarefa.frentes && (
-              <span
-                className={`flex max-w-[12rem] items-center gap-1 border px-1.5 py-0.5 text-xs ${
-                  CLASSES_COR_FRENTE[tarefa.frentes.cor ?? "ferro"]
-                }`}
-                // O nome inteiro fica sempre no title: 12rem acomoda os nomes
-                // reais mais longos das frentes de hoje, mas o truncamento
-                // continua como rede para um nome futuro maior.
-                title={
-                  tarefa.escopo === "frente"
-                    ? `Tarefa da frente ${tarefa.frentes.nome} — todos os integrantes`
-                    : `Tarefa individual, matéria da frente ${tarefa.frentes.nome}`
-                }
-              >
-                {tarefa.escopo === "frente" && (
-                  <i
-                    aria-hidden="true"
-                    className={`inline-block h-1.5 w-1.5 shrink-0 ${
-                      CLASSES_COR_FRENTE_PREENCHIDA[tarefa.frentes.cor ?? "ferro"]
-                    }`}
-                  />
-                )}
-                <span className="truncate">{tarefa.frentes.nome}</span>
-              </span>
-            )}
-          </div>
         </div>
-
-        {resumo && <p className="mt-1 line-clamp-2 break-words text-xs text-tinta/70">{resumo}</p>}
+        <p
+          className={`mt-2 text-xs ${atrasada ? "font-semibold text-tinta" : "text-tinta/70"}`}
+        >
+          {tarefa.prazo
+            ? textoDoPrazo(tarefa.prazo, atrasada, hoje)
+            : "Sem prazo"}
+        </p>
+        <p className="mt-1 break-words text-xs text-tinta/70">
+          {nomes.slice(0, 2).join(", ") || "Sem responsável"}
+          {nomes.length > 2 ? ` +${nomes.length - 2}` : ""}
+        </p>
+        {mostrarStatus && !aoMudarStatus && (
+          <div className="mt-2">
+            <Selo status={tarefa.status} />
+          </div>
+        )}
+        {tarefa.escopo === "frente" && tarefa.frentes && (
+          <p className="mt-1 break-words text-xs text-tinta/70">
+            Frente: {tarefa.frentes.nome}
+          </p>
+        )}
 
         {/* Progresso zero não ganha trilho: barra vazia em largura total não
             comunica nada. Fica só o contador, que ocupa a linha nos dois
@@ -193,7 +174,9 @@ export default function CartaoTarefa({
                   compositor cuida disso, não o layout. */}
               <span
                 className="block h-full w-full origin-left bg-musgo transition-transform duration-micro ease-entrada"
-                style={{ transform: `scaleX(${progresso.feitos / progresso.total})` }}
+                style={{
+                  transform: `scaleX(${progresso.feitos / progresso.total})`,
+                }}
               />
             </span>
             <span className="shrink-0 font-mono text-xs text-tinta/70">
@@ -201,108 +184,26 @@ export default function CartaoTarefa({
             </span>
           </div>
         )}
-
-        {/* ---------------------------------------------------------------
-            GRAMÁTICA FIXA DO RODAPÉ — slots e ordem, não flex-wrap livre.
-
-            Antes eram seis itens de largura livre num flex-wrap: onde a
-            linha quebrava dependia da soma dos anteriores, então mudava com
-            o conteúdo (medido: dois cartões diferentes quebrando em pontos
-            diferentes pelo mesmo motivo). Agora cada faixa tem papel fixo:
-
-              alerta      pendência que exige ação          (condicional)
-              identidade  quem responde · quando vence      (sempre)
-              evidência   onde está o trabalho · git · issue (condicional)
-
-            A faixa de evidência NÃO quebra: o link absorve a sobra e trunca;
-            git e issue são shrink-0 e ficam sempre na mesma linha. O que não
-            couber aqui vive no painel de detalhes, não numa quarta linha.
-
-            Todos os itens levam py-0.5 e leading-none para os boxes terem a
-            mesma altura — era o desalinhamento de baseline de 3px medido
-            dentro de uma mesma linha (tops 415/416/418).
-            --------------------------------------------------------------- */}
-
-        {/* A faixa não é mais toda mono: "sem dono" e "faltam 3d" são texto,
-            não dado. Mono fica nas iniciais (identificador) e no contador. */}
-        <div className="mt-2.5 flex items-center gap-2 text-xs leading-none text-tinta/70">
-          {responsaveis.length === 0 ? (
-            <span className="border border-dashed border-linha px-1.5 py-0.5 leading-none">sem dono</span>
-          ) : (
-            <span className="flex shrink-0 items-center gap-1" title={textoResponsaveis}>
-              {visiveis.map((m) => (
-                <span key={m.id} className="rounded bg-linha px-1.5 py-0.5 font-mono leading-none text-tinta" title={m.nome}>
-                  {iniciais(m.nome)}
-                </span>
-              ))}
-              {excedente > 0 && (
-                <span className="rounded border border-linha px-1.5 py-0.5 font-mono leading-none" aria-label={textoResponsaveis}>
-                  +{excedente}
-                </span>
-              )}
-            </span>
-          )}
-
-          {tarefa.prazo && (
-            <span
-              className={`py-0.5 leading-none ${
-                atrasada ? "bg-trigo px-1 font-semibold text-tinta" : ""
-              }`}
-            >
-              {textoDoPrazo(tarefa.prazo, atrasada, hoje)}
-            </span>
-          )}
-        </div>
-
-        {(local || tarefa.issue_numero) && (
-          <div className="mt-1.5 flex flex-nowrap items-center gap-2 font-mono text-xs leading-none text-tinta/70">
-            {local ? (
-              local.tipo === "link" ? (
-              <a
-                href={local.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                title={local.titulo}
-                // z-10 obrigatório: sem isso o overlay do título come o clique.
-                className="relative z-10 flex min-w-0 flex-1 items-center gap-1 py-0.5 leading-none underline underline-offset-4 hover:text-musgo"
-              >
-                <IconeLink />
-                <span className="truncate">{local.rotulo}</span>
-              </a>
-              ) : (
-              <span className="flex min-w-0 flex-1 items-center gap-1 py-0.5 leading-none" title={local.titulo}>
-                <IconeLink />
-                <span className="truncate">{local.rotulo}</span>
-              </span>
-              )
-            ) : (
-              null
-            )}
-
-            {tarefa.issue_numero && (
-              <span className="relative z-10 ml-auto shrink-0 py-0.5 leading-none" onClick={(e) => e.stopPropagation()}>
-                <SeloIssue numero={tarefa.issue_numero} />
-              </span>
-            )}
-        </div>
-        )}
-
       </div>
 
       {(aoMudarStatus || aoArquivar) && (
         <div className="flex flex-wrap items-center gap-1 border-t border-linha px-3 py-2">
-          {aoMudarStatus &&
-            STATUS.map((s) => (
-              <button
-                key={s.id}
-                onClick={() => aoMudarStatus(tarefa.id, s.id)}
-                disabled={s.id === tarefa.status}
-                className="px-1.5 py-0.5 text-xs text-tinta/70 transition-colors duration-micro ease-entrada hover:bg-linha hover:text-tinta disabled:opacity-25"
-              >
-                {s.nome}
-              </button>
-            ))}
+          {aoMudarStatus && (
+            <select
+              aria-label={`Status de ${tarefa.titulo}`}
+              value={tarefa.status}
+              onChange={(e) =>
+                aoMudarStatus(tarefa.id, e.target.value as Status)
+              }
+              className="min-h-8 min-w-0 border border-transparent bg-transparent py-1 text-xs hover:border-linha"
+            >
+              {STATUS.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.nome}
+                </option>
+              ))}
+            </select>
+          )}
           {aoArquivar && (
             <button
               onClick={() => aoArquivar(tarefa.id)}
@@ -312,16 +213,6 @@ export default function CartaoTarefa({
             </button>
           )}
         </div>
-      )}
-
-      {detalheAberto && (
-        <DetalheTarefa
-          tarefa={tarefa}
-          aoFechar={() => setDetalheAberto(false)}
-          aoAtualizar={aoAtualizar}
-          membrosIniciais={membros}
-          frentesIniciais={frentes}
-        />
       )}
     </article>
   );

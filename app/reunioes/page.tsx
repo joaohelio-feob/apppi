@@ -1,11 +1,14 @@
 "use client";
 
+import AvisoErro from "@/components/ui/AvisoErro";
+
 import { useEffect, useState } from "react";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
 import { dataLocalISO } from "@/lib/datas";
 import type { Membro, Reuniao } from "@/lib/types";
 
 export default function Reunioes() {
+  const [erroCarga, setErroCarga] = useState(false);
   const [reunioes, setReunioes] = useState<Reuniao[]>([]);
   const [membros, setMembros] = useState<Membro[]>([]);
   const [carregando, setCarregando] = useState(true);
@@ -20,10 +23,12 @@ export default function Reunioes() {
   const supabase = criarClienteNavegador();
 
   async function carregar() {
-    const [{ data: r }, { data: m }] = await Promise.all([
+    const [{ data: r, error: erroR }, { data: m, error: erroM }] = await Promise.all([
       supabase.from("reunioes").select("*").order("data", { ascending: false }),
       supabase.from("membros").select("id, nome, papel").order("nome"),
     ]);
+    setErroCarga(!!(erroR || erroM));
+    if (erroR || erroM) { setCarregando(false); return; }
     setReunioes((r ?? []) as Reuniao[]);
     setMembros((m ?? []) as Membro[]);
     setCarregando(false);
@@ -59,7 +64,7 @@ export default function Reunioes() {
   return (
     <div>
       <h1 className="font-display text-3xl font-extrabold tracking-tight">
-        Ata das reuniões da equipe
+        Reuniões
       </h1>
       <p className="mt-2 max-w-prose text-sm text-tinta/70">
         Registro mínimo: quando foi, o que pautou, quem estava e o que ficou decidido.
@@ -94,6 +99,7 @@ export default function Reunioes() {
                 <button
                   key={m.id}
                   type="button"
+                  aria-pressed={presentes.includes(m.id)}
                   onClick={() => alternarPresente(m.id)}
                   className={`border px-2 py-1 text-xs ${
                     presentes.includes(m.id)
@@ -118,7 +124,7 @@ export default function Reunioes() {
             />
           </label>
 
-          {erro && <p className="font-mono text-xs text-trigo">{erro}</p>}
+          {erro && <p className="font-mono text-xs text-tinta">{erro}</p>}
 
           <button
             onClick={registrar}
@@ -130,10 +136,11 @@ export default function Reunioes() {
         </div>
       </div>
 
+      {erroCarga && <AvisoErro mensagem="Não foi possível carregar os dados. Tente novamente." aoTentar={carregar} />}
       {carregando ? (
         <p className="mt-10 text-sm text-tinta/70">carregando…</p>
-      ) : (
-        <div className="mt-8 space-y-4">
+      ) : erroCarga ? null : (
+        <div className="mt-6 space-y-4">
           {reunioes.map((r) => (
             <article key={r.id} className="border border-linha bg-casca p-4">
               <p className="font-mono text-xs text-tinta/70">

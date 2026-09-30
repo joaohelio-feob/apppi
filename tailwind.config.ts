@@ -22,7 +22,7 @@ const config: Config = {
         ferro:  "#3F6E8C", // revisão
       },
       fontFamily: {
-        display: ["var(--font-display)", "system-ui", "sans-serif"],
+        display: ["var(--font-corpo)", "system-ui", "sans-serif"],
         corpo:   ["var(--font-corpo)", "system-ui", "sans-serif"],
         mono:    ["var(--font-mono)", "ui-monospace", "monospace"],
       },

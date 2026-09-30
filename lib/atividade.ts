@@ -1,0 +1,15 @@
+export const ROTULOS_ATIVIDADE: Record<string, string> = {
+  criou: "Tarefa criada",
+  mudou_status: "Status atualizado",
+  mudou_prazo: "Prazo atualizado",
+  editou: "Tarefa editada",
+  atribuiu: "Responsável atribuído",
+  reatribuiu: "Responsável alterado",
+  desatribuiu: "Responsável removido",
+  entregou: "Entrega registrada",
+  revisou: "Revisão registrada",
+  confirmou_commit: "Commit confirmado",
+  arquivou: "Tarefa arquivada",
+  desarquivou: "Tarefa restaurada",
+  mudou_git: "Git atualizado",
+};

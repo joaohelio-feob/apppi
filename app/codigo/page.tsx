@@ -28,9 +28,9 @@ export default function Codigo() {
   const [ci, setCi] = useState<CI | null>(null);
 
   useEffect(() => {
-    fetch("/api/github/commits?dias=30").then((r) => r.json()).then(setCommits);
-    fetch("/api/github/prs").then((r) => r.json()).then(setPrs);
-    fetch("/api/github/ci").then((r) => r.json()).then(setCi);
+    fetch("/api/github/commits?dias=30").then((r) => { if (!r.ok) throw new Error(); return r.json(); }).then(setCommits).catch(() => setCommits({ configurado: true, erro: "Não foi possível carregar os commits." }));
+    fetch("/api/github/prs").then((r) => { if (!r.ok) throw new Error(); return r.json(); }).then(setPrs).catch(() => setPrs({ configurado: true, erro: "Não foi possível carregar os pull requests." }));
+    fetch("/api/github/ci").then((r) => { if (!r.ok) throw new Error(); return r.json(); }).then(setCi).catch(() => setCi({ configurado: true, erro: "Não foi possível carregar o CI." }));
   }, []);
 
   const carregando = !commits || !prs || !ci;
@@ -67,7 +67,7 @@ export default function Codigo() {
               Commits por pessoa <span className="text-xs font-normal text-tinta/70">últimos 30 dias</span>
             </h2>
             {commits?.erro ? (
-              <p className="text-sm text-trigo">{commits.erro}</p>
+              <p className="text-sm text-tinta">{commits.erro}</p>
             ) : (
               <GraficoBarras dados={commits?.porAutor ?? {}} />
             )}
@@ -81,7 +81,7 @@ export default function Codigo() {
               </span>
             </h2>
             {prs?.erro ? (
-              <p className="text-sm text-trigo">{prs.erro}</p>
+              <p className="text-sm text-tinta">{prs.erro}</p>
             ) : (
               <div className="space-y-2">
                 {(prs?.pullRequests ?? []).map((pr) => (
@@ -112,7 +112,7 @@ export default function Codigo() {
               CI na <span className="font-mono text-sm">main</span>
             </h2>
             {ci?.erro ? (
-              <p className="text-sm text-trigo">{ci.erro}</p>
+              <p className="text-sm text-tinta">{ci.erro}</p>
             ) : (
               <StatusCI estado={ci?.estado} url={ci?.url ?? null} />
             )}

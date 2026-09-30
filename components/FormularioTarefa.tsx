@@ -2,7 +2,17 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
-import { PRIORIDADES, type Escopo, type Frente, type Membro, type Prioridade } from "@/lib/types";
+import Botao from "./ui/Botao";
+import Campo from "./ui/Campo";
+import Dialogo from "./ui/Dialogo";
+import { useToast } from "./ToastProvider";
+import {
+  PRIORIDADES,
+  type Escopo,
+  type Frente,
+  type Membro,
+  type Prioridade,
+} from "@/lib/types";
 
 export default function FormularioTarefa({
   membros,
@@ -17,6 +27,7 @@ export default function FormularioTarefa({
   aoSalvar: () => void;
   autoFoco?: boolean;
 }) {
+  const { avisar } = useToast();
   const [titulo, setTitulo] = useState("");
   const [descricao, setDescricao] = useState("");
   const [escopo, setEscopo] = useState<Escopo>("individual");
@@ -39,18 +50,25 @@ export default function FormularioTarefa({
 
   const membrosDaFrente = useMemo(
     () => membros.filter((m) => String(m.frente_id ?? "") === frenteId),
-    [membros, frenteId]
+    [membros, frenteId],
   );
 
   // Ninguém revisa a própria tarefa: exclui quem vai ser responsável — o
   // indivíduo escolhido, ou todo mundo da frente, se for tarefa de frente.
   const idsExcluidosDoRevisor = useMemo(
-    () => new Set(escopo === "frente" ? membrosDaFrente.map((m) => m.id) : responsavel ? [responsavel] : []),
-    [escopo, membrosDaFrente, responsavel]
+    () =>
+      new Set(
+        escopo === "frente"
+          ? membrosDaFrente.map((m) => m.id)
+          : responsavel
+            ? [responsavel]
+            : [],
+      ),
+    [escopo, membrosDaFrente, responsavel],
   );
   const membrosParaRevisor = useMemo(
     () => membros.filter((m) => !idsExcluidosDoRevisor.has(m.id)),
-    [membros, idsExcluidosDoRevisor]
+    [membros, idsExcluidosDoRevisor],
   );
 
   useEffect(() => {
@@ -58,6 +76,8 @@ export default function FormularioTarefa({
   }, [revisor, idsExcluidosDoRevisor]);
 
   async function salvar() {
+    if (salvando) return;
+    setErro(null);
     if (!titulo.trim()) {
       setErro("Dê um título à tarefa para poder salvar.");
       return;
@@ -67,7 +87,9 @@ export default function FormularioTarefa({
       return;
     }
     if (escopo === "frente" && membrosDaFrente.length === 0) {
-      setErro("Essa frente ainda não tem ninguém — não dá pra criar tarefa de frente sem responsável.");
+      setErro(
+        "Essa frente ainda não tem ninguém — não dá pra criar tarefa de frente sem responsável.",
+      );
       return;
     }
 
@@ -102,19 +124,35 @@ export default function FormularioTarefa({
     // Tarefa de frente: o trigger no banco já atribui todo mundo da frente
     // sozinho. Individual: quem cria escolhe a pessoa (ou deixa sem dono).
     if (escopo === "individual" && responsavel) {
-      await supabase.from("tarefa_responsaveis").insert({ tarefa_id: tarefa.id, membro_id: responsavel });
+      const { error: erroResponsavel } = await supabase
+        .from("tarefa_responsaveis")
+        .insert({ tarefa_id: tarefa.id, membro_id: responsavel });
+      if (erroResponsavel)
+        avisar(
+          "Tarefa criada, mas o responsável não foi salvo. Abra os detalhes para atribuir.",
+        );
     }
 
     if (anexo) {
       const caminho = `${tarefa.id}/${Date.now()}-${anexo.name}`;
-      const { error: erroUpload } = await supabase.storage.from("entregas").upload(caminho, anexo);
+      const { error: erroUpload } = await supabase.storage
+        .from("entregas")
+        .upload(caminho, anexo);
       if (!erroUpload) {
-        await supabase.from("anexos").insert({
+        const { error: erroAnexo } = await supabase.from("anexos").insert({
           tarefa_id: tarefa.id,
           autor_id: sessao.user?.id ?? null,
           nome: anexo.name,
           caminho,
         });
+        if (erroAnexo)
+          avisar(
+            "Tarefa criada, mas o anexo não foi associado. Confira nos detalhes.",
+          );
+      } else {
+        avisar(
+          "Tarefa criada, mas o anexo não foi enviado. Tente novamente nos detalhes.",
+        );
       }
     }
 
@@ -124,195 +162,220 @@ export default function FormularioTarefa({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-tinta/40 p-4 sm:items-center">
-      <div className="w-full max-w-md border border-linha bg-campo p-5">
-        <h2 className="font-display text-xl font-bold">Nova tarefa</h2>
-
-        <div className="mt-4 space-y-3">
-          <input
-            ref={campoTitulo}
-            className="w-full border border-linha bg-casca px-3 py-2 text-sm"
-            placeholder="O que precisa ser feito"
-            value={titulo}
-            onChange={(e) => setTitulo(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && salvar()}
-          />
-          <textarea
-            className="w-full border border-linha bg-casca px-3 py-2 text-sm"
-            rows={3}
-            placeholder={"Detalhes da tarefa.\nUma linha começando com \"- [ ] \" vira critério de aceite, marcável no detalhe:\n- [ ] Diagrama de classes revisado"}
-            value={descricao}
-            onChange={(e) => setDescricao(e.target.value)}
-          />
-          <p className="font-mono text-xs text-tinta/70">
-            Critérios de aceite: escreva <code>- [ ] o critério</code>, um por linha. Viram checklist
-            marcável no detalhe da tarefa e progresso no cartão do quadro.
-          </p>
-
-          <div className="flex gap-1 border border-linha p-1">
-            <button
-              type="button"
-              onClick={() => setEscopo("individual")}
-              className={`flex-1 py-1.5 text-xs ${
-                escopo === "individual" ? "bg-tinta text-campo" : "text-tinta/70 hover:bg-casca"
-              }`}
-            >
-              Individual
-            </button>
-            <button
-              type="button"
-              onClick={() => setEscopo("frente")}
-              className={`flex-1 py-1.5 text-xs ${
-                escopo === "frente" ? "bg-tinta text-campo" : "text-tinta/70 hover:bg-casca"
-              }`}
-            >
-              Da frente
-            </button>
-          </div>
-
+    <Dialogo titulo="Nova tarefa" aoFechar={aoFechar} ocupado={salvando}>
+      <form
+        onInvalidCapture={(e) => {
+          const opcoes = (e.target as HTMLElement).closest("details");
+          if (opcoes) opcoes.open = true;
+        }}
+        onSubmit={(e) => {
+          e.preventDefault();
+          void salvar();
+        }}
+      >
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h2 className="font-display text-xl font-semibold">Nova tarefa</h2>
+          <Botao
+            variante="discreto"
+            onClick={aoFechar}
+            disabled={salvando}
+            aria-label="Fechar nova tarefa"
+          >
+            Fechar
+          </Botao>
+        </div>
+        <fieldset disabled={salvando} className="space-y-4">
+          <Campo titulo="Título">
+            <input
+              ref={campoTitulo}
+              required
+              className="campo"
+              placeholder="O que precisa ser feito?"
+              value={titulo}
+              onChange={(e) => setTitulo(e.target.value)}
+            />
+          </Campo>
+          <fieldset>
+            <legend className="mb-1 text-sm font-medium">Escopo</legend>
+            <div className="flex gap-1 border border-linha p-1">
+              {(["individual", "frente"] as Escopo[]).map((opcao) => (
+                <Botao
+                  key={opcao}
+                  className="flex-1"
+                  variante={escopo === opcao ? "primario" : "discreto"}
+                  aria-pressed={escopo === opcao}
+                  onClick={() => setEscopo(opcao)}
+                >
+                  {opcao === "individual" ? "Individual" : "Da frente"}
+                </Botao>
+              ))}
+            </div>
+          </fieldset>
           {escopo === "individual" ? (
-            <>
-              <label className="block text-xs text-tinta/70">
-                Responsável
-                <select
-                  className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-sm text-tinta"
-                  value={responsavel}
-                  onChange={(e) => setResponsavel(e.target.value)}
-                >
-                  <option value="">Ainda sem dono</option>
-                  {membros.map((m) => (
-                    <option key={m.id} value={m.id}>{m.nome} · {m.papel}</option>
-                  ))}
-                </select>
-              </label>
-              <label className="block text-xs text-tinta/70">
-                Frente (opcional)
-                <select
-                  className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-sm text-tinta"
-                  value={frenteId}
-                  onChange={(e) => setFrenteId(e.target.value)}
-                >
-                  <option value="">Sem frente</option>
-                  {frentes.map((f) => (
-                    <option key={f.id} value={f.id}>{f.nome}</option>
-                  ))}
-                </select>
-              </label>
-            </>
-          ) : (
-            <label className="block text-xs text-tinta/70">
-              Frente
+            <Campo titulo="Responsável">
               <select
-                className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-sm text-tinta"
+                className="campo"
+                value={responsavel}
+                onChange={(e) => setResponsavel(e.target.value)}
+              >
+                <option value="">Ainda sem responsável</option>
+                {membros.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.nome}
+                  </option>
+                ))}
+              </select>
+            </Campo>
+          ) : (
+            <Campo
+              titulo="Frente"
+              ajuda={
+                frenteId
+                  ? membrosDaFrente.length
+                    ? `Responsáveis: ${membrosDaFrente.map((m) => m.nome).join(", ")}`
+                    : "Essa frente ainda não tem integrantes."
+                  : undefined
+              }
+            >
+              <select
+                required
+                className="campo"
                 value={frenteId}
                 onChange={(e) => setFrenteId(e.target.value)}
               >
                 <option value="">Escolha a frente</option>
                 {frentes.map((f) => (
-                  <option key={f.id} value={f.id}>{f.nome}</option>
+                  <option key={f.id} value={f.id}>
+                    {f.nome}
+                  </option>
                 ))}
               </select>
-              {frenteId && (
-                <span className="mt-1 block font-corpo text-xs text-tinta/70">
-                  {membrosDaFrente.length > 0
-                    ? `Será atribuída a: ${membrosDaFrente.map((m) => m.nome).join(", ")}`
-                    : "Essa frente ainda não tem ninguém."}
-                </span>
-              )}
-            </label>
+            </Campo>
           )}
-
-          <label className="block text-xs text-tinta/70">
-            Revisor (opcional)
-            <select
-              className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-sm text-tinta"
-              value={revisor}
-              onChange={(e) => setRevisor(e.target.value)}
-            >
-              <option value="">Sem revisor</option>
-              {membrosParaRevisor.map((m) => (
-                <option key={m.id} value={m.id}>{m.nome}</option>
-              ))}
-            </select>
-            <span className="mt-1 block font-corpo text-xs text-tinta/70">
-              Sem revisor, a tarefa conclui direto quando for entregue.
-            </span>
-          </label>
-
-          <label className="block text-xs text-tinta/70">
-            Prioridade
-            <select
-              className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-sm text-tinta"
-              value={prioridade}
-              onChange={(e) => setPrioridade(e.target.value as Prioridade)}
-            >
-              {PRIORIDADES.map((p) => (
-                <option key={p.id} value={p.id}>{p.nome}</option>
-              ))}
-            </select>
-          </label>
-          <div className="grid grid-cols-2 gap-2">
-            <label className="block text-xs text-tinta/70">
-              Início
+          <div className="grid grid-cols-2 gap-3">
+            <Campo titulo="Prazo">
               <input
+                className="campo font-mono"
                 type="date"
-                className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-sm text-tinta"
-                value={inicio}
-                onChange={(e) => setInicio(e.target.value)}
-              />
-            </label>
-            <label className="block text-xs text-tinta/70">
-              Prazo
-              <input
-                type="date"
-                className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-sm text-tinta"
                 value={prazo}
                 onChange={(e) => setPrazo(e.target.value)}
               />
-            </label>
+            </Campo>
+            <Campo titulo="Prioridade">
+              <select
+                className="campo"
+                value={prioridade}
+                onChange={(e) => setPrioridade(e.target.value as Prioridade)}
+              >
+                {PRIORIDADES.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nome}
+                  </option>
+                ))}
+              </select>
+            </Campo>
           </div>
-          <input
-            className="w-full border border-linha bg-casca px-3 py-2 text-sm"
-            placeholder="Local de entrega: link do Drive, Forms, GitHub… (opcional)"
-            value={localEntrega}
-            onChange={(e) => setLocalEntrega(e.target.value)}
-          />
-          <label className="block text-xs text-tinta/70">
-            Nº da issue no GitHub (opcional)
-            <input
-              type="number"
-              min={1}
-              className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-sm text-tinta"
-              placeholder="Ex.: 42"
-              value={issueNumero}
-              onChange={(e) => setIssueNumero(e.target.value)}
-            />
-          </label>
-          <label className="block text-xs text-tinta/70">
-            Anexar documento (opcional)
-            <input
-              type="file"
-              onChange={(e) => setAnexo(e.target.files?.[0] ?? null)}
-              className="mt-1 w-full border border-linha bg-casca px-3 py-2 font-corpo text-xs text-tinta file:mr-2 file:border-0 file:bg-tinta file:px-2 file:py-1 file:text-xs file:text-campo"
-            />
-          </label>
-
-          {erro && <p className="font-mono text-xs text-trigo">{erro}</p>}
-        </div>
-
-        <div className="mt-5 flex gap-2">
-          <button
-            onClick={salvar}
-            disabled={salvando}
-            className="bg-tinta px-4 py-2 text-sm font-semibold text-campo hover:bg-musgo disabled:opacity-50"
+          <details className="border-t border-linha pt-3">
+            <summary className="cursor-pointer py-1 text-sm font-medium">
+              Mais opções
+            </summary>
+            <div className="mt-3 space-y-4">
+              <Campo
+                titulo="Descrição e critérios de aceite"
+                ajuda="Use uma linha por critério: - [ ] O que precisa estar pronto."
+              >
+                <textarea
+                  className="campo"
+                  rows={4}
+                  value={descricao}
+                  onChange={(e) => setDescricao(e.target.value)}
+                />
+              </Campo>
+              {escopo === "individual" && (
+                <Campo titulo="Frente (opcional)">
+                  <select
+                    className="campo"
+                    value={frenteId}
+                    onChange={(e) => setFrenteId(e.target.value)}
+                  >
+                    <option value="">Sem frente</option>
+                    {frentes.map((f) => (
+                      <option key={f.id} value={f.id}>
+                        {f.nome}
+                      </option>
+                    ))}
+                  </select>
+                </Campo>
+              )}
+              <Campo titulo="Início">
+                <input
+                  className="campo"
+                  type="date"
+                  value={inicio}
+                  onChange={(e) => setInicio(e.target.value)}
+                />
+              </Campo>
+              <Campo
+                titulo="Revisor"
+                ajuda="Sem revisor, a entrega conclui a tarefa diretamente."
+              >
+                <select
+                  className="campo"
+                  value={revisor}
+                  onChange={(e) => setRevisor(e.target.value)}
+                >
+                  <option value="">Sem revisor</option>
+                  {membrosParaRevisor.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.nome}
+                    </option>
+                  ))}
+                </select>
+              </Campo>
+              <Campo titulo="Local de entrega">
+                <input
+                  className="campo"
+                  value={localEntrega}
+                  onChange={(e) => setLocalEntrega(e.target.value)}
+                  placeholder="Link ou caminho do arquivo"
+                />
+              </Campo>
+              <Campo titulo="Issue no GitHub">
+                <input
+                  className="campo"
+                  type="number"
+                  min={1}
+                  value={issueNumero}
+                  onChange={(e) => setIssueNumero(e.target.value)}
+                />
+              </Campo>
+              <Campo titulo="Anexo">
+                <input
+                  className="campo"
+                  type="file"
+                  onChange={(e) => setAnexo(e.target.files?.[0] ?? null)}
+                />
+              </Campo>
+            </div>
+          </details>
+        </fieldset>
+        {erro && (
+          <p
+            role="alert"
+            className="mt-3 border-l-2 border-trigo pl-3 text-sm text-tinta"
           >
+            {erro}
+          </p>
+        )}
+        <div className="sticky bottom-0 mt-4 flex gap-2 border-t border-linha bg-campo pt-3">
+          <Botao type="submit" disabled={salvando}>
             {salvando ? "Salvando…" : "Criar tarefa"}
-          </button>
-          <button onClick={aoFechar} className="px-4 py-2 text-sm text-tinta/70 hover:text-tinta">
+          </Botao>
+          <Botao variante="secundario" onClick={aoFechar} disabled={salvando}>
             Cancelar
-          </button>
+          </Botao>
         </div>
-      </div>
-    </div>
+      </form>
+    </Dialogo>
   );
 }

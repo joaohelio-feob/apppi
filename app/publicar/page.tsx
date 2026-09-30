@@ -287,7 +287,7 @@ export default function Publicar() {
 
             {falhou && (
               <div className="border-l-2 border-trigo pl-3">
-                <h3 className="font-display text-xs font-semibold text-trigo">falhou · 1</h3>
+                <h3 className="font-display text-xs font-semibold text-tinta">falhou · 1</h3>
                 <p className="mt-1 text-sm">{falhou.titulo}</p>
                 <p className="mt-0.5 text-sm text-tinta/70">{falhou.erro}</p>
               </div>
@@ -424,7 +424,7 @@ export default function Publicar() {
                               <span className="text-tinta">{p.atribuidos.map((m) => m.nome).join(", ")}</span>
                             </>
                           ) : (
-                            <span className="text-trigo">frente sem integrantes</span>
+                            <span className="text-tinta">frente sem integrantes</span>
                           )}
                         </>
                       ) : (

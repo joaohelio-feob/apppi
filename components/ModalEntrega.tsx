@@ -1,5 +1,6 @@
 "use client";
 
+import Dialogo from "./ui/Dialogo";
 import { useState } from "react";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
 
@@ -33,6 +34,7 @@ export default function ModalEntrega({
     (!precisaCommit || commitNome.trim().length > 0);
 
   async function entregar() {
+    if (enviando) return;
     if (!valido) {
       setErro(
         arquivoDrive.trim().length === 0
@@ -69,8 +71,7 @@ export default function ModalEntrega({
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-tinta/40 p-4 sm:items-center">
-      <div className="w-full max-w-md border border-linha bg-campo p-5">
+    <Dialogo titulo="Entregar atividade" aoFechar={aoFechar} ocupado={enviando}>
         <h2 className="font-display text-xl font-bold">Entregar atividade</h2>
         <p className="mt-1 text-sm text-tinta/70">
           Registra a entrega na trilha. Se a tarefa tiver revisor, ela vai pra revisão; senão, conclui direto.
@@ -92,6 +93,7 @@ export default function ModalEntrega({
             <div className="flex gap-1 border border-linha p-0.5">
               <button
                 type="button"
+                aria-pressed={!precisaCommit}
                 onClick={() => setPrecisaCommit(false)}
                 className={`px-3 py-1 text-xs ${
                   !precisaCommit ? "bg-tinta text-campo" : "text-tinta/70 hover:bg-campo"
@@ -101,6 +103,7 @@ export default function ModalEntrega({
               </button>
               <button
                 type="button"
+                aria-pressed={precisaCommit}
                 onClick={() => setPrecisaCommit(true)}
                 className={`px-3 py-1 text-xs ${
                   precisaCommit ? "bg-tinta text-campo" : "text-tinta/70 hover:bg-campo"
@@ -137,7 +140,7 @@ export default function ModalEntrega({
             </span>
           </label>
 
-          {erro && <p className="font-mono text-xs text-trigo">{erro}</p>}
+          {erro && <p role="alert" className="font-mono text-xs text-tinta">{erro}</p>}
         </div>
 
         <div className="mt-5 flex gap-2">
@@ -148,11 +151,10 @@ export default function ModalEntrega({
           >
             {enviando ? "Enviando…" : "Entregar"}
           </button>
-          <button onClick={aoFechar} className="px-4 py-2 text-sm text-tinta/70 hover:text-tinta">
+          <button disabled={enviando} onClick={aoFechar} className="px-4 py-2 text-sm text-tinta/70 hover:text-tinta">
             Cancelar
           </button>
         </div>
-      </div>
-    </div>
+    </Dialogo>
   );
 }

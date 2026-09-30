@@ -4,10 +4,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
 import {
-  PRIORIDADES, STATUS, responsaveisDe,
-  type Escopo, type Frente, type Membro, type Status, type Tarefa,
+  PRIORIDADES,
+  responsaveisDe,
+  type Escopo,
+  type Frente,
+  type Membro,
+  type Status,
+  type Tarefa,
 } from "@/lib/types";
-import CartaoTarefa from "@/components/CartaoTarefa";
+import QuadroTarefas from "@/components/tarefa/QuadroTarefas";
+import LinhaTarefa from "@/components/LinhaTarefa";
+import Botao from "@/components/ui/Botao";
 import ListaArquivadas from "@/components/ListaArquivadas";
 import ConfirmarAcao from "@/components/ConfirmarAcao";
 import { useNovaTarefa } from "@/components/NovaTarefaProvider";
@@ -17,9 +24,6 @@ const CHAVE_MINHAS = "pi-quadro-somente-minhas";
 const CHAVE_VISAO = "pi-quadro-visao";
 const CHAVE_ARQUIVADAS = "pi-quadro-arquivadas";
 
-/** Quantos cartões uma coluna mostra antes do "ver mais". */
-const CAP_COLUNA = 8;
-
 /** Quanto tempo uma mudança otimista resiste a um refetch que a contradiga. */
 const VALIDADE_OTIMISTA = 10_000;
 
@@ -28,6 +32,9 @@ type Visao = Escopo;
 const VISOES: Visao[] = ["individual", "frente"];
 
 export default function Quadro() {
+  const [formato, setFormato] = useState("quadro");
+  const [agrupar, setAgrupar] = useState(false);
+  const [erroCarga, setErroCarga] = useState(false);
   const [tarefas, setTarefas] = useState<Tarefa[]>([]);
   const [membros, setMembros] = useState<Membro[]>([]);
   const [frentes, setFrentes] = useState<Frente[]>([]);
@@ -69,9 +76,16 @@ export default function Quadro() {
   const supabase = criarClienteNavegador();
 
   useEffect(() => {
+    setFormato(
+      localStorage.getItem("pi-quadro-formato") === "lista"
+        ? "lista"
+        : "quadro",
+    );
+    setAgrupar(localStorage.getItem("pi-quadro-agrupar") === "1");
     setSomenteMinhas(localStorage.getItem(CHAVE_MINHAS) === "1");
     const visaoSalva = localStorage.getItem(CHAVE_VISAO);
-    if (visaoSalva === "frente" || visaoSalva === "individual") setVisao(visaoSalva);
+    if (visaoSalva === "frente" || visaoSalva === "individual")
+      setVisao(visaoSalva);
     setVerArquivadas(localStorage.getItem(CHAVE_ARQUIVADAS) === "1");
   }, []);
 
@@ -92,14 +106,24 @@ export default function Quadro() {
     const [t, m, f, sessao] = await Promise.all([
       supabase
         .from("tarefas")
-        .select("id, titulo, descricao, escopo, frente_id, status, prioridade, prazo, inicio, local_entrega, subiu_git, issue_numero, observacoes, revisor_id, commit_confirmado_em, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel)), frentes(id, nome, cor, unidade)")
+        .select(
+          "id, titulo, descricao, escopo, frente_id, status, prioridade, prazo, inicio, local_entrega, subiu_git, issue_numero, observacoes, revisor_id, commit_confirmado_em, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel)), frentes(id, nome, cor, unidade)",
+        )
         .eq("arquivada", false)
         .order("prazo", { ascending: true, nullsFirst: false }),
-      supabase.from("membros").select("id, nome, papel, frente_id").order("nome"),
+      supabase
+        .from("membros")
+        .select("id, nome, papel, frente_id")
+        .order("nome"),
       supabase.from("frentes").select("id, nome, cor, unidade").order("nome"),
       supabase.auth.getUser(),
     ]);
 
+    setErroCarga(!!(t.error || m.error || f.error));
+    if (t.error || m.error || f.error) {
+      setCarregando(false);
+      return;
+    }
     const lista = (t.data ?? []) as unknown as Tarefa[];
     const agora = Date.now();
     setTarefas(
@@ -111,7 +135,7 @@ export default function Quadro() {
           return tarefa;
         }
         return { ...tarefa, status: otimista.status };
-      })
+      }),
     );
     setMembros((m.data ?? []) as Membro[]);
     setFrentes((f.data ?? []) as unknown as Frente[]);
@@ -119,12 +143,15 @@ export default function Quadro() {
     setCarregando(false);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { carregar(); }, [carregar]);
+  useEffect(() => {
+    if (!verArquivadas) carregar();
+  }, [carregar, verArquivadas]);
 
   // Atualização ao vivo: se um colega mexer, seu quadro acompanha. Uma ação só
   // pode disparar vários eventos (entregar mexe em tarefas duas vezes por
   // trigger), então os eventos são juntados numa recarga só.
   useEffect(() => {
+    if (verArquivadas) return;
     function agendarRecarga() {
       if (timerRecarga.current) clearTimeout(timerRecarga.current);
       timerRecarga.current = setTimeout(() => {
@@ -135,27 +162,43 @@ export default function Quadro() {
 
     const canal = supabase
       .channel("quadro")
-      .on("postgres_changes", { event: "*", schema: "public", table: "tarefas" }, agendarRecarga)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tarefas" },
+        agendarRecarga,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tarefa_responsaveis" },
+        agendarRecarga,
+      )
       .subscribe();
 
     return () => {
       if (timerRecarga.current) clearTimeout(timerRecarga.current);
       supabase.removeChannel(canal);
     };
-  }, [carregar]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [carregar, verArquivadas]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function mudarStatus(id: number, status: Status) {
     const anterior = tarefas.find((t) => t.id === id)?.status;
     if (anterior === status) return;
 
     otimistas.current.set(id, { status, ate: Date.now() + VALIDADE_OTIMISTA });
-    setTarefas((atual) => atual.map((t) => (t.id === id ? { ...t, status } : t)));
+    setTarefas((atual) =>
+      atual.map((t) => (t.id === id ? { ...t, status } : t)),
+    );
 
-    const { error } = await supabase.from("tarefas").update({ status }).eq("id", id);
+    const { error } = await supabase
+      .from("tarefas")
+      .update({ status })
+      .eq("id", id);
     if (error) {
       otimistas.current.delete(id);
       if (anterior) {
-        setTarefas((atual) => atual.map((t) => (t.id === id ? { ...t, status: anterior } : t)));
+        setTarefas((atual) =>
+          atual.map((t) => (t.id === id ? { ...t, status: anterior } : t)),
+        );
       }
       avisar("Não deu pra mudar o status. Tenta de novo.");
     }
@@ -168,7 +211,10 @@ export default function Quadro() {
 
   async function arquivar(t: Tarefa) {
     setExecutandoArquivo(true);
-    const { error } = await supabase.from("tarefas").update({ arquivada: true }).eq("id", t.id);
+    const { error } = await supabase
+      .from("tarefas")
+      .update({ arquivada: true })
+      .eq("id", t.id);
     setExecutandoArquivo(false);
     setArquivando(null);
     if (error) {
@@ -187,47 +233,91 @@ export default function Quadro() {
     });
   }
 
-  const visiveis = useMemo(() => {
-    const buscaLimpa = busca.trim().toLowerCase();
-    return tarefas.filter((t) => {
+  const filtrarTarefa = useCallback(
+    (t: Tarefa) => {
+      const buscaLimpa = busca.trim().toLowerCase();
       const responsaveis = responsaveisDe(t);
       if (t.escopo !== visao) return false;
-      if (buscaLimpa && !t.titulo.toLowerCase().includes(buscaLimpa)) return false;
-      if (filtroResponsavel && !responsaveis.some((m) => m.id === filtroResponsavel)) return false;
+      if (buscaLimpa && !t.titulo.toLowerCase().includes(buscaLimpa))
+        return false;
+      if (
+        filtroResponsavel &&
+        !responsaveis.some((m) => m.id === filtroResponsavel)
+      )
+        return false;
       if (filtroPrioridade && t.prioridade !== filtroPrioridade) return false;
-      if (filtroFrente && String(t.frente_id ?? "") !== filtroFrente) return false;
-      if (somenteMinhas && !responsaveis.some((m) => m.id === meuId)) return false;
+      if (filtroFrente && String(t.frente_id ?? "") !== filtroFrente)
+        return false;
+      if (somenteMinhas && !responsaveis.some((m) => m.id === meuId))
+        return false;
       return true;
-    });
-  }, [tarefas, visao, busca, filtroResponsavel, filtroPrioridade, filtroFrente, somenteMinhas, meuId]);
+    },
+    [
+      visao,
+      busca,
+      filtroResponsavel,
+      filtroPrioridade,
+      filtroFrente,
+      somenteMinhas,
+      meuId,
+    ],
+  );
+
+  const visiveis = useMemo(
+    () => tarefas.filter(filtrarTarefa),
+    [tarefas, filtrarTarefa],
+  );
 
   const grupos = useMemo(() => {
+    if (!agrupar)
+      return visiveis.length
+        ? [{ chave: "todas", titulo: "Tarefas", itens: visiveis }]
+        : [];
     if (visao === "frente") {
       return frentes
-        .map((f) => ({ chave: String(f.id), titulo: f.nome, itens: visiveis.filter((t) => t.frente_id === f.id) }))
+        .map((f) => ({
+          chave: String(f.id),
+          titulo: f.nome,
+          itens: visiveis.filter((t) => t.frente_id === f.id),
+        }))
         .filter((g) => g.itens.length > 0);
     }
-    const porPessoa = new Map<string, { chave: string; titulo: string; itens: Tarefa[] }>();
+    const porPessoa = new Map<
+      string,
+      { chave: string; titulo: string; itens: Tarefa[] }
+    >();
     visiveis.forEach((t) => {
       const responsavel = responsaveisDe(t)[0];
       const chave = responsavel?.id ?? "sem-dono";
       const titulo = responsavel?.nome ?? "Sem dono";
-      if (!porPessoa.has(chave)) porPessoa.set(chave, { chave, titulo, itens: [] });
+      if (!porPessoa.has(chave))
+        porPessoa.set(chave, { chave, titulo, itens: [] });
       porPessoa.get(chave)!.itens.push(t);
     });
-    return Array.from(porPessoa.values()).sort((a, b) => a.titulo.localeCompare(b.titulo));
-  }, [visao, visiveis, frentes]);
+    return Array.from(porPessoa.values()).sort((a, b) =>
+      a.titulo.localeCompare(b.titulo),
+    );
+  }, [visao, visiveis, frentes, agrupar]);
 
   /** Setas circulam entre as abas, como manda o padrão de tablist. */
   function teclasDaAba(e: React.KeyboardEvent<HTMLButtonElement>) {
-    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft" && e.key !== "Home" && e.key !== "End") return;
+    if (
+      e.key !== "ArrowRight" &&
+      e.key !== "ArrowLeft" &&
+      e.key !== "Home" &&
+      e.key !== "End"
+    )
+      return;
     e.preventDefault();
     const i = VISOES.indexOf(visao);
     const proxima =
-      e.key === "Home" ? VISOES[0]
-      : e.key === "End" ? VISOES[VISOES.length - 1]
-      : e.key === "ArrowRight" ? VISOES[(i + 1) % VISOES.length]
-      : VISOES[(i - 1 + VISOES.length) % VISOES.length];
+      e.key === "Home"
+        ? VISOES[0]
+        : e.key === "End"
+          ? VISOES[VISOES.length - 1]
+          : e.key === "ArrowRight"
+            ? VISOES[(i + 1) % VISOES.length]
+            : VISOES[(i - 1 + VISOES.length) % VISOES.length];
     mudarVisao(proxima);
     document.getElementById(`aba-${proxima}`)?.focus();
   }
@@ -239,9 +329,9 @@ export default function Quadro() {
             gastava uma faixa para dizer "Quadro", que a navegação já diz. */}
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
           <h1 className="font-display text-3xl font-extrabold tracking-tight">
-            Todas as tarefas
+            Quadro de tarefas
           </h1>
-          {!carregando && (
+          {!carregando && !verArquivadas && (
             <p className="text-sm text-tinta/70">
               <span className="font-mono">{visiveis.length}</span> na visão
             </p>
@@ -250,12 +340,9 @@ export default function Quadro() {
         {/* Criar é ação do quadro, então "em lote" mora aqui e não na
             navegação: /publicar é a mesma intenção em outro volume. */}
         <div className="flex items-center gap-3">
-          <button
-            onClick={abrir}
-            className="bg-tinta px-4 py-2 text-sm font-semibold text-campo transition-colors duration-micro ease-entrada hover:bg-musgo"
-          >
-            Nova tarefa <span className="font-mono text-xs opacity-70">(n)</span>
-          </button>
+          <Botao onClick={abrir}>
+            + Nova tarefa <kbd className="font-mono text-xs">N</kbd>
+          </Botao>
           <Link
             href="/publicar"
             className="text-sm text-tinta/70 underline underline-offset-4 transition-colors duration-micro ease-entrada hover:text-tinta"
@@ -283,7 +370,9 @@ export default function Quadro() {
               onClick={() => mudarVisao(v)}
               onKeyDown={teclasDaAba}
               className={`flex-1 px-4 py-1.5 text-sm transition-colors duration-micro ease-entrada sm:flex-none ${
-                ativa ? "bg-campo font-semibold text-tinta shadow-sm" : "text-tinta/70 hover:bg-campo/60"
+                ativa
+                  ? "bg-campo font-semibold text-tinta shadow-sm"
+                  : "text-tinta/70 hover:bg-campo/60"
               }`}
             >
               {v === "individual" ? "Individuais" : "Da frente"}
@@ -305,91 +394,213 @@ export default function Quadro() {
         />
       </div>
 
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        <select
-          value={filtroResponsavel}
-          onChange={(e) => setFiltroResponsavel(e.target.value)}
-          aria-label="Filtrar por responsável"
-          className="border border-linha bg-casca px-2 py-1.5 text-xs text-tinta/70"
-        >
-          <option value="">Todo mundo</option>
-          {membros.map((m) => (
-            <option key={m.id} value={m.id}>{m.nome}</option>
-          ))}
-        </select>
-        <select
-          value={filtroPrioridade}
-          onChange={(e) => setFiltroPrioridade(e.target.value)}
-          aria-label="Filtrar por prioridade"
-          className="border border-linha bg-casca px-2 py-1.5 text-xs text-tinta/70"
-        >
-          <option value="">Toda prioridade</option>
-          {PRIORIDADES.map((p) => (
-            <option key={p.id} value={p.id}>{p.nome}</option>
-          ))}
-        </select>
-        <select
-          value={filtroFrente}
-          onChange={(e) => setFiltroFrente(e.target.value)}
-          aria-label="Filtrar por frente"
-          className="border border-linha bg-casca px-2 py-1.5 text-xs text-tinta/70"
-        >
-          <option value="">Toda frente</option>
-          {frentes.map((f) => (
-            <option key={f.id} value={f.id}>{f.nome}</option>
-          ))}
-        </select>
-        <button
+      <details className="mt-2 border-b border-linha pb-2">
+        <summary className="cursor-pointer py-2 text-sm font-medium">
+          Filtros
+          {filtroResponsavel ||
+          filtroPrioridade ||
+          filtroFrente ||
+          somenteMinhas ||
+          verArquivadas
+            ? " · ativos"
+            : ""}
+        </summary>
+        <div className="flex flex-wrap items-center gap-2 py-2">
+          <select
+            value={filtroResponsavel}
+            onChange={(e) => setFiltroResponsavel(e.target.value)}
+            aria-label="Filtrar por responsável"
+            className="border border-linha bg-casca px-2 py-1.5 text-xs text-tinta/70"
+          >
+            <option value="">Todo mundo</option>
+            {membros.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.nome}
+              </option>
+            ))}
+          </select>
+          <select
+            value={filtroPrioridade}
+            onChange={(e) => setFiltroPrioridade(e.target.value)}
+            aria-label="Filtrar por prioridade"
+            className="border border-linha bg-casca px-2 py-1.5 text-xs text-tinta/70"
+          >
+            <option value="">Toda prioridade</option>
+            {PRIORIDADES.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.nome}
+              </option>
+            ))}
+          </select>
+          <select
+            value={filtroFrente}
+            onChange={(e) => setFiltroFrente(e.target.value)}
+            aria-label="Filtrar por frente"
+            className="border border-linha bg-casca px-2 py-1.5 text-xs text-tinta/70"
+          >
+            <option value="">Toda frente</option>
+            {frentes.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.nome}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={() => {
+              setVerArquivadas((atual) => {
+                const novo = !atual;
+                localStorage.setItem(CHAVE_ARQUIVADAS, novo ? "1" : "0");
+                return novo;
+              });
+            }}
+            aria-pressed={verArquivadas}
+            className={`border px-3 py-1.5 text-xs transition-colors duration-micro ease-entrada ${
+              verArquivadas
+                ? "border-tinta bg-tinta text-campo"
+                : "border-linha text-tinta/70 hover:bg-casca"
+            }`}
+          >
+            arquivadas
+          </button>
+          <button
+            onClick={alternarMinhas}
+            aria-pressed={somenteMinhas}
+            className={`border px-3 py-1.5 text-xs transition-colors duration-micro ease-entrada ${
+              somenteMinhas
+                ? "border-tinta bg-tinta text-campo"
+                : "border-linha text-tinta/70 hover:bg-casca"
+            }`}
+          >
+            minhas tarefas
+          </button>
+        </div>
+      </details>
+      {(busca ||
+        filtroResponsavel ||
+        filtroPrioridade ||
+        filtroFrente ||
+        somenteMinhas ||
+        verArquivadas) && (
+        <Botao
+          variante="discreto"
           onClick={() => {
-            setVerArquivadas((atual) => {
-              const novo = !atual;
-              localStorage.setItem(CHAVE_ARQUIVADAS, novo ? "1" : "0");
-              return novo;
-            });
+            setBusca("");
+            setFiltroResponsavel("");
+            setFiltroPrioridade("");
+            setFiltroFrente("");
+            setSomenteMinhas(false);
+            setVerArquivadas(false);
+            localStorage.setItem(CHAVE_ARQUIVADAS, "0");
+            localStorage.setItem(CHAVE_MINHAS, "0");
           }}
-          aria-pressed={verArquivadas}
-          className={`border px-3 py-1.5 text-xs transition-colors duration-micro ease-entrada ${
-            verArquivadas ? "border-tinta bg-tinta text-campo" : "border-linha text-tinta/70 hover:bg-casca"
-          }`}
         >
-          arquivadas
-        </button>
-        <button
-          onClick={alternarMinhas}
-          aria-pressed={somenteMinhas}
-          className={`border px-3 py-1.5 text-xs transition-colors duration-micro ease-entrada ${
-            somenteMinhas ? "border-tinta bg-tinta text-campo" : "border-linha text-tinta/70 hover:bg-casca"
-          }`}
-        >
-          minhas tarefas
-        </button>
-      </div>
+          Limpar filtros
+        </Botao>
+      )}
 
-      <div id="painel-quadro" role="tabpanel" aria-labelledby={`aba-${visao}`} tabIndex={-1}>
+      {!verArquivadas && (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-y border-linha py-2">
+          <div aria-label="Formato das tarefas" className="flex gap-1">
+            {["quadro", "lista"].map((opcao) => (
+              <Botao
+                key={opcao}
+                variante={formato === opcao ? "primario" : "discreto"}
+                aria-pressed={formato === opcao}
+                onClick={() => {
+                  setFormato(opcao);
+                  localStorage.setItem("pi-quadro-formato", opcao);
+                }}
+              >
+                {opcao === "quadro" ? "Quadro" : "Lista"}
+              </Botao>
+            ))}
+          </div>
+          {formato === "quadro" && (
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={agrupar}
+                onChange={(e) => {
+                  setAgrupar(e.target.checked);
+                  localStorage.setItem(
+                    "pi-quadro-agrupar",
+                    e.target.checked ? "1" : "0",
+                  );
+                }}
+              />
+              Agrupar por {visao === "frente" ? "frente" : "pessoa"}
+            </label>
+          )}
+        </div>
+      )}
+      {erroCarga && (
+        <div role="alert" className="mt-4 border-l-2 border-trigo p-3 text-sm">
+          Não foi possível carregar as tarefas.{" "}
+          <Botao variante="secundario" onClick={carregar}>
+            Tentar novamente
+          </Botao>
+        </div>
+      )}
+      <div
+        id="painel-quadro"
+        role="tabpanel"
+        aria-labelledby={`aba-${visao}`}
+        tabIndex={-1}
+      >
         {verArquivadas ? (
           // Arquivada não se arrasta entre colunas de status, então aqui o
           // quadro dá lugar a uma lista. O eixo de escopo do tablist continua
           // valendo — a lista respeita a aba escolhida.
-          <ListaArquivadas escopo={visao} aoRestaurar={carregar} />
+          <ListaArquivadas
+            escopo={visao}
+            aoRestaurar={carregar}
+            filtrarTarefa={filtrarTarefa}
+          />
         ) : carregando ? (
           <p className="mt-10 text-sm text-tinta/70">carregando…</p>
-        ) : grupos.length === 0 ? (
+        ) : erroCarga ? null : grupos.length === 0 ? (
           <p className="mt-10 text-sm text-tinta/70">
-            {visao === "frente"
-              ? "Nenhuma tarefa de frente por aqui."
-              : "Nenhuma tarefa individual por aqui."}
+            {busca ||
+            filtroResponsavel ||
+            filtroPrioridade ||
+            filtroFrente ||
+            somenteMinhas
+              ? "Nenhuma tarefa corresponde aos filtros."
+              : visao === "frente"
+                ? "Nenhuma tarefa de frente por aqui."
+                : "Nenhuma tarefa individual por aqui."}
           </p>
+        ) : formato === "lista" ? (
+          <div className="mt-4 border-t border-linha">
+            {visiveis.map((t) => (
+              <LinhaTarefa
+                key={t.id}
+                tarefa={t}
+                mostrarStatus
+                aoAtualizar={carregar}
+                membros={membros}
+                frentes={frentes}
+              />
+            ))}
+          </div>
         ) : (
-          <div className="mt-8 space-y-10">
+          <div className="mt-4 space-y-6">
             {grupos.map((g) => (
               <section key={g.chave} aria-labelledby={`grupo-${g.chave}`}>
-                <h2 id={`grupo-${g.chave}`} className="mb-3 font-display text-lg font-semibold">
+                <h2
+                  id={`grupo-${g.chave}`}
+                  className={
+                    agrupar
+                      ? "mb-3 font-display text-lg font-semibold"
+                      : "sr-only"
+                  }
+                >
                   {g.titulo}
                   <span className="ml-2 text-xs font-normal text-tinta/70">
                     · <span className="font-mono">{g.itens.length}</span>
                   </span>
                 </h2>
-                <MiniQuadro
+                <QuadroTarefas
                   grupo={g.chave}
                   nomeDoGrupo={g.titulo}
                   tarefas={g.itens}
@@ -411,10 +622,13 @@ export default function Quadro() {
           titulo="Arquivar esta tarefa?"
           descricao={
             <>
-              <strong className="font-semibold text-tinta">{arquivando.titulo}</strong> sai do
-              quadro, do calendário, da Semana e do painel da frente, e passa a aparecer no filtro
-              “arquivadas”. Nada é apagado: o histórico dela continua na Trilha, e dá para
-              restaurar quando quiser.
+              <strong className="font-semibold text-tinta">
+                {arquivando.titulo}
+              </strong>{" "}
+              sai do quadro, do calendário, da Semana e do painel da frente, e
+              passa a aparecer no filtro “arquivadas”. Nada é apagado: o
+              histórico dela continua na Trilha, e dá para restaurar quando
+              quiser.
             </>
           }
           rotuloConfirmar="Arquivar"
@@ -423,110 +637,6 @@ export default function Quadro() {
           aoCancelar={() => setArquivando(null)}
         />
       )}
-    </div>
-  );
-}
-
-function MiniQuadro({
-  grupo,
-  nomeDoGrupo,
-  tarefas,
-  expandidas,
-  aoAlternarColuna,
-  aoMudarStatus,
-  aoArquivar,
-  aoAtualizar,
-  membros,
-  frentes,
-}: {
-  grupo: string;
-  nomeDoGrupo: string;
-  tarefas: Tarefa[];
-  expandidas: Set<string>;
-  aoAlternarColuna: (chave: string) => void;
-  aoMudarStatus: (id: number, status: Status) => void;
-  aoArquivar: (id: number) => void;
-  aoAtualizar: () => void;
-  membros: Membro[];
-  frentes: Frente[];
-}) {
-  return (
-    // Abaixo de lg o quadro vira uma faixa horizontal com snap por coluna;
-    // de lg pra cima, as quatro colunas lado a lado. Nunca há scroll vertical
-    // aninhado: o cap de cartões por coluna é que segura a altura.
-    <div className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 sm:-mx-6 sm:px-6 lg:mx-0 lg:grid lg:grid-cols-4 lg:overflow-visible lg:px-0 lg:pb-0">
-      {STATUS.map((coluna) => {
-        const daColuna = tarefas.filter((t) => t.status === coluna.id);
-        const chave = `${grupo}::${coluna.id}`;
-        const expandida = expandidas.has(chave);
-        const mostrados = expandida ? daColuna : daColuna.slice(0, CAP_COLUNA);
-        const escondidos = daColuna.length - mostrados.length;
-
-        return (
-          <div
-            key={coluna.id}
-            // A área de soltar é a coluna inteira, não a lista visível: dá pra
-            // soltar num ponto qualquer, inclusive numa coluna vazia ou numa
-            // coluna colapsada (o cartão entra e o contador acompanha, mesmo
-            // que ele caia fora do cap).
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => {
-              e.preventDefault();
-              const id = Number(e.dataTransfer.getData("text/plain"));
-              if (id) aoMudarStatus(id, coluna.id);
-            }}
-            className="flex w-[85%] shrink-0 snap-start flex-col sm:w-[60%] md:w-[45%] lg:w-auto lg:shrink"
-          >
-            {/* A navegação do site não é fixed nem sticky, então top-0 basta:
-                o cabeçalho encosta no topo da janela e fica lá enquanto o
-                grupo passa pela tela. */}
-            <h3 className="sticky top-0 z-10 mb-3 flex items-baseline gap-2 border-b border-linha bg-campo pb-1 pt-1 font-display text-sm font-semibold uppercase tracking-wide">
-              {coluna.nome}
-              {/* Sempre o total real da coluna — nunca o que sobrou do cap. */}
-              <span className="font-mono text-xs font-normal normal-case tracking-normal text-tinta/70">
-                · {daColuna.length}
-              </span>
-            </h3>
-
-            <div className="space-y-3">
-              {mostrados.map((t) => (
-                <CartaoTarefa
-                  key={t.id}
-                  tarefa={t}
-                  // O cabeçalho da coluna já diz o status, uma vez, e é
-                  // sticky — repeti-lo em cada cartão é tinta e altura.
-                  mostrarStatus={false}
-                  aoMudarStatus={aoMudarStatus}
-                  aoArquivar={aoArquivar}
-                  aoAtualizar={aoAtualizar}
-                  membros={membros}
-                  frentes={frentes}
-                  arrastavel
-                />
-              ))}
-
-              {daColuna.length === 0 && (
-                <p className="text-xs text-tinta/70">Coluna vazia.</p>
-              )}
-
-              {(escondidos > 0 || expandida) && (
-                <button
-                  onClick={() => aoAlternarColuna(chave)}
-                  aria-expanded={expandida}
-                  aria-label={
-                    expandida
-                      ? `ver menos em ${coluna.nome}, ${nomeDoGrupo}`
-                      : `ver mais ${escondidos} em ${coluna.nome}, ${nomeDoGrupo}`
-                  }
-                  className="w-full border border-linha bg-casca px-3 py-1.5 text-xs text-tinta/70 transition-colors duration-micro ease-entrada hover:border-musgo hover:text-tinta"
-                >
-                  {expandida ? "ver menos" : `ver mais ${escondidos}`}
-                </button>
-              )}
-            </div>
-          </div>
-        );
-      })}
     </div>
   );
 }

@@ -1,5 +1,7 @@
 "use client";
 
+import Botao from "@/components/ui/Botao";
+import Campo from "@/components/ui/Campo";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
@@ -9,17 +11,24 @@ export default function Login() {
   const [senha, setSenha] = useState("");
   const [nome, setNome] = useState("");
   const [cadastrando, setCadastrando] = useState(false);
+  const [mensagem, setMensagem] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const router = useRouter();
 
   async function enviar() {
+    if (carregando) return;
     setErro(null);
+    setMensagem(null);
     setCarregando(true);
     const supabase = criarClienteNavegador();
 
-    const { error } = cadastrando
-      ? await supabase.auth.signUp({ email, password: senha, options: { data: { nome } } })
+    const { data, error } = cadastrando
+      ? await supabase.auth.signUp({
+          email,
+          password: senha,
+          options: { data: { nome } },
+        })
       : await supabase.auth.signInWithPassword({ email, password: senha });
 
     setCarregando(false);
@@ -28,68 +37,100 @@ export default function Login() {
       setErro(
         error.message.includes("Invalid login")
           ? "E-mail ou senha não conferem. Confira e tente de novo."
-          : error.message
+          : error.message,
       );
       return;
     }
-    router.push("/");
+    if (cadastrando && !data.session) {
+      setMensagem(
+        "Confira seu e-mail para confirmar o cadastro antes de entrar.",
+      );
+      return;
+    }
+    router.replace("/");
     router.refresh();
   }
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-6">
-      <p className="text-sm text-tinta/70">
-        Projeto Integrador · 2026
-      </p>
-      <h1 className="mt-2 font-display text-4xl font-extrabold leading-none tracking-tight">
+    <div className="mx-auto flex min-h-[75dvh] max-w-sm flex-col justify-center px-6">
+      <p className="text-sm text-tinta/70">Projeto Integrador · 2026</p>
+      <h1 className="mt-2 font-display text-3xl font-semibold leading-none tracking-tight">
         Caderno de Campo
       </h1>
       <p className="mt-3 text-sm text-tinta/70">
-        Onde a equipe registra o que combinou fazer — e o que de fato fez.
+        Organize tarefas, prazos e entregas do grupo.
       </p>
 
-      <div className="mt-8 space-y-3">
+      <form
+        className="mt-6 space-y-4 border-t border-linha pt-4"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void enviar();
+        }}
+      >
         {cadastrando && (
-          <input
-            className="w-full border border-linha bg-casca px-3 py-2 text-sm"
-            placeholder="Seu nome"
-            value={nome}
-            onChange={(e) => setNome(e.target.value)}
-          />
+          <Campo titulo="Nome">
+            <input
+              required
+              autoComplete="name"
+              className="campo"
+              value={nome}
+              onChange={(e) => setNome(e.target.value)}
+            />
+          </Campo>
         )}
-        <input
-          className="w-full border border-linha bg-casca px-3 py-2 text-sm"
-          placeholder="E-mail"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <input
-          className="w-full border border-linha bg-casca px-3 py-2 text-sm"
-          placeholder="Senha"
-          type="password"
-          value={senha}
-          onChange={(e) => setSenha(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && enviar()}
-        />
-
-        {erro && <p className="font-mono text-xs text-trigo">{erro}</p>}
-
-        <button
-          onClick={enviar}
+        <Campo titulo="E-mail">
+          <input
+            required
+            autoComplete="email"
+            className="campo"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </Campo>
+        <Campo titulo="Senha">
+          <input
+            required
+            autoComplete={cadastrando ? "new-password" : "current-password"}
+            className="campo"
+            type="password"
+            value={senha}
+            onChange={(e) => setSenha(e.target.value)}
+          />
+        </Campo>
+        {mensagem && (
+          <p role="status" className="text-sm">
+            {mensagem}
+          </p>
+        )}
+        {erro && (
+          <p role="alert" className="border-l-2 border-trigo pl-3 text-sm">
+            {erro}
+          </p>
+        )}
+        <Botao type="submit" disabled={carregando} className="w-full">
+          {carregando
+            ? cadastrando
+              ? "Criando conta…"
+              : "Entrando…"
+            : cadastrando
+              ? "Criar conta"
+              : "Entrar"}
+        </Botao>
+        <Botao
+          variante="discreto"
           disabled={carregando}
-          className="w-full bg-tinta px-4 py-2.5 text-sm font-semibold text-campo hover:bg-musgo disabled:opacity-50"
+          className="w-full"
+          onClick={() => {
+            setCadastrando(!cadastrando);
+            setErro(null);
+            setMensagem(null);
+          }}
         >
-          {carregando ? "Um instante…" : cadastrando ? "Criar conta" : "Entrar"}
-        </button>
-
-        <button
-          onClick={() => { setCadastrando(!cadastrando); setErro(null); }}
-          className="w-full text-xs text-tinta/70 underline underline-offset-4"
-        >
-          {cadastrando ? "já tenho conta" : "primeiro acesso? criar conta"}
-        </button>
-      </div>
+          {cadastrando ? "Já tenho conta" : "Primeiro acesso? Criar conta"}
+        </Botao>
+      </form>
     </div>
   );
 }

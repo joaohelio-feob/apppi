@@ -1,12 +1,21 @@
 "use client";
 
+import { useAtualizacaoTarefas } from "@/lib/useAtualizacaoTarefas";
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
 import { dataLocalISO, estaAtrasada } from "@/lib/datas";
 import {
-  CLASSES_PRIORIDADE, PRIORIDADES, STATUS, responsaveisDe,
-  type EstadoEntrega, type Frente, type Membro, type Tarefa,
+  CLASSES_PRIORIDADE,
+  PRIORIDADES,
+  STATUS,
+  responsaveisDe,
+  type EstadoEntrega,
+  type Frente,
+  type Membro,
+  type Tarefa,
 } from "@/lib/types";
+import LinhaTarefa from "@/components/LinhaTarefa";
 import DetalheTarefa from "@/components/DetalheTarefa";
 
 const DIAS = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
@@ -15,6 +24,8 @@ const DIAS = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
 const VISIVEIS_POR_DIA = 3;
 
 export default function Calendario() {
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState(false);
   const [tarefas, setTarefas] = useState<Tarefa[]>([]);
   const [membros, setMembros] = useState<Membro[]>([]);
   const [frentes, setFrentes] = useState<Frente[]>([]);
@@ -30,27 +41,47 @@ export default function Calendario() {
 
   const carregar = useCallback(async () => {
     const supabase = criarClienteNavegador();
-    const [{ data: t }, { data: m }, { data: f }, { data: e }] = await Promise.all([
+    const [
+      { data: t, error: erroT },
+      { data: m, error: erroM },
+      { data: f, error: erroF },
+      { data: e, error: erroE },
+    ] = await Promise.all([
       supabase
         .from("tarefas")
-        .select("id, titulo, descricao, escopo, frente_id, status, prioridade, prazo, inicio, local_entrega, subiu_git, issue_numero, observacoes, revisor_id, commit_confirmado_em, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel)), frentes(id, nome, cor, unidade)")
+        .select(
+          "id, titulo, descricao, escopo, frente_id, status, prioridade, prazo, inicio, local_entrega, subiu_git, issue_numero, observacoes, revisor_id, commit_confirmado_em, responsaveis:tarefa_responsaveis(membro:membros(id, nome, papel)), frentes(id, nome, cor, unidade)",
+        )
         .eq("arquivada", false)
         .not("prazo", "is", null),
-      supabase.from("membros").select("id, nome, papel, frente_id").order("nome"),
+      supabase
+        .from("membros")
+        .select("id, nome, papel, frente_id")
+        .order("nome"),
       supabase.from("frentes").select("id, nome").order("nome"),
       // "Falta algo" pendente é o único estado derivado que o calendário
       // precisa (pra sinalizar o bloco vermelho) — vem da mesma view do
       // Bloco A, não recalculado aqui.
-      supabase.from("tarefas_estado_entrega").select("tarefa_id, ultimo_resultado, entregue_em, revisado_em"),
+      supabase
+        .from("tarefas_estado_entrega")
+        .select("tarefa_id, ultimo_resultado, entregue_em, revisado_em"),
     ]);
+    setCarregando(false);
+    setErro(!!(erroT || erroM || erroF || erroE));
+    if (erroT || erroM || erroF || erroE) return;
     setTarefas((t ?? []) as unknown as Tarefa[]);
     setMembros((m ?? []) as Membro[]);
     setFrentes((f ?? []) as Frente[]);
-    setEstados(new Map((e ?? []).map((x) => [x.tarefa_id, x as EstadoEntrega])));
+    setEstados(
+      new Map((e ?? []).map((x) => [x.tarefa_id, x as EstadoEntrega])),
+    );
   }, []);
 
-  useEffect(() => { carregar(); }, [carregar]);
+  useEffect(() => {
+    carregar();
+  }, [carregar]);
 
+  useAtualizacaoTarefas("calendario", carregar);
   const hojeIso = dataLocalISO();
 
   function alternarDia(iso: string) {
@@ -63,8 +94,13 @@ export default function Calendario() {
   }
 
   const visiveis = useMemo(
-    () => (responsavel ? tarefas.filter((t) => responsaveisDe(t).some((m) => m.id === responsavel)) : tarefas),
-    [tarefas, responsavel]
+    () =>
+      responsavel
+        ? tarefas.filter((t) =>
+            responsaveisDe(t).some((m) => m.id === responsavel),
+          )
+        : tarefas,
+    [tarefas, responsavel],
   );
 
   const celulas = useMemo(() => {
@@ -93,12 +129,29 @@ export default function Calendario() {
         const atrasoA = estaAtrasada(a.status, a.prazo, hojeIso) ? 0 : 1;
         const atrasoB = estaAtrasada(b.status, b.prazo, hojeIso) ? 0 : 1;
         if (atrasoA !== atrasoB) return atrasoA - atrasoB;
-        if (PESO[a.prioridade] !== PESO[b.prioridade]) return PESO[a.prioridade] - PESO[b.prioridade];
+        if (PESO[a.prioridade] !== PESO[b.prioridade])
+          return PESO[a.prioridade] - PESO[b.prioridade];
         return a.titulo.localeCompare(b.titulo);
-      })
+      }),
     );
     return mapa;
   }, [visiveis, hojeIso]);
+
+  const ajustesPendentes = useMemo(
+    () =>
+      new Set(
+        Array.from(estados.values())
+          .filter(
+            (e) =>
+              e.ultimo_resultado === "falta_algo" &&
+              e.revisado_em &&
+              (!e.entregue_em ||
+                new Date(e.revisado_em) > new Date(e.entregue_em)),
+          )
+          .map((e) => e.tarefa_id),
+      ),
+    [estados],
+  );
 
   const chave = (dia: number) =>
     `${mes.getFullYear()}-${String(mes.getMonth() + 1).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
@@ -112,29 +165,39 @@ export default function Calendario() {
               ? `Calendário pessoal · ${membros.find((m) => m.id === responsavel)?.nome ?? ""}`
               : "Calendário geral"}
           </p>
-          <h1 className="mt-1 font-display text-3xl font-extrabold capitalize tracking-tight">
-            {mes.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}
+          <h1 className="mt-1 font-display text-3xl font-semibold tracking-tight first-letter:uppercase">
+            {mes.toLocaleDateString("pt-BR", {
+              month: "long",
+              year: "numeric",
+            })}
           </h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <select
+            aria-label="Filtrar calendário por responsável"
             value={responsavel}
             onChange={(e) => setResponsavel(e.target.value)}
             className="border border-linha bg-casca px-3 py-1.5 text-xs"
           >
             <option value="">Todo mundo</option>
             {membros.map((m) => (
-              <option key={m.id} value={m.id}>{m.nome}</option>
+              <option key={m.id} value={m.id}>
+                {m.nome}
+              </option>
             ))}
           </select>
           <button
-            onClick={() => setMes(new Date(mes.getFullYear(), mes.getMonth() - 1, 1))}
+            onClick={() =>
+              setMes(new Date(mes.getFullYear(), mes.getMonth() - 1, 1))
+            }
             className="border border-linha px-3 py-1.5 font-mono text-xs hover:bg-casca"
           >
             ← mês anterior
           </button>
           <button
-            onClick={() => setMes(new Date(mes.getFullYear(), mes.getMonth() + 1, 1))}
+            onClick={() =>
+              setMes(new Date(mes.getFullYear(), mes.getMonth() + 1, 1))
+            }
             className="border border-linha px-3 py-1.5 font-mono text-xs hover:bg-casca"
           >
             próximo mês →
@@ -142,7 +205,20 @@ export default function Calendario() {
         </div>
       </div>
 
-      <div className="mt-6 grid grid-cols-7 gap-px border border-linha bg-linha">
+      {carregando && (
+        <p role="status" className="mt-4 text-sm text-tinta/70">
+          Carregando calendário…
+        </p>
+      )}
+      {erro && (
+        <p role="alert" className="mt-4 border-l-2 border-trigo pl-3 text-sm">
+          Não foi possível carregar o calendário.{" "}
+          <button className="underline" onClick={carregar}>
+            Tentar novamente
+          </button>
+        </p>
+      )}
+      <div className="mt-6 hidden grid-cols-7 sm:grid gap-px border border-linha bg-linha">
         {DIAS.map((d) => (
           <div key={d} className="bg-campo px-2 py-1.5 text-xs text-tinta/70">
             {d}
@@ -150,51 +226,66 @@ export default function Calendario() {
         ))}
 
         {celulas.map((dia, i) => {
-          if (dia === null) return <div key={`v${i}`} className="min-h-[92px] bg-campo/40" />;
+          if (dia === null)
+            return <div key={`v${i}`} className="min-h-[92px] bg-campo/40" />;
           const iso = chave(dia);
           const doDia = porDia[iso] ?? [];
           const ehHoje = iso === hojeIso;
           const expandido = diasAbertos.has(iso);
 
           return (
-            <div key={iso} className={`min-h-[92px] bg-campo p-1.5 ${ehHoje ? "ring-2 ring-inset ring-tinta" : ""}`}>
-              <span className={`font-mono text-xs ${ehHoje ? "font-semibold" : "text-tinta/70"}`}>
+            <div
+              key={iso}
+              className={`min-h-[92px] bg-campo p-1.5 ${ehHoje ? "ring-2 ring-inset ring-tinta" : ""}`}
+            >
+              <span
+                className={`font-mono text-xs ${ehHoje ? "font-semibold" : "text-tinta/70"}`}
+              >
                 {String(dia).padStart(2, "0")}
               </span>
               <div className="mt-1 space-y-1">
-                {(expandido ? doDia : doDia.slice(0, VISIVEIS_POR_DIA)).map((t) => {
-                  const cor = STATUS.find((s) => s.id === t.status)?.cor ?? "";
-                  const prio = CLASSES_PRIORIDADE[t.prioridade];
-                  const nomePrio = PRIORIDADES.find((p) => p.id === t.prioridade)?.nome ?? t.prioridade;
-                  const atrasada = estaAtrasada(t.status, t.prazo, hojeIso);
-                  const est = estados.get(t.id);
-                  const faltaAlgo =
-                    est?.ultimo_resultado === "falta_algo" &&
-                    !!est.revisado_em &&
-                    (!est.entregue_em || new Date(est.revisado_em) > new Date(est.entregue_em));
-                  return (
-                    <button
-                      type="button"
-                      key={t.id}
-                      onClick={() => setTarefaAberta(t)}
-                      title={`${t.titulo} · ${responsaveisDe(t).map((m) => m.nome).join(", ") || "sem responsável"} · prioridade ${nomePrio}${atrasada ? " · atrasada" : ""}${faltaAlgo ? " · revisor pediu ajuste, veja o detalhe" : ""}`}
-                      // Os sinais ficam numa coluna fixa à esquerda e o título na
-                      // outra: antes eles eram texto no mesmo fluxo, e "falta: " +
-                      // "! " + glifo comiam até 45px dos 145px da célula — num
-                      // chip que já cortava o título pela metade.
-                      className={`grid w-full grid-cols-[auto_minmax(0,1fr)] items-start gap-x-1 px-1 py-0.5 text-left text-xs leading-tight transition-opacity duration-micro ease-entrada hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-tinta ${cor} ${prio.borda} ${
-                        atrasada ? "font-semibold ring-1 ring-inset ring-trigo" : ""
-                      }`}
-                    >
-                      <span aria-hidden="true" className="font-mono">
-                        {atrasada ? "!" : ""}
-                        {faltaAlgo ? "↩" : ""}
-                        {prio.glifo}
-                      </span>
-                      <span className="line-clamp-2 break-words">{t.titulo}</span>
-                    </button>
-                  );
-                })}
+                {(expandido ? doDia : doDia.slice(0, VISIVEIS_POR_DIA)).map(
+                  (t) => {
+                    const cor =
+                      STATUS.find((s) => s.id === t.status)?.cor ?? "";
+                    const prio = CLASSES_PRIORIDADE[t.prioridade];
+                    const nomePrio =
+                      PRIORIDADES.find((p) => p.id === t.prioridade)?.nome ??
+                      t.prioridade;
+                    const atrasada = estaAtrasada(t.status, t.prazo, hojeIso);
+                    const faltaAlgo = ajustesPendentes.has(t.id);
+                    return (
+                      <button
+                        type="button"
+                        key={t.id}
+                        onClick={() => setTarefaAberta(t)}
+                        title={`${t.titulo} · ${
+                          responsaveisDe(t)
+                            .map((m) => m.nome)
+                            .join(", ") || "sem responsável"
+                        } · prioridade ${nomePrio}${atrasada ? " · atrasada" : ""}${faltaAlgo ? " · revisor pediu ajuste, veja o detalhe" : ""}`}
+                        // Os sinais ficam numa coluna fixa à esquerda e o título na
+                        // outra: antes eles eram texto no mesmo fluxo, e "falta: " +
+                        // "! " + glifo comiam até 45px dos 145px da célula — num
+                        // chip que já cortava o título pela metade.
+                        className={`grid w-full grid-cols-[auto_minmax(0,1fr)] items-start gap-x-1 px-1 py-0.5 text-left text-xs leading-tight transition-opacity duration-micro ease-entrada hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-tinta ${cor} ${prio.borda} ${
+                          atrasada
+                            ? "font-semibold ring-1 ring-inset ring-trigo"
+                            : ""
+                        }`}
+                      >
+                        <span aria-hidden="true" className="font-mono">
+                          {atrasada ? "!" : ""}
+                          {faltaAlgo ? "↩" : ""}
+                          {prio.glifo}
+                        </span>
+                        <span className="line-clamp-2 break-words">
+                          {t.titulo}
+                        </span>
+                      </button>
+                    );
+                  },
+                )}
                 {doDia.length > VISIVEIS_POR_DIA && (
                   <button
                     type="button"
@@ -207,7 +298,9 @@ export default function Calendario() {
                     }
                     className="w-full px-1 py-0.5 text-left font-mono text-xs text-tinta/70 underline underline-offset-2 transition-opacity duration-micro ease-entrada hover:text-tinta focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-tinta"
                   >
-                    {expandido ? "ver menos" : `+${doDia.length - VISIVEIS_POR_DIA}`}
+                    {expandido
+                      ? "ver menos"
+                      : `+${doDia.length - VISIVEIS_POR_DIA}`}
                   </button>
                 )}
               </div>
@@ -216,6 +309,49 @@ export default function Calendario() {
         })}
       </div>
 
+      <section aria-label="Agenda do mês" className="mt-5 space-y-4 sm:hidden">
+        {celulas
+          .filter(
+            (dia): dia is number =>
+              dia !== null && !!porDia[chave(dia)]?.length,
+          )
+          .map((dia) => (
+            <div key={dia}>
+              <h2
+                className={`border-b border-linha py-2 font-mono text-sm ${chave(dia) === hojeIso ? "font-semibold" : ""}`}
+              >
+                {String(dia).padStart(2, "0")} ·{" "}
+                {new Date(
+                  mes.getFullYear(),
+                  mes.getMonth(),
+                  dia,
+                ).toLocaleDateString("pt-BR", { weekday: "long" })}
+                {chave(dia) === hojeIso ? " · Hoje" : ""}
+              </h2>
+              {porDia[chave(dia)].map((t) => (
+                <div key={t.id}>
+                  <LinhaTarefa
+                    tarefa={t}
+                    mostrarStatus
+                    membros={membros}
+                    frentes={frentes}
+                    aoAtualizar={carregar}
+                  />
+                  {ajustesPendentes.has(t.id) && (
+                    <p className="px-2 pb-2 text-xs">
+                      ↩ Revisor pediu ajuste — abra os detalhes.
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          ))}
+        {!carregando &&
+          !erro &&
+          !celulas.some(
+            (dia) => dia !== null && porDia[chave(dia)]?.length,
+          ) && <p className="text-sm text-tinta/70">Nenhum prazo neste mês.</p>}
+      </section>
       <div className="mt-4 flex flex-wrap gap-3 font-mono text-xs text-tinta/70">
         {STATUS.map((s) => (
           <span key={s.id} className="flex items-center gap-1.5">
@@ -231,10 +367,14 @@ export default function Calendario() {
           </span>
         ))}
         <span className="flex items-center gap-1.5">
-          <span className="font-mono font-semibold ring-1 ring-inset ring-trigo">!</span> atrasada
+          <span className="font-mono font-semibold ring-1 ring-inset ring-trigo">
+            !
+          </span>{" "}
+          atrasada
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="font-mono font-semibold">↩</span> revisor pediu ajuste — clique pra ver o quê
+          <span className="font-mono font-semibold">↩</span> revisor pediu
+          ajuste — clique pra ver o quê
         </span>
       </div>
 

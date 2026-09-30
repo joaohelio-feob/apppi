@@ -160,11 +160,11 @@ export default async function Trilha() {
         </div>
       </section>
 
-      <section className="mt-8 overflow-x-auto border border-linha">
+      <section className="mt-8 max-h-[70vh] overflow-auto border border-linha print:max-h-none print:overflow-visible">
         <h2 className="border-b border-linha bg-casca px-4 py-2 font-display text-xs font-semibold text-tinta/70">
           Resumo por pessoa
         </h2>
-        <table className="w-full min-w-[640px] border-collapse text-sm">
+        <table className="tabela-edicao min-w-[640px]">
           <thead>
             <tr className="border-b border-linha bg-casca font-display text-xs font-semibold text-tinta/70">
               <th className="px-3 py-2 text-left">Pessoa</th>

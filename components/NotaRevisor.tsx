@@ -44,7 +44,7 @@ export default function NotaRevisor({ tarefaId, entregueEm }: { tarefaId: number
           }`}
         >
           <p className={`text-xs ${
-            maisRecente.resultado === "falta_algo" ? "text-trigo" : "text-musgo"
+            maisRecente.resultado === "falta_algo" ? "text-tinta" : "text-musgo"
           }`}>
             {maisRecente.resultado === "falta_algo" ? "Falta isso:" : "Nota do revisor"}
           </p>

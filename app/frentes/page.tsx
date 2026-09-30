@@ -1,5 +1,7 @@
 "use client";
 
+import AvisoErro from "@/components/ui/AvisoErro";
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
@@ -8,6 +10,7 @@ import { CLASSES_COR_FRENTE_PREENCHIDA, CORES_FRENTE, UNIDADES_FRENTE, type CorF
 type FrenteComMembros = Frente & { membros?: Membro[] };
 
 export default function Frentes() {
+  const [erroCarga, setErroCarga] = useState(false);
   const [frentes, setFrentes] = useState<FrenteComMembros[]>([]);
   const [carregando, setCarregando] = useState(true);
 
@@ -15,6 +18,7 @@ export default function Frentes() {
   const [unidadeNova, setUnidadeNova] = useState<Unidade | "">("");
   const [corNova, setCorNova] = useState<CorFrente>("ferro");
   const [ordemNova, setOrdemNova] = useState("0");
+  const [erroCriacao, setErroCriacao] = useState(false);
   const [criando, setCriando] = useState(false);
 
   const supabase = criarClienteNavegador();
@@ -22,10 +26,12 @@ export default function Frentes() {
   async function carregar() {
     // Membros vêm embutidos (FK reversa membros.frente_id) em vez de uma
     // consulta à parte — economiza uma ida ao banco por carregamento.
-    const { data: f } = await supabase
+    const { data: f, error } = await supabase
       .from("frentes")
       .select("id, nome, unidade, cor, ordem, criado_em, membros(id, nome)")
       .order("ordem");
+    setErroCarga(!!error);
+    if (error) { setCarregando(false); return; }
     setFrentes((f ?? []) as unknown as FrenteComMembros[]);
     setCarregando(false);
   }
@@ -35,12 +41,14 @@ export default function Frentes() {
   async function criar() {
     if (!nomeNova.trim()) return;
     setCriando(true);
-    await supabase.from("frentes").insert({
+    setErroCriacao(false);
+    const { error } = await supabase.from("frentes").insert({
       nome: nomeNova,
       unidade: unidadeNova || null,
       cor: corNova,
       ordem: Number(ordemNova) || 0,
     });
+    if (error) { setErroCriacao(true); setCriando(false); return; }
     setNomeNova("");
     setUnidadeNova("");
     setCorNova("ferro");
@@ -52,7 +60,7 @@ export default function Frentes() {
   return (
     <div>
       <h1 className="font-display text-3xl font-extrabold tracking-tight">
-        Os sub-times do projeto
+        Frentes
       </h1>
       <p className="mt-2 max-w-prose text-sm text-tinta/70">
         Cada integrante entra numa frente em <Link href="/equipe" className="underline">Equipe</Link>.
@@ -62,6 +70,7 @@ export default function Frentes() {
 
       <div className="mt-6 flex flex-wrap items-end gap-2 border border-linha bg-casca p-3">
         <input
+          aria-label="Nome da nova frente"
           value={nomeNova}
           onChange={(e) => setNomeNova(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && criar()}
@@ -69,6 +78,7 @@ export default function Frentes() {
           className="min-w-[180px] flex-1 border border-linha bg-campo px-3 py-2 text-sm"
         />
         <select
+          aria-label="Unidade de estudo"
           value={unidadeNova}
           onChange={(e) => setUnidadeNova(e.target.value as Unidade)}
           className="border border-linha bg-campo px-2 py-2 text-xs"
@@ -79,6 +89,7 @@ export default function Frentes() {
           ))}
         </select>
         <select
+          aria-label="Cor da frente"
           value={corNova}
           onChange={(e) => setCorNova(e.target.value as CorFrente)}
           className="border border-linha bg-campo px-2 py-2 text-xs"
@@ -105,10 +116,12 @@ export default function Frentes() {
         </button>
       </div>
 
+      {erroCriacao && <AvisoErro mensagem="Não foi possível criar a frente. Confira os campos e tente novamente." />}
+      {erroCarga && <AvisoErro mensagem="Não foi possível carregar os dados. Tente novamente." aoTentar={carregar} />}
       {carregando ? (
         <p className="mt-10 text-sm text-tinta/70">carregando…</p>
-      ) : (
-        <div className="mt-8 divide-y divide-linha border border-linha bg-casca">
+      ) : erroCarga ? null : (
+        <div className="mt-6 divide-y divide-linha border border-linha bg-casca">
           {frentes.map((f) => {
             const integrantes = f.membros ?? [];
             const nomeUnidade = UNIDADES_FRENTE.find((u) => u.id === f.unidade)?.nome;
