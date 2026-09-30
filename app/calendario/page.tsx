@@ -16,7 +16,7 @@ import {
   type Tarefa,
 } from "@/lib/types";
 import LinhaTarefa from "@/components/LinhaTarefa";
-import DetalheTarefa from "@/components/DetalheTarefa";
+import { useDetalheTarefa } from "@/components/DetalheTarefaProvider";
 
 const DIAS = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
 
@@ -31,7 +31,7 @@ export default function Calendario() {
   const [frentes, setFrentes] = useState<Frente[]>([]);
   const [estados, setEstados] = useState<Map<number, EstadoEntrega>>(new Map());
   const [responsavel, setResponsavel] = useState("");
-  const [tarefaAberta, setTarefaAberta] = useState<Tarefa | null>(null);
+  const abrirDetalhe = useDetalheTarefa();
   /** Dias com "+N" aberto, por data ISO — chave estável, não índice. */
   const [diasAbertos, setDiasAbertos] = useState<Set<string>>(new Set());
   const [mes, setMes] = useState(() => {
@@ -258,7 +258,14 @@ export default function Calendario() {
                       <button
                         type="button"
                         key={t.id}
-                        onClick={() => setTarefaAberta(t)}
+                        onClick={() =>
+                          abrirDetalhe({
+                            tarefa: t,
+                            aoAtualizar: carregar,
+                            membrosIniciais: membros,
+                            frentesIniciais: frentes,
+                          })
+                        }
                         title={`${t.titulo} · ${
                           responsaveisDe(t)
                             .map((m) => m.nome)
@@ -377,16 +384,6 @@ export default function Calendario() {
           ajuste — clique pra ver o quê
         </span>
       </div>
-
-      {tarefaAberta && (
-        <DetalheTarefa
-          tarefa={tarefaAberta}
-          aoFechar={() => setTarefaAberta(null)}
-          aoAtualizar={carregar}
-          membrosIniciais={membros}
-          frentesIniciais={frentes}
-        />
-      )}
     </div>
   );
 }
