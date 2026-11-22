@@ -3,8 +3,9 @@
 import { useAtualizacaoTarefas } from "@/lib/useAtualizacaoTarefas";
 import CampoTabela from "@/components/ui/CampoTabela";
 import AvisoErro from "@/components/ui/AvisoErro";
-
-import { useCallback, useEffect, useState } from "react";
+import CabecalhoPagina from "@/components/ui/CabecalhoPagina";
+import Botao from "@/components/ui/Botao";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
 import {
   PRIORIDADES,
@@ -18,6 +19,11 @@ import { useToast } from "@/components/ToastProvider";
 import FormularioTarefa from "@/components/FormularioTarefa";
 import ConfirmarAcao from "@/components/ConfirmarAcao";
 import SeloIssue from "@/components/SeloIssue";
+import {
+  IconeAtribuicoes,
+  IconeBusca,
+  IconeMais,
+} from "@/components/ui/Icones";
 
 type TarefaComAnexos = Tarefa & { anexos?: { count: number }[] };
 
@@ -35,6 +41,7 @@ export default function Atribuicoes() {
   }
   const [estadoSalvo, setEstadoSalvo] = useState("");
   const [tarefas, setTarefas] = useState<TarefaComAnexos[]>([]);
+  const [busca, setBusca] = useState("");
   const [arquivando, setArquivando] = useState<Tarefa | null>(null);
   const [executandoArquivo, setExecutandoArquivo] = useState(false);
   const [membros, setMembros] = useState<Membro[]>([]);
@@ -161,25 +168,40 @@ export default function Atribuicoes() {
     setTarefas((atual) => atual.filter((x) => x.id !== t.id));
   }
 
+  const filtradas = useMemo(() => {
+    const q = busca.trim().toLowerCase();
+    if (!q) return tarefas;
+    return tarefas.filter((t) => {
+      const nomes = responsaveisDe(t)
+        .map((m) => m.nome.toLowerCase())
+        .join(" ");
+      return (
+        t.titulo.toLowerCase().includes(q) ||
+        nomes.includes(q) ||
+        (t.frentes?.nome.toLowerCase().includes(q) ?? false)
+      );
+    });
+  }, [tarefas, busca]);
+
   return (
     <div>
-      <h1 className="font-display text-3xl font-extrabold tracking-tight">
-        Atribuições
-      </h1>
-      <p className="mt-2 max-w-prose text-sm text-tinta/70">
-        Tabela para planejar rápido. Editar aqui é a mesma tarefa do Quadro —
-        muda ali também.
-      </p>
-
-      <div className="mt-6">
-        <button
-          disabled={carregando || erroCarga}
-          onClick={() => setCriandoTarefa(true)}
-          className="bg-tinta px-4 py-2 text-sm font-semibold text-campo hover:bg-musgo"
-        >
-          Nova tarefa
-        </button>
-      </div>
+      <CabecalhoPagina
+        categoria="Edição rápida em tabela"
+        icone={<IconeAtribuicoes className="h-3.5 w-3.5 text-musgo" />}
+        titulo="Atribuições"
+        contagem={!carregando ? `${tarefas.length} tarefas` : undefined}
+        descricao="Edite qualquer campo diretamente na linha. Cada alteração atualiza em tempo real o Quadro, o Calendário e a Semana."
+        acoes={
+          <Botao
+            variante="destaque"
+            disabled={carregando || erroCarga}
+            onClick={() => setCriandoTarefa(true)}
+          >
+            <IconeMais className="h-4 w-4" />
+            Nova tarefa
+          </Botao>
+        }
+      />
 
       {criandoTarefa && (
         <FormularioTarefa
@@ -191,9 +213,27 @@ export default function Atribuicoes() {
         />
       )}
 
-      <p role="status" className="mt-3 min-h-5 text-xs text-tinta/70">
-        {pendentes.size ? "Salvando…" : estadoSalvo}
-      </p>
+      <div className="cartao mb-4 flex flex-wrap items-center justify-between gap-3 p-3.5">
+        <div className="relative min-w-[220px] flex-1 sm:max-w-sm">
+          <IconeBusca className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-tinta/70" />
+          <input
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            placeholder="Filtrar por tarefa, pessoa ou frente…"
+            aria-label="Filtrar atribuições"
+            className="campo pl-9"
+          />
+        </div>
+
+        <p role="status" className="min-h-6">
+          {(pendentes.size > 0 || estadoSalvo) && (
+            <span className="inline-flex items-center rounded-full border border-linha bg-casca px-3 py-1 font-mono text-xs font-semibold text-tinta">
+              {pendentes.size ? "Salvando…" : estadoSalvo}
+            </span>
+          )}
+        </p>
+      </div>
+
       {erroCarga && (
         <AvisoErro
           mensagem="Não foi possível carregar os dados. Tente novamente."
@@ -201,25 +241,25 @@ export default function Atribuicoes() {
         />
       )}
       {carregando ? (
-        <p className="mt-10 text-sm text-tinta/70">carregando…</p>
+        <p className="mt-10 text-sm text-tinta/70">Carregando tabela…</p>
       ) : erroCarga ? null : (
-        <div className="mt-6 max-h-[70vh] overflow-auto border border-linha print:max-h-none print:overflow-visible">
+        <div className="cartao max-h-[70vh] overflow-auto print:max-h-none print:overflow-visible">
           <table className="tabela-edicao min-w-[960px]">
             <thead>
               <tr className="border-b border-linha bg-casca font-display text-xs font-semibold text-tinta/70">
-                <th className="px-3 py-2 text-left">Tarefa</th>
-                <th className="px-3 py-2 text-left">Responsável</th>
-                <th className="px-3 py-2 text-left">Dia</th>
-                <th className="px-3 py-2 text-left">Local de entrega</th>
-                <th className="px-3 py-2 text-left">GitHub</th>
-                <th className="px-3 py-2 text-left">Frente</th>
-                <th className="px-3 py-2 text-left">Prioridade</th>
-                <th className="px-3 py-2 text-left">Status</th>
-                <th className="sticky right-0 bg-casca px-3 py-2" />
+                <th className="px-3 py-3 text-left">Tarefa</th>
+                <th className="px-3 py-3 text-left">Responsável</th>
+                <th className="px-3 py-3 text-left">Dia</th>
+                <th className="px-3 py-3 text-left">Local de entrega</th>
+                <th className="px-3 py-3 text-left">GitHub</th>
+                <th className="px-3 py-3 text-left">Frente</th>
+                <th className="px-3 py-3 text-left">Prioridade</th>
+                <th className="px-3 py-3 text-left">Status</th>
+                <th className="sticky right-0 bg-casca px-3 py-3" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-linha">
-              {tarefas.map((t) => (
+            <tbody className="divide-y divide-linha/80">
+              {filtradas.map((t) => (
                 <tr key={t.id}>
                   <td className="px-3 py-2">
                     <CampoTabela
@@ -232,10 +272,10 @@ export default function Atribuicoes() {
                           ? salvarCampo(t.id, "titulo", valor.trim())
                           : Promise.resolve(false)
                       }
-                      className="w-full min-w-[180px] border border-transparent bg-transparent px-1 py-1 hover:border-linha focus:border-linha focus:outline-none"
+                      className="w-full min-w-[180px] border border-transparent bg-transparent px-1.5 py-1 font-medium hover:border-linha focus:border-musgo focus:bg-campo focus:outline-none"
                     />
                     {(t.descricao || (t.anexos?.[0]?.count ?? 0) > 0) && (
-                      <div className="mt-0.5 flex items-center gap-2 px-1 text-xs text-tinta/70">
+                      <div className="mt-0.5 flex items-center gap-2 px-1.5 text-xs text-tinta/70">
                         {t.descricao && (
                           <span className="line-clamp-1">{t.descricao}</span>
                         )}
@@ -263,7 +303,7 @@ export default function Atribuicoes() {
                         onChange={(e) =>
                           salvarResponsavel(t.id, e.target.value)
                         }
-                        className="border border-linha bg-campo px-2 py-1 font-corpo text-sm"
+                        className="rounded-lg border border-linha bg-campo px-2 py-1.5 font-corpo text-xs"
                       >
                         <option value="">sem dono</option>
                         {membros.map((m) => (
@@ -283,7 +323,7 @@ export default function Atribuicoes() {
                       aoSalvar={(valor) =>
                         salvarCampo(t.id, "prazo", valor || null)
                       }
-                      className="border border-linha bg-campo px-2 py-1 font-mono text-xs"
+                      className="rounded-lg border border-linha bg-campo px-2 py-1.5 font-mono text-xs"
                     />
                   </td>
                   <td className="px-3 py-2">
@@ -295,7 +335,7 @@ export default function Atribuicoes() {
                       aoSalvar={(valor) =>
                         salvarCampo(t.id, "local_entrega", valor || null)
                       }
-                      className="w-full min-w-[160px] border border-transparent bg-transparent px-1 py-1 hover:border-linha focus:border-linha focus:outline-none"
+                      className="w-full min-w-[160px] border border-transparent bg-transparent px-1.5 py-1 hover:border-linha focus:border-musgo focus:bg-campo focus:outline-none"
                     />
                   </td>
                   <td className="px-3 py-2">
@@ -315,7 +355,7 @@ export default function Atribuicoes() {
                             valor ? Number(valor) : null,
                           )
                         }
-                        className="w-14 border border-transparent bg-transparent px-1 py-1 font-mono hover:border-linha focus:border-linha focus:outline-none"
+                        className="w-14 border border-transparent bg-transparent px-1.5 py-1 font-mono hover:border-linha focus:border-musgo focus:bg-campo focus:outline-none"
                       />
                       {t.issue_numero && <SeloIssue numero={t.issue_numero} />}
                     </div>
@@ -342,7 +382,7 @@ export default function Atribuicoes() {
                           });
                           salvarCampo(t.id, "frente_id", valor);
                         }}
-                        className="border border-linha bg-campo px-2 py-1 text-xs"
+                        className="rounded-lg border border-linha bg-campo px-2 py-1.5 text-xs"
                       >
                         <option value="">sem frente</option>
                         {frentes.map((f) => (
@@ -363,7 +403,7 @@ export default function Atribuicoes() {
                         atualizarLocal(t.id, { prioridade: valor });
                         salvarCampo(t.id, "prioridade", valor);
                       }}
-                      className="border border-linha bg-campo px-2 py-1 text-xs"
+                      className="rounded-lg border border-linha bg-campo px-2 py-1.5 text-xs"
                     >
                       {PRIORIDADES.map((p) => (
                         <option key={p.id} value={p.id}>
@@ -382,7 +422,7 @@ export default function Atribuicoes() {
                         atualizarLocal(t.id, { status: valor });
                         salvarCampo(t.id, "status", valor);
                       }}
-                      className="border border-linha bg-campo px-2 py-1 text-xs"
+                      className="rounded-lg border border-linha bg-campo px-2 py-1.5 text-xs"
                     >
                       {STATUS.map((s) => (
                         <option key={s.id} value={s.id}>
@@ -391,23 +431,26 @@ export default function Atribuicoes() {
                       ))}
                     </select>
                   </td>
-                  <td className="sticky right-0 bg-campo px-3 py-2 text-right">
+                  <td className="sticky right-0 bg-papel px-3 py-2 text-right">
                     <button
+                      type="button"
                       onClick={() => setArquivando(t)}
-                      className="px-1 py-0.5 font-mono text-xs text-tinta/70 transition-colors duration-micro ease-entrada hover:bg-trigo hover:text-tinta"
+                      className="rounded-md px-2 py-1 font-mono text-xs text-tinta/70 transition-colors duration-micro ease-entrada hover:bg-trigo hover:text-tinta"
                     >
                       arquivar
                     </button>
                   </td>
                 </tr>
               ))}
-              {tarefas.length === 0 && (
+              {filtradas.length === 0 && (
                 <tr>
                   <td
                     colSpan={9}
-                    className="px-3 py-6 text-center text-sm text-tinta/70"
+                    className="px-4 py-8 text-center text-sm text-tinta/70"
                   >
-                    Nenhuma atribuição ainda. Crie a primeira acima.
+                    {tarefas.length === 0
+                      ? "Nenhuma atribuição ainda. Crie a primeira acima."
+                      : "Nenhuma atribuição encontrada para essa busca."}
                   </td>
                 </tr>
               )}

@@ -1,13 +1,16 @@
 "use client";
+
 import { useState } from "react";
 import CartaoTarefa from "../CartaoTarefa";
 import {
+  INFO_STATUS,
   STATUS,
   type Status,
   type Tarefa,
   type Membro,
   type Frente,
 } from "@/lib/types";
+
 const CAP_COLUNA = 8;
 
 export default function QuadroTarefas({
@@ -45,14 +48,11 @@ export default function QuadroTarefas({
         const expandida = expandidas.has(chave);
         const mostrados = expandida ? daColuna : daColuna.slice(0, CAP_COLUNA);
         const escondidos = daColuna.length - mostrados.length;
+        const info = INFO_STATUS[coluna.id];
 
         return (
           <div
             key={coluna.id}
-            // A área de soltar é a coluna inteira, não a lista visível: dá pra
-            // soltar num ponto qualquer, inclusive numa coluna vazia ou numa
-            // coluna colapsada (o cartão entra e o contador acompanha, mesmo
-            // que ele caia fora do cap).
             onDragOver={(e) => {
               e.preventDefault();
               setAlvo(coluna.id);
@@ -67,26 +67,36 @@ export default function QuadroTarefas({
               const id = Number(e.dataTransfer.getData("text/plain"));
               if (id) aoMudarStatus(id, coluna.id);
             }}
-            className={`flex min-h-32 w-[85%] shrink-0 snap-start flex-col sm:w-[60%] md:w-[45%] lg:w-auto lg:shrink ${alvo === coluna.id ? "bg-casca ring-2 ring-inset ring-musgo" : ""}`}
+            className={`flex min-h-40 w-[85%] shrink-0 snap-start flex-col rounded-xl border border-linha/80 border-t-4 p-3 transition-colors duration-micro ease-entrada sm:w-[60%] md:w-[45%] lg:w-auto lg:shrink ${info.bordaTopo} ${
+              alvo === coluna.id
+                ? "bg-broto/15 ring-2 ring-inset ring-musgo"
+                : "bg-casca/45"
+            }`}
           >
-            {/* A navegação do site não é fixed nem sticky, então top-0 basta:
+            {/* A navegação do site é static, então top-0 basta:
                 o cabeçalho encosta no topo da janela e fica lá enquanto o
                 grupo passa pela tela. */}
-            <h3 className="sticky top-0 z-10 mb-3 flex items-baseline gap-2 border-b border-linha bg-campo pb-1 pt-1 font-display text-sm font-semibold uppercase tracking-wide">
-              {coluna.nome}
-              {/* Sempre o total real da coluna — nunca o que sobrou do cap. */}
-              <span className="font-mono text-xs font-normal normal-case tracking-normal text-tinta/70">
-                · {daColuna.length}
-              </span>
-            </h3>
+            <div className="sticky top-0 z-10 mb-3 rounded-lg bg-campo/95 px-2.5 py-2 backdrop-blur-sm">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="flex items-center gap-2 font-display text-sm font-bold uppercase tracking-wide text-tinta">
+                  <span
+                    aria-hidden="true"
+                    className={`h-2 w-2 rounded-full ${info.ponto}`}
+                  />
+                  {coluna.nome}
+                </h3>
+                <span className="rounded-full border border-linha bg-papel px-2 py-0.5 font-mono text-xs font-semibold text-tinta">
+                  {daColuna.length}
+                </span>
+              </div>
+              <p className="mt-0.5 text-xs text-tinta/70">{info.resumo}</p>
+            </div>
 
             <div className="space-y-3">
               {mostrados.map((t) => (
                 <CartaoTarefa
                   key={t.id}
                   tarefa={t}
-                  // O cabeçalho da coluna já diz o status, uma vez, e é
-                  // sticky — repeti-lo em cada cartão é tinta e altura.
                   mostrarStatus={false}
                   aoMudarStatus={aoMudarStatus}
                   aoArquivar={aoArquivar}
@@ -98,11 +108,14 @@ export default function QuadroTarefas({
               ))}
 
               {daColuna.length === 0 && (
-                <p className="text-xs text-tinta/70">Coluna vazia.</p>
+                <div className="rounded-lg border border-dashed border-linha bg-papel/60 px-3 py-6 text-center text-xs text-tinta/70">
+                  Coluna vazia. Arraste um cartão para cá para mudar o status.
+                </div>
               )}
 
               {(escondidos > 0 || expandida) && (
                 <button
+                  type="button"
                   onClick={() => aoAlternarColuna(chave)}
                   aria-expanded={expandida}
                   aria-label={
@@ -110,9 +123,9 @@ export default function QuadroTarefas({
                       ? `ver menos em ${coluna.nome}, ${nomeDoGrupo}`
                       : `ver mais ${escondidos} em ${coluna.nome}, ${nomeDoGrupo}`
                   }
-                  className="w-full border border-linha bg-casca px-3 py-1.5 text-xs text-tinta/70 transition-colors duration-micro ease-entrada hover:border-musgo hover:text-tinta"
+                  className="botao botao-secundario w-full text-xs"
                 >
-                  {expandida ? "ver menos" : `ver mais ${escondidos}`}
+                  {expandida ? "Ver menos" : `Ver mais ${escondidos}`}
                 </button>
               )}
             </div>

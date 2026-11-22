@@ -37,21 +37,35 @@ export default function AtividadeTarefa({ tarefaId }: { tarefaId: number }) {
   }, [tarefaId]);
   if (estado !== "pronto")
     return (
-      <p role="status" className="text-sm text-tinta/70">
+      <p role="status" className="mt-2 text-sm text-tinta/70">
         {estado === "erro"
           ? "Não foi possível carregar a atividade."
           : "Carregando atividade…"}
       </p>
     );
   return atividades.length ? (
-    <ol className="divide-y divide-linha">
+    <ol className="mt-3 space-y-2 border-l-2 border-linha pl-4">
       {atividades.map((a) => (
         <li
           key={a.id}
-          className="flex flex-wrap items-baseline justify-between gap-2 py-2 text-sm"
+          className="relative flex flex-wrap items-baseline justify-between gap-2 text-sm"
         >
-          <span>{ROTULOS_ATIVIDADE[a.acao] ?? a.acao}</span>
-          <time dateTime={a.em} className="font-mono text-xs text-tinta/70">
+          <span
+            aria-hidden="true"
+            className="absolute -left-[21px] top-2 h-2 w-2 rounded-full bg-musgo"
+          />
+          <span className="font-medium text-tinta">
+            {ROTULOS_ATIVIDADE[a.acao] ?? a.acao}
+            {a.valor_novo && (
+              <span className="ml-2 rounded bg-casca px-1.5 py-0.5 font-mono text-xs text-tinta/70">
+                {a.valor_novo}
+              </span>
+            )}
+          </span>
+          <time
+            dateTime={a.em}
+            className="rounded bg-casca px-1.5 py-0.5 font-mono text-xs text-tinta/70"
+          >
             {new Date(a.em).toLocaleString("pt-BR", {
               day: "2-digit",
               month: "2-digit",
@@ -63,6 +77,6 @@ export default function AtividadeTarefa({ tarefaId }: { tarefaId: number }) {
       ))}
     </ol>
   ) : (
-    <p className="text-sm text-tinta/70">Nenhuma atividade registrada.</p>
+    <p className="mt-2 text-sm text-tinta/70">Nenhuma atividade registrada.</p>
   );
 }

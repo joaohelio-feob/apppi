@@ -8,11 +8,47 @@ export const STATUS: { id: Status; nome: string; cor: string }[] = [
   { id: "concluida", nome: "Concluída",  cor: "bg-musgo text-campo" },
 ];
 
+export const INFO_STATUS: Record<
+  Status,
+  { resumo: string; bordaTopo: string; ponto: string; fundoSuave: string }
+> = {
+  pendente: {
+    resumo: "Criada e pronta para começar",
+    bordaTopo: "border-t-linha",
+    ponto: "bg-tinta/70",
+    fundoSuave: "bg-casca/55",
+  },
+  fazendo: {
+    resumo: "Em desenvolvimento ou ajuste",
+    bordaTopo: "border-t-trigo",
+    ponto: "bg-trigo",
+    fundoSuave: "bg-trigo/10",
+  },
+  revisao: {
+    resumo: "Entregue, aguardando revisão",
+    bordaTopo: "border-t-ferro",
+    ponto: "bg-ferro",
+    fundoSuave: "bg-ferro/10",
+  },
+  concluida: {
+    resumo: "Finalizada e salva na Trilha",
+    bordaTopo: "border-t-musgo",
+    ponto: "bg-musgo",
+    fundoSuave: "bg-musgo/10",
+  },
+};
+
 export const PRIORIDADES: { id: Prioridade; nome: string }[] = [
   { id: "baixa",  nome: "Baixa" },
   { id: "media",  nome: "Média" },
   { id: "alta",   nome: "Alta" },
 ];
+
+export const CLASSES_PRIORIDADE_SELO: Record<Prioridade, string> = {
+  alta: "bg-broto/25 text-tinta border-broto",
+  media: "bg-casca text-tinta border-linha",
+  baixa: "bg-campo text-tinta/70 border-linha",
+};
 
 // Prioridade no calendário: forma/glifo é o sinal principal (funciona sem
 // depender de cor, pra quem tem daltonismo); a cor é reforço, só pra alta,
@@ -125,6 +161,14 @@ export type Tarefa = {
 /** Lista os responsáveis de uma tarefa, já achatada (sem o embed aninhado do Supabase). */
 export function responsaveisDe(t: Tarefa): Membro[] {
   return (t.responsaveis ?? []).map((r) => r.membro).filter(Boolean);
+}
+
+/** Gera até 2 iniciais maiúsculas a partir do nome completo de um integrante. */
+export function iniciaisDe(nome: string): string {
+  const partes = nome.trim().split(/\s+/).filter(Boolean);
+  if (partes.length === 0) return "?";
+  if (partes.length === 1) return partes[0].slice(0, 2).toUpperCase();
+  return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
 }
 
 export type Anexo = {

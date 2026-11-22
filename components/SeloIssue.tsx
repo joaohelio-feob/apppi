@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { IconeGit } from "./ui/Icones";
 
 type Resultado =
   | { fase: "carregando" }
@@ -23,15 +24,17 @@ export default function SeloIssue({ numero }: { numero: number }) {
         setR({ fase: "pronta", estado: d.estado, url: d.url });
       })
       .catch(() => vivo && setR({ fase: "indisponivel" }));
-    return () => { vivo = false; };
+    return () => {
+      vivo = false;
+    };
   }, [numero]);
 
-  if (r.fase === "carregando") {
-    return <span className="text-tinta/70">issue #{numero}</span>;
-  }
-
-  if (r.fase === "indisponivel") {
-    return <span className="text-tinta/70">issue #{numero}</span>;
+  if (r.fase === "carregando" || r.fase === "indisponivel") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full border border-linha bg-casca px-2 py-0.5 font-mono text-xs text-tinta/70">
+        <IconeGit className="h-3 w-3" />#{numero}
+      </span>
+    );
   }
 
   return (
@@ -39,8 +42,13 @@ export default function SeloIssue({ numero }: { numero: number }) {
       href={r.url}
       target="_blank"
       rel="noreferrer"
-      className={`underline ${r.estado === "aberta" ? "text-ferro" : "text-musgo"}`}
+      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-xs font-semibold transition-colors duration-micro ease-entrada ${
+        r.estado === "aberta"
+          ? "border-ferro bg-ferro/10 text-ferro hover:bg-ferro hover:text-campo"
+          : "border-musgo bg-musgo/15 text-musgo hover:bg-musgo hover:text-campo"
+      }`}
     >
+      <IconeGit className="h-3 w-3" />
       issue #{numero} · {r.estado}
     </a>
   );

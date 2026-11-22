@@ -2,12 +2,13 @@
 
 import { useToast } from "@/components/ToastProvider";
 import AvisoErro from "@/components/ui/AvisoErro";
-
+import CabecalhoPagina from "@/components/ui/CabecalhoPagina";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
-import { PAPEIS, type Frente, type Membro } from "@/lib/types";
+import { PAPEIS, iniciaisDe, type Frente, type Membro } from "@/lib/types";
 import { dataCurta } from "@/lib/datas";
+import { IconeEquipe, IconeSetaDireita } from "@/components/ui/Icones";
 
 export default function Equipe() {
   const { avisar } = useToast();
@@ -22,13 +23,23 @@ export default function Equipe() {
     const supabase = criarClienteNavegador();
 
     async function carregar() {
-      const [{ data: sessao }, { data: lista, error: erroLista }, { data: listaFrentes, error: erroFrentes }] = await Promise.all([
+      const [
+        { data: sessao },
+        { data: lista, error: erroLista },
+        { data: listaFrentes, error: erroFrentes },
+      ] = await Promise.all([
         supabase.auth.getUser(),
-        supabase.from("membros").select("id, nome, papel, frente_id, criado_em").order("nome"),
+        supabase
+          .from("membros")
+          .select("id, nome, papel, frente_id, criado_em")
+          .order("nome"),
         supabase.from("frentes").select("id, nome").order("nome"),
       ]);
-    setErroCarga(!!(erroLista || erroFrentes));
-    if (erroLista || erroFrentes) { setCarregando(false); return; }
+      setErroCarga(!!(erroLista || erroFrentes));
+      if (erroLista || erroFrentes) {
+        setCarregando(false);
+        return;
+      }
       setMeuId(sessao.user?.id ?? null);
       setMembros((lista ?? []) as Membro[]);
       setFrentes((listaFrentes ?? []) as Frente[]);
@@ -40,9 +51,18 @@ export default function Equipe() {
   async function mudarPapel(id: string, papel: string) {
     const anterior = membros.find((m) => m.id === id);
     setSalvandoId(id);
-    setMembros((atual) => atual.map((m) => (m.id === id ? { ...m, papel } : m)));
-    const { error } = await criarClienteNavegador().from("membros").update({ papel }).eq("id", id);
-    if (error) { if (anterior) setMembros((lista) => lista.map((m) => m.id === id ? anterior : m)); avisar("Não foi possível salvar o papel."); }
+    setMembros((atual) =>
+      atual.map((m) => (m.id === id ? { ...m, papel } : m)),
+    );
+    const { error } = await criarClienteNavegador()
+      .from("membros")
+      .update({ papel })
+      .eq("id", id);
+    if (error) {
+      if (anterior)
+        setMembros((lista) => lista.map((m) => (m.id === id ? anterior : m)));
+      avisar("Não foi possível salvar o papel.");
+    }
     setSalvandoId(null);
   }
 
@@ -50,86 +70,149 @@ export default function Equipe() {
     const anterior = membros.find((m) => m.id === id);
     setSalvandoId(id);
     const valor = frenteId ? Number(frenteId) : null;
-    setMembros((atual) => atual.map((m) => (m.id === id ? { ...m, frente_id: valor } : m)));
-    const { error } = await criarClienteNavegador().from("membros").update({ frente_id: valor }).eq("id", id);
-    if (error) { if (anterior) setMembros((lista) => lista.map((m) => m.id === id ? anterior : m)); avisar("Não foi possível salvar a frente."); }
+    setMembros((atual) =>
+      atual.map((m) => (m.id === id ? { ...m, frente_id: valor } : m)),
+    );
+    const { error } = await criarClienteNavegador()
+      .from("membros")
+      .update({ frente_id: valor })
+      .eq("id", id);
+    if (error) {
+      if (anterior)
+        setMembros((lista) => lista.map((m) => (m.id === id ? anterior : m)));
+      avisar("Não foi possível salvar a frente.");
+    }
     setSalvandoId(null);
   }
 
   return (
     <div>
-      <h1 className="font-display text-3xl font-extrabold tracking-tight">
-        Equipe
-      </h1>
-      <p className="mt-2 max-w-prose text-sm text-tinta/70">
-        A lista vem de quem já criou conta em <span className="font-mono text-xs">/login</span>.
-        Cada integrante escolhe o próprio papel — ninguém edita o papel de outra pessoa.
-      </p>
+      <CabecalhoPagina
+        categoria="Gestão da equipe"
+        icone={<IconeEquipe className="h-3.5 w-3.5 text-musgo" />}
+        titulo="Equipe"
+        contagem={!carregando ? `${membros.length} integrantes` : undefined}
+        descricao={
+          <>
+            A lista vem de quem criou conta em{" "}
+            <span className="font-mono text-xs">/login</span>. Cada integrante
+            escolhe o próprio papel e frente — ninguém edita o perfil de outra
+            pessoa.
+          </>
+        }
+      />
 
-      {erroCarga && <AvisoErro mensagem="Não foi possível carregar os dados. Tente novamente." />}
+      {erroCarga && (
+        <AvisoErro mensagem="Não foi possível carregar os dados. Tente novamente." />
+      )}
       {carregando ? (
-        <p className="mt-10 text-sm text-tinta/70">carregando…</p>
-      ) : erroCarga ? null : (
-        <div className="mt-6 divide-y divide-linha border border-linha bg-casca">
-          {membros.map((m) => (
-            <div key={m.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
-              <Link
-                href={`/equipe/${m.id}`}
-                className="min-w-0 flex-1 truncate text-sm font-semibold underline-offset-4 hover:underline"
+        <p className="mt-10 text-sm text-tinta/70">Carregando equipe…</p>
+      ) : erroCarga ? null : membros.length === 0 ? (
+        <div className="cartao p-8 text-center text-sm text-tinta/70">
+          Ninguém se cadastrou ainda. Peça pra equipe criar conta em /login.
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {membros.map((m) => {
+            const souEu = m.id === meuId;
+            const nomePapel =
+              PAPEIS.find((p) => p.id === m.papel)?.nome ?? m.papel;
+            const nomeFrente =
+              frentes.find((f) => f.id === m.frente_id)?.nome ?? "sem frente";
+            return (
+              <article
+                key={m.id}
+                className={`cartao flex flex-col justify-between p-5 ${
+                  souEu ? "border-l-4 border-l-broto" : ""
+                }`}
               >
-                {m.nome}
-                {m.id === meuId && <span className="ml-2 font-mono text-xs text-musgo">(você)</span>}
-              </Link>
+                <div>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span
+                        aria-hidden="true"
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-musgo font-mono text-sm font-bold text-campo shadow-cartao"
+                      >
+                        {iniciaisDe(m.nome)}
+                      </span>
+                      <div className="min-w-0">
+                        <h2 className="truncate font-display text-base font-bold text-tinta">
+                          {m.nome}
+                        </h2>
+                        {m.criado_em && (
+                          <p className="font-mono text-xs text-tinta/70">
+                            entrou em {dataCurta(m.criado_em)}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    {souEu && (
+                      <span className="rounded-full bg-broto/25 px-2.5 py-0.5 font-mono text-xs font-semibold text-tinta">
+                        você
+                      </span>
+                    )}
+                  </div>
 
-              {m.id === meuId ? (
-                <>
-                  <select
-                    aria-label={`Papel de ${m.nome}`}
-                    value={m.papel}
-                    disabled={salvandoId === m.id}
-                    onChange={(e) => mudarPapel(m.id, e.target.value)}
-                    className="border border-linha bg-campo px-2 py-1 text-xs disabled:opacity-50"
-                  >
-                    {PAPEIS.map((p) => (
-                      <option key={p.id} value={p.id}>{p.nome}</option>
-                    ))}
-                  </select>
-                  <select
-                    aria-label={`Frente de ${m.nome}`}
-                    value={m.frente_id ?? ""}
-                    disabled={salvandoId === m.id}
-                    onChange={(e) => mudarFrente(m.id, e.target.value)}
-                    className="border border-linha bg-campo px-2 py-1 text-xs disabled:opacity-50"
-                  >
-                    <option value="">sem frente</option>
-                    {frentes.map((f) => (
-                      <option key={f.id} value={f.id}>{f.nome}</option>
-                    ))}
-                  </select>
-                </>
-              ) : (
-                <>
-                  <span className="bg-linha px-2 py-0.5 text-xs text-tinta">
-                    {PAPEIS.find((p) => p.id === m.papel)?.nome ?? m.papel}
-                  </span>
-                  <span className="font-mono text-xs text-tinta/70">
-                    {frentes.find((f) => f.id === m.frente_id)?.nome ?? "sem frente"}
-                  </span>
-                </>
-              )}
+                  {souEu ? (
+                    <div className="mt-4 grid gap-2.5">
+                      <label className="block text-xs font-semibold text-tinta/70">
+                        Seu papel
+                        <select
+                          aria-label={`Papel de ${m.nome}`}
+                          value={m.papel}
+                          disabled={salvandoId === m.id}
+                          onChange={(e) => mudarPapel(m.id, e.target.value)}
+                          className="campo mt-1 py-1.5 text-xs"
+                        >
+                          {PAPEIS.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.nome}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="block text-xs font-semibold text-tinta/70">
+                        Sua frente
+                        <select
+                          aria-label={`Frente de ${m.nome}`}
+                          value={m.frente_id ?? ""}
+                          disabled={salvandoId === m.id}
+                          onChange={(e) => mudarFrente(m.id, e.target.value)}
+                          className="campo mt-1 py-1.5 text-xs"
+                        >
+                          <option value="">sem frente</option>
+                          {frentes.map((f) => (
+                            <option key={f.id} value={f.id}>
+                              {f.nome}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                  ) : (
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <span className="rounded-full border border-linha bg-casca px-2.5 py-0.5 text-xs font-medium text-tinta">
+                        {nomePapel}
+                      </span>
+                      <span className="rounded-full border border-linha bg-campo px-2.5 py-0.5 font-mono text-xs text-tinta/70">
+                        {nomeFrente}
+                      </span>
+                    </div>
+                  )}
+                </div>
 
-              {m.criado_em && (
-                <span className="font-mono text-xs text-tinta/70">
-                  entrou em {dataCurta(m.criado_em)}
-                </span>
-              )}
-            </div>
-          ))}
-          {membros.length === 0 && (
-            <p className="px-4 py-6 text-sm text-tinta/70">
-              Ninguém se cadastrou ainda. Peça pra equipe criar conta em /login.
-            </p>
-          )}
+                <div className="mt-4 border-t border-linha/80 pt-3">
+                  <Link
+                    href={`/equipe/${m.id}`}
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-musgo underline-offset-4 hover:text-tinta hover:underline"
+                  >
+                    Ver painel individual
+                    <IconeSetaDireita className="h-3.5 w-3.5" />
+                  </Link>
+                </div>
+              </article>
+            );
+          })}
         </div>
       )}
     </div>

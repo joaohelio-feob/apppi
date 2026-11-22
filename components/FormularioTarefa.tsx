@@ -8,11 +8,18 @@ import Dialogo from "./ui/Dialogo";
 import { useToast } from "./ToastProvider";
 import {
   PRIORIDADES,
+  iniciaisDe,
   type Escopo,
   type Frente,
   type Membro,
   type Prioridade,
 } from "@/lib/types";
+import {
+  IconeAlerta,
+  IconeFechar,
+  IconeFrentes,
+  IconeUsuario,
+} from "./ui/Icones";
 
 export default function FormularioTarefa({
   membros,
@@ -173,17 +180,26 @@ export default function FormularioTarefa({
           void salvar();
         }}
       >
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <h2 className="font-display text-xl font-semibold">Nova tarefa</h2>
+        <div className="mb-4 flex items-center justify-between gap-3 border-b border-linha pb-3">
+          <div>
+            <h2 className="font-display text-xl font-extrabold tracking-tight">
+              Nova tarefa
+            </h2>
+            <p className="text-xs text-tinta/70">
+              Nasce no status A fazer e já entra registrada na Trilha.
+            </p>
+          </div>
           <Botao
             variante="discreto"
             onClick={aoFechar}
             disabled={salvando}
             aria-label="Fechar nova tarefa"
           >
+            <IconeFechar className="h-4 w-4" />
             Fechar
           </Botao>
         </div>
+
         <fieldset disabled={salvando} className="space-y-4">
           <Campo titulo="Título">
             <input
@@ -195,22 +211,72 @@ export default function FormularioTarefa({
               onChange={(e) => setTitulo(e.target.value)}
             />
           </Campo>
+
           <fieldset>
-            <legend className="mb-1 text-sm font-medium">Escopo</legend>
-            <div className="flex gap-1 border border-linha p-1">
-              {(["individual", "frente"] as Escopo[]).map((opcao) => (
-                <Botao
-                  key={opcao}
-                  className="flex-1"
-                  variante={escopo === opcao ? "primario" : "discreto"}
-                  aria-pressed={escopo === opcao}
-                  onClick={() => setEscopo(opcao)}
+            <legend className="mb-1.5 text-xs font-semibold text-tinta">
+              Escopo da tarefa
+            </legend>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                aria-pressed={escopo === "individual"}
+                onClick={() => setEscopo("individual")}
+                className={`flex items-start gap-2.5 rounded-xl border p-3 text-left transition-colors duration-micro ease-entrada ${
+                  escopo === "individual"
+                    ? "border-musgo bg-casca shadow-cartao"
+                    : "border-linha bg-campo/60 hover:bg-casca/50"
+                }`}
+              >
+                <span
+                  className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${
+                    escopo === "individual"
+                      ? "bg-musgo text-campo"
+                      : "bg-papel text-tinta/70"
+                  }`}
                 >
-                  {opcao === "individual" ? "Individual" : "Da frente"}
-                </Botao>
-              ))}
+                  <IconeUsuario className="h-4 w-4" />
+                </span>
+                <span>
+                  <span className="block font-display text-sm font-bold text-tinta">
+                    Individual
+                  </span>
+                  <span className="mt-0.5 block text-xs text-tinta/70">
+                    1 pessoa responsável; frente opcional como tema.
+                  </span>
+                </span>
+              </button>
+
+              <button
+                type="button"
+                aria-pressed={escopo === "frente"}
+                onClick={() => setEscopo("frente")}
+                className={`flex items-start gap-2.5 rounded-xl border p-3 text-left transition-colors duration-micro ease-entrada ${
+                  escopo === "frente"
+                    ? "border-musgo bg-casca shadow-cartao"
+                    : "border-linha bg-campo/60 hover:bg-casca/50"
+                }`}
+              >
+                <span
+                  className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${
+                    escopo === "frente"
+                      ? "bg-musgo text-campo"
+                      : "bg-papel text-tinta/70"
+                  }`}
+                >
+                  <IconeFrentes className="h-4 w-4" />
+                </span>
+                <span>
+                  <span className="block font-display text-sm font-bold text-tinta">
+                    Da frente
+                  </span>
+                  <span className="mt-0.5 block text-xs text-tinta/70">
+                    Atribui todos os integrantes da frente automaticamente.
+                  </span>
+                </span>
+              </button>
             </div>
           </fieldset>
+
           {escopo === "individual" ? (
             <Campo titulo="Responsável">
               <select
@@ -227,16 +293,7 @@ export default function FormularioTarefa({
               </select>
             </Campo>
           ) : (
-            <Campo
-              titulo="Frente"
-              ajuda={
-                frenteId
-                  ? membrosDaFrente.length
-                    ? `Responsáveis: ${membrosDaFrente.map((m) => m.nome).join(", ")}`
-                    : "Essa frente ainda não tem integrantes."
-                  : undefined
-              }
-            >
+            <Campo titulo="Frente dona da tarefa">
               <select
                 required
                 className="campo"
@@ -250,8 +307,41 @@ export default function FormularioTarefa({
                   </option>
                 ))}
               </select>
+              {frenteId && (
+                <div className="mt-2 rounded-lg border border-linha bg-campo/70 p-2.5">
+                  {membrosDaFrente.length > 0 ? (
+                    <>
+                      <p className="text-xs font-medium text-tinta/70">
+                        Será atribuída para {membrosDaFrente.length}{" "}
+                        {membrosDaFrente.length === 1
+                          ? "integrante"
+                          : "integrantes"}
+                        :
+                      </p>
+                      <div className="mt-1.5 flex flex-wrap gap-1.5">
+                        {membrosDaFrente.map((m) => (
+                          <span
+                            key={m.id}
+                            className="inline-flex items-center gap-1 rounded-full border border-linha bg-papel px-2 py-0.5 text-xs font-medium text-tinta"
+                          >
+                            <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-musgo font-mono text-xs text-campo">
+                              {iniciaisDe(m.nome).slice(0, 1)}
+                            </span>
+                            {m.nome}
+                          </span>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-xs text-tinta">
+                      Essa frente ainda não tem integrantes.
+                    </p>
+                  )}
+                </div>
+              )}
             </Campo>
           )}
+
           <div className="grid grid-cols-2 gap-3">
             <Campo titulo="Prazo">
               <input
@@ -275,9 +365,10 @@ export default function FormularioTarefa({
               </select>
             </Campo>
           </div>
-          <details className="border-t border-linha pt-3">
-            <summary className="cursor-pointer py-1 text-sm font-medium">
-              Mais opções
+
+          <details className="rounded-xl border border-linha bg-campo/50 px-3.5 py-2.5">
+            <summary className="cursor-pointer py-1 font-display text-sm font-bold text-tinta">
+              Mais opções (critérios, revisor, GitHub, anexo)
             </summary>
             <div className="mt-3 space-y-4">
               <Campo
@@ -292,7 +383,7 @@ export default function FormularioTarefa({
                 />
               </Campo>
               {escopo === "individual" && (
-                <Campo titulo="Frente (opcional)">
+                <Campo titulo="Frente / matéria (opcional)">
                   <select
                     className="campo"
                     value={frenteId}
@@ -309,7 +400,7 @@ export default function FormularioTarefa({
               )}
               <Campo titulo="Início">
                 <input
-                  className="campo"
+                  className="campo font-mono"
                   type="date"
                   value={inicio}
                   onChange={(e) => setInicio(e.target.value)}
@@ -342,7 +433,7 @@ export default function FormularioTarefa({
               </Campo>
               <Campo titulo="Issue no GitHub">
                 <input
-                  className="campo"
+                  className="campo font-mono"
                   type="number"
                   min={1}
                   value={issueNumero}
@@ -359,16 +450,19 @@ export default function FormularioTarefa({
             </div>
           </details>
         </fieldset>
+
         {erro && (
           <p
             role="alert"
-            className="mt-3 border-l-2 border-trigo pl-3 text-sm text-tinta"
+            className="mt-3 flex items-center gap-2 rounded-lg border border-trigo bg-trigo/15 px-3 py-2 text-sm font-medium text-tinta"
           >
-            {erro}
+            <IconeAlerta className="h-4 w-4 shrink-0" />
+            <span>{erro}</span>
           </p>
         )}
-        <div className="sticky bottom-0 mt-4 flex gap-2 border-t border-linha bg-campo pt-3">
-          <Botao type="submit" disabled={salvando}>
+
+        <div className="sticky bottom-0 mt-5 flex gap-2 border-t border-linha bg-papel pt-3">
+          <Botao type="submit" variante="destaque" disabled={salvando}>
             {salvando ? "Salvando…" : "Criar tarefa"}
           </Botao>
           <Botao variante="secundario" onClick={aoFechar} disabled={salvando}>

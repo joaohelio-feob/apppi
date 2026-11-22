@@ -1,13 +1,15 @@
 "use client";
 
 import { useAtualizacaoTarefas } from "@/lib/useAtualizacaoTarefas";
-
 import AvisoErro from "@/components/ui/AvisoErro";
-
+import CabecalhoPagina from "@/components/ui/CabecalhoPagina";
+import GuiaDidatico from "@/components/ui/GuiaDidatico";
+import Botao from "@/components/ui/Botao";
 import { useCallback, useEffect, useState } from "react";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
 import {
   RESULTADOS_REVISAO,
+  iniciaisDe,
   responsaveisDe,
   type EstadoEntrega,
   type ResultadoRevisao,
@@ -15,6 +17,14 @@ import {
 } from "@/lib/types";
 import { useToast } from "@/components/ToastProvider";
 import { dataCurta } from "@/lib/datas";
+import {
+  IconeCheck,
+  IconeEntregas,
+  IconeGit,
+  IconeRelogio,
+  IconeRetorno,
+  IconeRevisoes,
+} from "@/components/ui/Icones";
 
 type ItemRevisao = Tarefa & { estado: EstadoEntrega };
 
@@ -47,8 +57,6 @@ export default function Revisoes() {
           .eq("revisor_id", meu)
           .eq("status", "revisao")
           .eq("arquivada", false),
-        // !inner aqui: precisa do embed pra filtrar por membro_id, mesmo
-        // trazendo o mesmo formato (membro:membros(...)) que a query acima.
         supabase
           .from("tarefas")
           .select(
@@ -84,8 +92,6 @@ export default function Revisoes() {
       (estados ?? []).map((e) => [e.tarefa_id, e as EstadoEntrega]),
     );
 
-    // "pendente_git" ainda não é fila de revisão de verdade — o commit
-    // precisa ser confirmado antes (decisão do Bloco A).
     const juntar = (lista: Tarefa[]) =>
       lista
         .map((t) => ({ ...t, estado: estadoPorTarefa.get(t.id) }))
@@ -101,6 +107,7 @@ export default function Revisoes() {
   }, [carregar]);
 
   useAtualizacaoTarefas("revisoes", carregar);
+
   async function registrar(
     item: ItemRevisao,
     resultado: ResultadoRevisao,
@@ -126,13 +133,68 @@ export default function Revisoes() {
 
   return (
     <div>
-      <h1 className="font-display text-3xl font-extrabold tracking-tight">
-        Revisões
-      </h1>
-      <p className="mt-2 max-w-prose text-sm text-tinta/70">
-        Só aparece aqui depois que o commit (quando exigido) já foi confirmado —
-        enquanto está pendente no Git, a tarefa espera na tela de quem entregou.
-      </p>
+      <CabecalhoPagina
+        categoria="Revisão entre pares"
+        icone={<IconeRevisoes className="h-3.5 w-3.5 text-ferro" />}
+        titulo="Revisões"
+        descricao="Entregas só aparecem aqui depois que o commit (quando exigido) é confirmado por quem entregou."
+      />
+
+      <GuiaDidatico
+        titulo="Como funcionam os 3 vereditos da revisão"
+        resumo="Concluído, Observações ou Falta algo — ninguém revisa a própria tarefa."
+        className="mb-6"
+      >
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-lg border border-musgo/40 bg-musgo/10 p-3">
+            <p className="font-display text-xs font-bold text-tinta">
+              ✓ Concluído
+            </p>
+            <p className="mt-1 text-xs text-tinta/70">
+              Aprova na hora e move a tarefa para Concluída sem comentário.
+            </p>
+          </div>
+          <div className="rounded-lg border border-linha bg-casca/70 p-3">
+            <p className="font-display text-xs font-bold text-tinta">
+              Observações
+            </p>
+            <p className="mt-1 text-xs text-tinta/70">
+              Conclui a tarefa e fixa uma Nota do revisor para referência.
+            </p>
+          </div>
+          <div className="rounded-lg border border-trigo bg-trigo/15 p-3">
+            <p className="font-display text-xs font-bold text-tinta">
+              ↩ Falta algo
+            </p>
+            <p className="mt-1 text-xs text-tinta/70">
+              Devolve para Fazendo com aviso vermelho até haver reentrega.
+            </p>
+          </div>
+        </div>
+      </GuiaDidatico>
+
+      {!carregando && !erroCarga && (
+        <div className="mb-6 grid gap-3 sm:grid-cols-2">
+          <div className="cartao border-l-4 border-l-ferro p-4">
+            <p className="flex items-center gap-1.5 text-xs font-semibold text-tinta/70">
+              <IconeRevisoes className="h-3.5 w-3.5 text-ferro" />
+              Aguardando sua revisão
+            </p>
+            <p className="mt-1 font-display text-3xl font-extrabold text-tinta">
+              {paraRevisar.length}
+            </p>
+          </div>
+          <div className="cartao border-l-4 border-l-linha p-4">
+            <p className="flex items-center gap-1.5 text-xs font-semibold text-tinta/70">
+              <IconeRelogio className="h-3.5 w-3.5 text-musgo" />
+              Suas tarefas em revisão
+            </p>
+            <p className="mt-1 font-display text-3xl font-extrabold text-tinta">
+              {minhasEmRevisao.length}
+            </p>
+          </div>
+        </div>
+      )}
 
       {erroCarga && (
         <AvisoErro
@@ -141,20 +203,20 @@ export default function Revisoes() {
         />
       )}
       {carregando ? (
-        <p className="mt-10 text-sm text-tinta/70">carregando…</p>
+        <p className="mt-10 text-sm text-tinta/70">Carregando revisões…</p>
       ) : erroCarga ? null : (
-        <div className="mt-6 space-y-6">
+        <div className="space-y-8">
           <section>
-            <h2 className="mb-3 flex items-baseline gap-2 border-b border-linha pb-1 font-display text-lg font-semibold">
-              Para revisar
-              <span className="font-mono text-xs font-normal text-tinta/70">
+            <h2 className="mb-3 flex items-center gap-2 font-display text-lg font-bold text-tinta">
+              <span>Para revisar</span>
+              <span className="rounded-full border border-linha bg-casca px-2 py-0.5 font-mono text-xs text-tinta">
                 {paraRevisar.length}
               </span>
             </h2>
             {paraRevisar.length === 0 ? (
-              <p className="text-sm text-tinta/70">
+              <div className="cartao p-6 text-center text-sm text-tinta/70">
                 Nada esperando sua revisão agora.
-              </p>
+              </div>
             ) : (
               <div className="space-y-4">
                 {paraRevisar.map((t) => (
@@ -169,26 +231,30 @@ export default function Revisoes() {
           </section>
 
           <section>
-            <h2 className="mb-3 flex items-baseline gap-2 border-b border-linha pb-1 font-display text-lg font-semibold">
-              Minhas tarefas em revisão
-              <span className="font-mono text-xs font-normal text-tinta/70">
-                {minhasEmRevisao.length}
-              </span>
-            </h2>
-            <p className="mb-3 text-xs text-tinta/70">
-              Só leitura — aguardando quem foi designado revisor.
-            </p>
-            {minhasEmRevisao.length === 0 ? (
-              <p className="text-sm text-tinta/70">
-                Nenhuma tarefa sua esperando revisor agora.
+            <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+              <h2 className="flex items-center gap-2 font-display text-lg font-bold text-tinta">
+                <span>Minhas tarefas em revisão</span>
+                <span className="rounded-full border border-linha bg-casca px-2 py-0.5 font-mono text-xs text-tinta">
+                  {minhasEmRevisao.length}
+                </span>
+              </h2>
+              <p className="text-xs text-tinta/70">
+                Só leitura — aguardando quem foi designado revisor.
               </p>
+            </div>
+            {minhasEmRevisao.length === 0 ? (
+              <div className="cartao p-6 text-center text-sm text-tinta/70">
+                Nenhuma tarefa sua esperando revisor agora.
+              </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 {minhasEmRevisao.map((t) => (
-                  <div key={t.id} className="border border-linha bg-casca p-3">
-                    <p className="text-sm font-semibold">{t.titulo}</p>
+                  <div key={t.id} className="cartao p-4">
+                    <p className="font-display text-sm font-bold text-tinta">
+                      {t.titulo}
+                    </p>
                     <p className="mt-1 font-mono text-xs text-tinta/70">
-                      revisando: {t.estado.revisor_nome ?? "—"} · entregue em{" "}
+                      revisor: {t.estado.revisor_nome ?? "—"} · entregue em{" "}
                       {t.estado.entregue_em && dataCurta(t.estado.entregue_em)}
                     </p>
                   </div>
@@ -219,11 +285,12 @@ function CartaoParaRevisar({
   const [enviando, setEnviando] = useState(false);
   const nomeFrente = item.frentes?.nome;
   const nomeUnidade = item.frentes?.unidade;
+  const responsaveis = responsaveisDe(item);
 
   async function confirmar(resultado: ResultadoRevisao) {
     if (resultado !== "concluido" && !comentario.trim()) return;
-    setEnviando(true);
     if (enviando) return;
+    setEnviando(true);
     const salvo = await aoRevisar(
       item,
       resultado,
@@ -237,40 +304,53 @@ function CartaoParaRevisar({
   }
 
   return (
-    <div className="border border-linha bg-casca p-4">
+    <article className="cartao border-l-4 border-l-ferro p-5">
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <h3 className="font-display text-base font-semibold">{item.titulo}</h3>
+        <h3 className="font-display text-lg font-bold text-tinta">
+          {item.titulo}
+        </h3>
         {nomeFrente && (
-          <span className="border border-linha px-1.5 py-0.5 text-xs text-tinta/70">
+          <span className="rounded-full border border-linha bg-casca px-2.5 py-0.5 text-xs font-medium text-tinta">
             {nomeFrente}
             {nomeUnidade ? ` · ${nomeUnidade}` : ""}
           </span>
         )}
       </div>
-      <p className="mt-1 font-mono text-xs text-tinta/70">
-        responsável:{" "}
-        {responsaveisDe(item)
-          .map((m) => m.nome)
-          .join(", ") || "sem responsável"}
-      </p>
-      <p className="mt-2 font-mono text-xs text-tinta/70">
-        entregue em{" "}
-        {item.estado.entregue_em && dataCurta(item.estado.entregue_em)}
-        {" · "}arquivo:{" "}
-        <span className="text-tinta">{item.estado.arquivo_drive}</span>
-        {item.estado.commit_nome && (
-          <>
-            {" · "}commit:{" "}
-            <span className="text-tinta">{item.estado.commit_nome}</span>
-          </>
+
+      <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs text-tinta/70">
+        {responsaveis.length > 0 && (
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-linha bg-campo px-2.5 py-0.5 font-medium text-tinta">
+            <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-musgo font-mono text-xs text-campo">
+              {iniciaisDe(responsaveis[0].nome).slice(0, 1)}
+            </span>
+            {responsaveis.map((m) => m.nome).join(", ")}
+          </span>
         )}
-      </p>
+        <span className="inline-flex items-center gap-1 rounded-full bg-casca px-2.5 py-0.5 font-mono">
+          <IconeEntregas className="h-3 w-3 text-musgo" />
+          {item.estado.arquivo_drive}
+        </span>
+        {item.estado.commit_nome && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-casca px-2.5 py-0.5 font-mono">
+            <IconeGit className="h-3 w-3 text-musgo" />
+            {item.estado.commit_nome}
+          </span>
+        )}
+        {item.estado.entregue_em && (
+          <span className="font-mono">
+            entregue em {dataCurta(item.estado.entregue_em)}
+          </span>
+        )}
+      </div>
+
       {item.estado.o_que_mudou && (
-        <p className="mt-2 text-sm">{item.estado.o_que_mudou}</p>
+        <blockquote className="mt-3 rounded-xl border border-linha bg-campo/65 p-3 text-sm text-tinta">
+          {item.estado.o_que_mudou}
+        </blockquote>
       )}
 
       {pedindoComentario ? (
-        <div className="mt-3">
+        <div className="mt-4 rounded-xl border border-linha bg-campo/70 p-3.5">
           <textarea
             autoFocus
             aria-label={
@@ -282,59 +362,64 @@ function CartaoParaRevisar({
             onChange={(e) => setComentario(e.target.value)}
             placeholder={
               pedindoComentario === "falta_algo"
-                ? "O que falta pra concluir…"
-                : "Sua observação…"
+                ? "Descreva claramente o que falta pra concluir…"
+                : "Escreva sua observação de revisão…"
             }
             rows={2}
-            className="w-full border border-linha bg-campo px-3 py-2 text-sm"
+            className="campo"
           />
-          <div className="mt-2 flex gap-2">
-            <button
+          <div className="mt-2.5 flex flex-wrap items-center gap-2">
+            <Botao
+              variante="primario"
               onClick={() => confirmar(pedindoComentario)}
               disabled={enviando || !comentario.trim()}
-              className="bg-tinta px-3 py-1.5 text-xs text-campo hover:bg-musgo disabled:opacity-50"
             >
               {enviando
                 ? "Enviando…"
                 : `Confirmar ${RESULTADOS_REVISAO.find((r) => r.id === pedindoComentario)?.nome.toLowerCase()}`}
-            </button>
-            <button
+            </Botao>
+            <Botao
+              variante="discreto"
               disabled={enviando}
               onClick={() => {
                 setPedindoComentario(null);
                 setComentario("");
               }}
-              className="font-mono text-xs text-tinta/70 hover:text-tinta"
             >
-              cancelar
-            </button>
+              Cancelar
+            </Botao>
           </div>
         </div>
       ) : (
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="mt-4 flex flex-wrap gap-2 border-t border-linha/80 pt-3.5">
           <button
+            type="button"
             onClick={() => confirmar("concluido")}
             disabled={enviando}
-            className="bg-musgo px-3 py-1.5 text-xs text-campo hover:opacity-90 disabled:opacity-50"
+            className="botao border-musgo bg-musgo text-campo hover:brightness-95"
           >
+            <IconeCheck className="h-4 w-4" />
             Concluído
           </button>
           <button
+            type="button"
             disabled={enviando}
             onClick={() => setPedindoComentario("observacao")}
-            className="border border-linha px-3 py-1.5 text-xs text-tinta/70 hover:bg-campo"
+            className="botao botao-secundario"
           >
             Observações
           </button>
           <button
+            type="button"
             disabled={enviando}
             onClick={() => setPedindoComentario("falta_algo")}
-            className="border border-trigo px-3 py-1.5 text-xs text-tinta hover:bg-trigo/10"
+            className="botao border-trigo bg-trigo/15 text-tinta hover:bg-trigo/30"
           >
+            <IconeRetorno className="h-4 w-4" />
             Falta algo
           </button>
         </div>
       )}
-    </div>
+    </article>
   );
 }

@@ -1,11 +1,15 @@
 "use client";
 
+import { IconeImpressora } from "./ui/Icones";
+
 export default function BotaoExportarPDF() {
   return (
     <button
+      type="button"
       onClick={() => window.print()}
-      className="border border-tinta px-4 py-2 text-sm font-semibold hover:bg-tinta hover:text-campo"
+      className="botao botao-secundario"
     >
+      <IconeImpressora className="h-4 w-4 text-musgo" />
       Exportar PDF
     </button>
   );

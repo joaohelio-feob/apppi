@@ -1,17 +1,12 @@
 "use client";
 
 import Dialogo from "./ui/Dialogo";
+import Botao from "./ui/Botao";
+import { IconeAlerta } from "./ui/Icones";
 
 /**
  * Confirmação de ação, no lugar de `window.confirm()`.
- *
- * O `confirm` nativo não aceita os tokens do tema, não é anunciado como
- * diálogo e — o que mais importa aqui — só cabe uma frase, então acaba
- * dizendo "tem certeza?" em vez de dizer o que vai acontecer.
- *
- * Arquivar é reversível, então isto é uma confirmação leve, não um alarme:
- * diz o que acontece, para onde a coisa vai e que dá para voltar. Nada de
- * vermelho, nada de "atenção".
+ * Diz o que acontece, para onde vai e se dá para voltar.
  */
 export default function ConfirmarAcao({
   titulo,
@@ -32,29 +27,34 @@ export default function ConfirmarAcao({
   return (
     <Dialogo titulo={titulo} aoFechar={aoCancelar} ocupado={executando}>
       <div>
-        <h2
-          id="confirmar-titulo"
-          className="font-display text-lg font-semibold"
-        >
-          {titulo}
-        </h2>
-        <div className="mt-2 text-sm text-tinta/70">{descricao}</div>
+        <div className="flex items-start gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-trigo/20 text-tinta">
+            <IconeAlerta className="h-4 w-4" />
+          </span>
+          <div>
+            <h2
+              id="confirmar-titulo"
+              className="font-display text-lg font-bold text-tinta"
+            >
+              {titulo}
+            </h2>
+            <div className="mt-2 text-sm leading-relaxed text-tinta/70">
+              {descricao}
+            </div>
+          </div>
+        </div>
 
-        <div className="mt-5 flex flex-wrap items-center gap-2">
-          <button
-            onClick={aoConfirmar}
-            disabled={executando}
-            className="bg-tinta px-4 py-2 text-sm font-semibold text-campo transition-opacity duration-micro ease-entrada hover:bg-musgo disabled:opacity-50"
-          >
-            {executando ? "…" : rotuloConfirmar}
-          </button>
-          <button
+        <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-linha pt-4">
+          <Botao onClick={aoConfirmar} disabled={executando}>
+            {executando ? "Processando…" : rotuloConfirmar}
+          </Botao>
+          <Botao
+            variante="secundario"
             onClick={aoCancelar}
             disabled={executando}
-            className="border border-linha px-4 py-2 text-sm transition-opacity duration-micro ease-entrada hover:bg-casca disabled:opacity-50"
           >
             Cancelar
-          </button>
+          </Botao>
         </div>
       </div>
     </Dialogo>

@@ -13,6 +13,7 @@ import { criarClienteNavegador } from "@/lib/supabase-browser";
 import type { Frente, Membro } from "@/lib/types";
 import Dialogo from "./ui/Dialogo";
 import AvisoErro from "./ui/AvisoErro";
+import Botao from "./ui/Botao";
 import FormularioTarefa from "./FormularioTarefa";
 import { useToast } from "./ToastProvider";
 
@@ -113,14 +114,17 @@ export default function NovaTarefaProvider({
               aoTentar={() => setTentativa((n) => n + 1)}
             />
           ) : (
-            <p role="status">Carregando responsáveis e frentes…</p>
+            <p role="status" className="text-sm text-tinta/70">
+              Carregando responsáveis e frentes…
+            </p>
           )}
-          <button
-            className="botao botao-secundario mt-3"
+          <Botao
+            variante="secundario"
+            className="mt-4"
             onClick={() => setAberta(false)}
           >
             Fechar
-          </button>
+          </Botao>
         </Dialogo>
       )}
       {aberta && !emLogin && !carregandoListas && !erroListas && (

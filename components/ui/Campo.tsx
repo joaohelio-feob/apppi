@@ -11,11 +11,13 @@ export default function Campo({
 }) {
   return (
     <div className="min-w-0">
-      <label className="block text-sm font-medium">
+      <label className="block text-xs font-semibold text-tinta">
         {titulo}
-        <span className="mt-1 block font-normal">{children}</span>
+        <span className="mt-1.5 block font-normal">{children}</span>
       </label>
-      {ajuda && <p className="mt-1 text-xs text-tinta/70">{ajuda}</p>}
+      {ajuda && (
+        <p className="mt-1.5 text-xs leading-relaxed text-tinta/70">{ajuda}</p>
+      )}
     </div>
   );
 }
