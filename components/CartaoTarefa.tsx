@@ -4,9 +4,13 @@ import { useState } from "react";
 import { dataLocalISO, diasEntre, estaAtrasada } from "@/lib/datas";
 import { progressoCriterios } from "@/lib/criterios";
 import {
+  CLASSES_COR_FRENTE,
+  CLASSES_COR_FRENTE_PREENCHIDA,
   CLASSES_PRIORIDADE,
+  CLASSES_PRIORIDADE_SELO,
   PRIORIDADES,
   STATUS,
+  iniciaisDe,
   responsaveisDe,
   type Frente,
   type Membro,
@@ -15,6 +19,12 @@ import {
 } from "@/lib/types";
 import { useDetalheTarefa } from "./DetalheTarefaProvider";
 import Selo from "./Selo";
+import {
+  IconeAlerta,
+  IconeArquivo,
+  IconeGit,
+  IconeRelogio,
+} from "./ui/Icones";
 
 function textoDoPrazo(prazo: string, atrasada: boolean, hoje: string) {
   const dias = diasEntre(prazo, hoje);
@@ -52,12 +62,11 @@ export default function CartaoTarefa({
   const [arrastando, setArrastando] = useState(false);
   const abrirDetalhe = useDetalheTarefa();
 
-  // Um `hoje` só para o cartão inteiro: se "está atrasada?" e "faltam N dias"
-  // chamassem dataLocalISO() cada um por sua conta, um cartão renderizado
-  // exatamente na virada do dia poderia dizer "faltam 0d" sem o "!" de atraso.
+  // Um `hoje` só para o cartão inteiro: evita divergência na virada do dia.
   const hoje = dataLocalISO();
   const atrasada = estaAtrasada(tarefa.status, tarefa.prazo, hoje);
   const prio = CLASSES_PRIORIDADE[tarefa.prioridade];
+  const prioSelo = CLASSES_PRIORIDADE_SELO[tarefa.prioridade];
   const nomePrio =
     PRIORIDADES.find((p) => p.id === tarefa.prioridade)?.nome ??
     tarefa.prioridade;
@@ -67,8 +76,6 @@ export default function CartaoTarefa({
   const textoResponsaveis =
     nomes.length > 0 ? nomes.join(", ") : "sem responsável";
 
-  // Tudo que a cor comunica, repetido em palavras — o leitor de tela (e quem
-  // não distingue as cores) recebe status, prioridade e atraso pelo texto.
   const rotuloBotao =
     `${tarefa.titulo} · ${STATUS.find((s) => s.id === tarefa.status)?.nome ?? tarefa.status}` +
     ` · prioridade ${nomePrio}${atrasada ? " · atrasada" : ""}` +
@@ -83,75 +90,122 @@ export default function CartaoTarefa({
         setArrastando(true);
       }}
       onDragEnd={() => setArrastando(false)}
-      className={`border border-linha bg-casca transition-opacity duration-micro ease-entrada ${prio.borda} ${
-        atrasada ? "ring-1 ring-trigo" : ""
+      className={`overflow-hidden rounded-xl border border-linha bg-papel shadow-cartao transition-[transform,box-shadow,opacity] duration-micro ease-entrada hover:-translate-y-0.5 hover:shadow-cartao-hover ${prio.borda} ${
+        atrasada ? "ring-2 ring-trigo" : ""
       } ${arrastando ? "opacity-40" : ""} ${arrastavel ? "cursor-grab active:cursor-grabbing" : ""}`}
     >
       {/* `relative` aqui delimita até onde o overlay do botão-título alcança:
           o corpo do cartão, nunca a barra de ações lá embaixo. */}
-      <div className="relative p-2.5">
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <h3 className="min-w-0 font-display text-sm font-semibold leading-snug">
-            <button
-              type="button"
-              onClick={() =>
-                abrirDetalhe({
-                  tarefa,
-                  aoAtualizar,
-                  membrosIniciais: membros,
-                  frentesIniciais: frentes,
-                })
-              }
-              aria-label={rotuloBotao}
-              // O botão é só o título, mas o `after` estica a área clicável
-              // por cima do cartão inteiro — é o que faz clicar em qualquer
-              // canto abrir o detalhe sem aninhar <a> dentro de <button>
-              // (HTML inválido, e o teclado se perde). Os links de verdade
-              // sobem pra cima do overlay com `relative z-10`.
-              className="block text-left after:absolute after:inset-0 after:content-[''] focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-musgo"
+      <div className="relative p-3.5">
+        <div className="flex flex-wrap items-center justify-between gap-1.5">
+          <span
+            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-xs font-semibold ${prioSelo}`}
+            title={`Prioridade ${nomePrio.toLowerCase()}`}
+          >
+            <span aria-hidden="true">{prio.glifo}</span>
+            <span>{nomePrio}</span>
+          </span>
+
+          {tarefa.prazo ? (
+            <span
+              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-xs ${
+                atrasada
+                  ? "bg-trigo font-semibold text-tinta"
+                  : "bg-casca text-tinta/70"
+              }`}
             >
-              <span className="break-words">
-                {atrasada && (
-                  <span className="font-mono font-bold text-tinta">! </span>
-                )}
-                <span
-                  className="font-mono"
-                  title={`Prioridade ${nomePrio.toLowerCase()}`}
-                >
-                  {prio.glifo}
-                </span>{" "}
-                {tarefa.titulo}
-              </span>
-            </button>
-          </h3>
+              {atrasada ? (
+                <IconeAlerta className="h-3 w-3" />
+              ) : (
+                <IconeRelogio className="h-3 w-3" />
+              )}
+              {textoDoPrazo(tarefa.prazo, atrasada, hoje)}
+            </span>
+          ) : (
+            <span className="font-mono text-xs text-tinta/70">Sem prazo</span>
+          )}
         </div>
-        <p
-          className={`mt-2 text-xs ${atrasada ? "font-semibold text-tinta" : "text-tinta/70"}`}
-        >
-          {tarefa.prazo
-            ? textoDoPrazo(tarefa.prazo, atrasada, hoje)
-            : "Sem prazo"}
-        </p>
-        <p className="mt-1 break-words text-xs text-tinta/70">
-          {nomes.slice(0, 2).join(", ") || "Sem responsável"}
-          {nomes.length > 2 ? ` +${nomes.length - 2}` : ""}
-        </p>
-        {mostrarStatus && !aoMudarStatus && (
-          <div className="mt-2">
-            <Selo status={tarefa.status} />
-          </div>
-        )}
-        {tarefa.escopo === "frente" && tarefa.frentes && (
-          <p className="mt-1 break-words text-xs text-tinta/70">
-            Frente: {tarefa.frentes.nome}
-          </p>
-        )}
+
+        <h3 className="mt-2.5 min-w-0 font-display text-sm font-bold leading-snug text-tinta">
+          <button
+            type="button"
+            onClick={() =>
+              abrirDetalhe({
+                tarefa,
+                aoAtualizar,
+                membrosIniciais: membros,
+                frentesIniciais: frentes,
+              })
+            }
+            aria-label={rotuloBotao}
+            className="block w-full text-left after:absolute after:inset-0 after:content-[''] focus-visible:outline-none focus-visible:after:rounded-xl focus-visible:after:ring-2 focus-visible:after:ring-musgo"
+          >
+            <span className="break-words">
+              {atrasada && (
+                <span className="mr-1 inline-block rounded bg-trigo px-1 font-mono text-xs font-bold text-tinta">
+                  !
+                </span>
+              )}
+              {tarefa.titulo}
+            </span>
+          </button>
+        </h3>
+
+        <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+          {mostrarStatus && !aoMudarStatus && <Selo status={tarefa.status} />}
+
+          {tarefa.frentes && (
+            <span
+              className={`inline-flex max-w-[12rem] items-center gap-1.5 rounded-full border bg-campo px-2 py-0.5 text-xs font-medium ${
+                CLASSES_COR_FRENTE[tarefa.frentes.cor ?? "ferro"]
+              }`}
+            >
+              <i
+                aria-hidden="true"
+                className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${
+                  CLASSES_COR_FRENTE_PREENCHIDA[tarefa.frentes.cor ?? "ferro"]
+                }`}
+              />
+              <span className="truncate">{tarefa.frentes.nome}</span>
+            </span>
+          )}
+
+          {tarefa.issue_numero && (
+            <span className="inline-flex items-center gap-1 rounded-full border border-linha bg-casca/70 px-2 py-0.5 font-mono text-xs text-tinta/70">
+              <IconeGit className="h-3 w-3" />#{tarefa.issue_numero}
+            </span>
+          )}
+        </div>
+
+        <div className="mt-3 flex items-center gap-2">
+          {responsaveis.length > 0 ? (
+            <>
+              <span className="flex -space-x-1.5">
+                {responsaveis.slice(0, 3).map((m) => (
+                  <span
+                    key={m.id}
+                    aria-hidden="true"
+                    className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-papel bg-musgo font-mono text-xs font-semibold text-campo"
+                  >
+                    {iniciaisDe(m.nome)}
+                  </span>
+                ))}
+              </span>
+              <span className="min-w-0 truncate text-xs text-tinta/70">
+                {nomes.slice(0, 2).join(", ")}
+                {nomes.length > 2 ? ` +${nomes.length - 2}` : ""}
+              </span>
+            </>
+          ) : (
+            <span className="text-xs text-tinta/70">Sem responsável</span>
+          )}
+        </div>
 
         {/* Progresso zero não ganha trilho: barra vazia em largura total não
             comunica nada. Fica só o contador, que ocupa a linha nos dois
             estados — então nada salta quando o primeiro item é marcado. */}
         {progresso && progresso.feitos === 0 && (
-          <div className="mt-2">
+          <div className="mt-2.5 border-t border-linha/70 pt-2">
             <span className="font-mono text-xs text-tinta/70">
               {progresso.feitos}/{progresso.total} critérios
             </span>
@@ -159,27 +213,23 @@ export default function CartaoTarefa({
         )}
 
         {progresso && progresso.feitos > 0 && (
-          <div className="mt-2 flex items-center gap-2">
+          <div className="mt-2.5 flex items-center gap-2 border-t border-linha/70 pt-2">
             <span
-              className="h-1 flex-1 bg-linha"
+              className="h-1.5 flex-1 overflow-hidden rounded-full bg-linha"
               role="progressbar"
               aria-valuemin={0}
               aria-valuemax={progresso.total}
               aria-valuenow={progresso.feitos}
               aria-label={`${progresso.feitos} de ${progresso.total} critérios de aceite concluídos`}
             >
-              {/* scaleX em vez de width: animar largura força reflow a cada
-                  quadro. transform-origin na esquerda faz a barra crescer da
-                  esquerda, igual à versão anterior — a diferença é só que o
-                  compositor cuida disso, não o layout. */}
               <span
-                className="block h-full w-full origin-left bg-musgo transition-transform duration-micro ease-entrada"
+                className="block h-full w-full origin-left rounded-full bg-musgo transition-transform duration-micro ease-entrada"
                 style={{
                   transform: `scaleX(${progresso.feitos / progresso.total})`,
                 }}
               />
             </span>
-            <span className="shrink-0 font-mono text-xs text-tinta/70">
+            <span className="shrink-0 font-mono text-xs font-semibold text-musgo">
               ✓ {progresso.feitos}/{progresso.total}
             </span>
           </div>
@@ -187,7 +237,7 @@ export default function CartaoTarefa({
       </div>
 
       {(aoMudarStatus || aoArquivar) && (
-        <div className="flex flex-wrap items-center gap-1 border-t border-linha px-3 py-2">
+        <div className="flex flex-wrap items-center gap-1.5 border-t border-linha/80 bg-casca/45 px-3 py-2">
           {aoMudarStatus && (
             <select
               aria-label={`Status de ${tarefa.titulo}`}
@@ -195,7 +245,7 @@ export default function CartaoTarefa({
               onChange={(e) =>
                 aoMudarStatus(tarefa.id, e.target.value as Status)
               }
-              className="min-h-8 min-w-0 border border-transparent bg-transparent py-1 text-xs hover:border-linha"
+              className="min-h-8 min-w-0 rounded-md border border-linha/80 bg-papel px-2 py-1 text-xs font-medium text-tinta hover:border-musgo"
             >
               {STATUS.map((s) => (
                 <option key={s.id} value={s.id}>
@@ -206,10 +256,12 @@ export default function CartaoTarefa({
           )}
           {aoArquivar && (
             <button
+              type="button"
               onClick={() => aoArquivar(tarefa.id)}
-              className="ml-auto px-1.5 py-0.5 text-xs text-tinta/70 transition-colors duration-micro ease-entrada hover:bg-trigo hover:text-tinta"
+              className="ml-auto inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-tinta/70 transition-colors duration-micro ease-entrada hover:bg-trigo hover:text-tinta"
             >
-              arquivar
+              <IconeArquivo className="h-3.5 w-3.5" />
+              Arquivar
             </button>
           )}
         </div>

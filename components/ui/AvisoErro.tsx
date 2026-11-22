@@ -1,4 +1,5 @@
 import Botao from "./Botao";
+import { IconeAlerta } from "./Icones";
 
 export default function AvisoErro({
   mensagem,
@@ -10,9 +11,12 @@ export default function AvisoErro({
   return (
     <div
       role="alert"
-      className="my-4 flex flex-wrap items-center gap-3 border-l-2 border-trigo bg-casca/40 px-3 py-2 text-sm"
+      className="my-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-trigo bg-trigo/15 px-4 py-3 text-sm text-tinta shadow-cartao"
     >
-      <p>{mensagem}</p>
+      <p className="flex items-center gap-2 font-medium">
+        <IconeAlerta className="h-4 w-4 text-tinta" />
+        <span>{mensagem}</span>
+      </p>
       {aoTentar && (
         <Botao variante="secundario" onClick={aoTentar}>
           Tentar novamente

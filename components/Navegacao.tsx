@@ -1,46 +1,122 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
-
 import { useToast } from "./ToastProvider";
+import { useNovaTarefa } from "./NovaTarefaProvider";
+import GuiaPIModal from "./GuiaPIModal";
+import {
+  IconeAjuda,
+  IconeAtribuicoes,
+  IconeCaderno,
+  IconeCalendario,
+  IconeChevron,
+  IconeCodigo,
+  IconeEntregas,
+  IconeEquipe,
+  IconeFrentes,
+  IconeMais,
+  IconeQuadro,
+  IconeReunioes,
+  IconeRevisoes,
+  IconeSair,
+  IconeSemana,
+  IconeSprint,
+  IconeTrilha,
+} from "./ui/Icones";
 
-type Destino = { href: string; rotulo: string };
+type DestinoPrimario = {
+  href: string;
+  rotulo: string;
+  icone: ReactNode;
+};
+
+type DestinoSecundario = DestinoPrimario & {
+  subtitulo: string;
+};
 
 /**
- * Hierarquia por frequência de uso, não por ordem de criação.
- *
- * Antes eram 12 destinos irmãos numa lista só, que quebrava em duas linhas
- * (medido: 101px de altura a 1440px, com o logo quebrando junto). Somar mais
- * um destino a cada tela nova é como se chega a 12.
- *
+ * Hierarquia por frequência de uso:
  * PRIMÁRIOS são o ciclo diário de uma tarefa: ver o que é meu, mover, checar
- * prazo, entregar, revisar. Cinco cabem numa linha com folga.
+ * prazo, entregar, revisar.
  */
-const PRIMARIOS: Destino[] = [
-  { href: "/", rotulo: "Semana" },
-  { href: "/tarefas", rotulo: "Quadro" },
-  { href: "/calendario", rotulo: "Calendário" },
-  { href: "/entregas", rotulo: "Entregas" },
-  { href: "/revisoes", rotulo: "Revisões" },
+const PRIMARIOS: DestinoPrimario[] = [
+  { href: "/", rotulo: "Semana", icone: <IconeSemana className="h-4 w-4" /> },
+  {
+    href: "/tarefas",
+    rotulo: "Quadro",
+    icone: <IconeQuadro className="h-4 w-4" />,
+  },
+  {
+    href: "/calendario",
+    rotulo: "Calendário",
+    icone: <IconeCalendario className="h-4 w-4" />,
+  },
+  {
+    href: "/entregas",
+    rotulo: "Entregas",
+    icone: <IconeEntregas className="h-4 w-4" />,
+  },
+  {
+    href: "/revisoes",
+    rotulo: "Revisões",
+    icone: <IconeRevisoes className="h-4 w-4" />,
+  },
 ];
 
 /** SECUNDÁRIOS são consulta, configuração e relatório: semanal, não diário. */
-const SECUNDARIOS: Destino[] = [
-  { href: "/atribuicoes", rotulo: "Atribuições" },
-  { href: "/equipe", rotulo: "Equipe" },
-  { href: "/frentes", rotulo: "Frentes" },
-  { href: "/codigo", rotulo: "Código" },
-  { href: "/relatorio", rotulo: "Trilha" },
-  { href: "/reunioes", rotulo: "Reuniões" },
-  { href: "/sprint", rotulo: "Sprint Report" },
+const SECUNDARIOS: DestinoSecundario[] = [
+  {
+    href: "/atribuicoes",
+    rotulo: "Atribuições",
+    subtitulo: "Tabela rápida para editar vários campos",
+    icone: <IconeAtribuicoes className="h-4 w-4" />,
+  },
+  {
+    href: "/equipe",
+    rotulo: "Equipe",
+    subtitulo: "Papéis, frentes e painéis individuais",
+    icone: <IconeEquipe className="h-4 w-4" />,
+  },
+  {
+    href: "/frentes",
+    rotulo: "Frentes",
+    subtitulo: "Sub-times e matérias do PI",
+    icone: <IconeFrentes className="h-4 w-4" />,
+  },
+  {
+    href: "/codigo",
+    rotulo: "Código",
+    subtitulo: "Espelho do GitHub (commits, PRs e CI)",
+    icone: <IconeCodigo className="h-4 w-4" />,
+  },
+  {
+    href: "/relatorio",
+    rotulo: "Trilha",
+    subtitulo: "Histórico oficial pro professor",
+    icone: <IconeTrilha className="h-4 w-4" />,
+  },
+  {
+    href: "/reunioes",
+    rotulo: "Reuniões",
+    subtitulo: "Atas, presentes e decisões",
+    icone: <IconeReunioes className="h-4 w-4" />,
+  },
+  {
+    href: "/sprint",
+    rotulo: "Sprint Report",
+    subtitulo: "Entregas e métricas por período",
+    icone: <IconeSprint className="h-4 w-4" />,
+  },
 ];
 
 export default function Navegacao() {
   const { avisar } = useToast();
+  const { abrir: abrirNovaTarefa } = useNovaTarefa();
   const [saindo, setSaindo] = useState(false);
+  const [guiaAberto, setGuiaAberto] = useState(false);
   const caminho = usePathname();
   const router = useRouter();
   const [menuMovel, setMenuMovel] = useState(false);
@@ -99,20 +175,22 @@ export default function Navegacao() {
 
   /**
    * Quando a rota ativa está no grupo secundário, "Mais" assume o rótulo dela
-   * e fica marcado. Sem isto o usuário perde a indicação de onde está — é a
-   * forma clássica desse padrão falhar.
+   * e fica marcado.
    */
   const secundarioAtivo =
     SECUNDARIOS.find(
       (d) => d.href === caminho || caminho.startsWith(`${d.href}/`),
     ) ?? null;
 
-  /** Sublinhado espesso, não cor: o estado ativo não pode depender de cor. */
+  const ehRotaAtiva = (href: string) =>
+    caminho === href || (href !== "/" && caminho.startsWith(`${href}/`));
+
+  /** Sublinhado espesso, não cor: o estado ativo não pode depender só de cor. */
   const classeDestino = (ativo: boolean) =>
-    `whitespace-nowrap border-b-2 min-h-10 px-1 py-2 text-xs sm:text-sm transition-colors duration-micro ease-entrada ${
+    `inline-flex items-center gap-1.5 whitespace-nowrap rounded-t-lg border-b-2 min-h-10 px-2.5 py-2 text-xs sm:text-sm transition-colors duration-micro ease-entrada ${
       ativo
-        ? "border-tinta font-semibold text-tinta"
-        : "border-transparent text-tinta/70 hover:border-linha hover:text-tinta"
+        ? "border-musgo bg-casca/80 font-semibold text-tinta"
+        : "border-transparent text-tinta/70 hover:border-linha hover:bg-casca/40 hover:text-tinta"
     }`;
 
   function teclasDoMenu(e: React.KeyboardEvent<HTMLDivElement>) {
@@ -132,162 +210,235 @@ export default function Navegacao() {
   }
 
   return (
-    <header className="border-b border-linha bg-campo print:hidden">
-      <div className="mx-auto flex max-w-6xl items-center gap-x-4 px-4 py-3 sm:px-6">
-        {/* whitespace-nowrap: o logo quebrava em duas linhas e empurrava a nav. */}
-        <Link
-          href="/"
-          className="whitespace-nowrap font-display text-lg font-extrabold tracking-tight"
-        >
-          Caderno de Campo
-        </Link>
-
-        <nav
-          aria-label="Seções do painel"
-          className="hidden items-center gap-x-3 lg:flex"
-        >
-          {PRIMARIOS.map((d) => (
-            <Link
-              key={d.href}
-              href={d.href}
-              aria-current={
-                caminho === d.href ||
-                (d.href !== "/" && caminho.startsWith(`${d.href}/`))
-                  ? "page"
-                  : undefined
-              }
-              className={classeDestino(caminho === d.href)}
-            >
-              {d.rotulo}
-            </Link>
-          ))}
-
-          <div ref={areaMais} className="relative" onKeyDown={teclasDoMenu}>
-            <button
-              ref={botaoMais}
-              onClick={() => setMais((a) => !a)}
-              aria-expanded={mais}
-              aria-haspopup="menu"
-              className={classeDestino(!!secundarioAtivo)}
-            >
-              {secundarioAtivo ? `Mais · ${secundarioAtivo.rotulo}` : "Mais"}
-              <span aria-hidden="true" className="ml-1 font-mono text-xs">
-                ▾
-              </span>
-            </button>
-
-            {mais && (
-              <div
-                role="menu"
-                aria-label="Mais seções"
-                className="absolute right-0 top-full z-50 mt-1 min-w-[12rem] border border-linha bg-campo py-1 shadow-sm"
-              >
-                {SECUNDARIOS.map((d) => (
-                  <Link
-                    key={d.href}
-                    href={d.href}
-                    role="menuitem"
-                    aria-current={
-                      caminho === d.href ||
-                      (d.href !== "/" && caminho.startsWith(`${d.href}/`))
-                        ? "page"
-                        : undefined
-                    }
-                    className={`block px-3 py-1.5 text-sm transition-colors duration-micro ease-entrada ${
-                      caminho === d.href
-                        ? "bg-casca font-semibold text-tinta"
-                        : "text-tinta/70 hover:bg-casca hover:text-tinta"
-                    }`}
-                  >
-                    {d.rotulo}
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
-        </nav>
-
-        {/* "sair" é ação, não destino: separado por um divisor e com a mesma
-            forma dos outros controles do app — não mais sublinhado solto. */}
-        <div className="ml-auto hidden items-center gap-x-4 lg:flex">
-          <span aria-hidden="true" className="h-5 w-px bg-linha" />
-          <button
-            onClick={sair}
-            disabled={saindo}
-            className="whitespace-nowrap border border-linha px-3 py-1 text-xs text-tinta/70 transition-colors duration-micro ease-entrada hover:bg-casca hover:text-tinta"
+    <>
+      <header className="border-b border-linha bg-papel/95 shadow-cartao print:hidden">
+        <div className="mx-auto flex max-w-6xl items-center gap-x-3 px-4 py-2.5 sm:px-6">
+          <Link
+            href="/"
+            className="flex items-center gap-2.5 whitespace-nowrap rounded-lg py-1 pr-2 font-display text-base font-extrabold tracking-tight text-tinta transition-colors duration-micro ease-entrada hover:text-musgo"
           >
-            sair
-          </button>
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-musgo text-campo shadow-cartao">
+              <IconeCaderno className="h-4 w-4" />
+            </span>
+            <span>Caderno de Campo</span>
+            <span className="rounded-full bg-broto/25 px-2 py-0.5 font-mono text-xs font-semibold text-tinta">
+              PI
+            </span>
+          </Link>
+
+          <nav
+            aria-label="Seções do painel"
+            className="hidden items-center gap-x-1 lg:flex"
+          >
+            {PRIMARIOS.map((d) => {
+              const ativo = ehRotaAtiva(d.href);
+              return (
+                <Link
+                  key={d.href}
+                  href={d.href}
+                  aria-current={ativo ? "page" : undefined}
+                  className={classeDestino(ativo)}
+                >
+                  <span className={ativo ? "text-musgo" : "text-tinta/70"}>
+                    {d.icone}
+                  </span>
+                  {d.rotulo}
+                </Link>
+              );
+            })}
+
+            <div ref={areaMais} className="relative" onKeyDown={teclasDoMenu}>
+              <button
+                ref={botaoMais}
+                onClick={() => setMais((a) => !a)}
+                aria-expanded={mais}
+                aria-haspopup="menu"
+                className={classeDestino(!!secundarioAtivo)}
+              >
+                {secundarioAtivo
+                  ? `Mais · ${secundarioAtivo.rotulo}`
+                  : "Mais"}
+                <IconeChevron
+                  className={`h-3.5 w-3.5 transition-transform duration-micro ease-entrada ${
+                    mais ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
+
+              {mais && (
+                <div
+                  role="menu"
+                  aria-label="Mais seções"
+                  className="absolute left-0 top-full z-50 mt-2 w-72 rounded-xl border border-linha bg-papel p-2 shadow-destaque"
+                >
+                  {SECUNDARIOS.map((d) => {
+                    const ativo = ehRotaAtiva(d.href);
+                    return (
+                      <Link
+                        key={d.href}
+                        href={d.href}
+                        role="menuitem"
+                        aria-current={ativo ? "page" : undefined}
+                        className={`flex items-start gap-2.5 rounded-lg px-2.5 py-2 transition-colors duration-micro ease-entrada ${
+                          ativo
+                            ? "bg-casca font-semibold text-tinta"
+                            : "text-tinta hover:bg-casca/60"
+                        }`}
+                      >
+                        <span
+                          className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md border ${
+                            ativo
+                              ? "border-musgo bg-papel text-musgo"
+                              : "border-linha bg-campo text-tinta/70"
+                          }`}
+                        >
+                          {d.icone}
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block text-sm font-semibold leading-tight text-tinta">
+                            {d.rotulo}
+                          </span>
+                          <span className="mt-0.5 block text-xs font-normal text-tinta/70">
+                            {d.subtitulo}
+                          </span>
+                        </span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </nav>
+
+          <div className="ml-auto hidden items-center gap-x-2 lg:flex">
+            <button
+              type="button"
+              onClick={abrirNovaTarefa}
+              className="botao botao-destaque min-h-9 px-3 py-1.5 text-xs"
+            >
+              <IconeMais className="h-3.5 w-3.5" />
+              Nova
+            </button>
+            <button
+              type="button"
+              onClick={() => setGuiaAberto(true)}
+              className="botao botao-secundario min-h-9 px-3 py-1.5 text-xs"
+            >
+              <IconeAjuda className="h-3.5 w-3.5 text-musgo" />
+              Guia
+            </button>
+            <span aria-hidden="true" className="mx-1 h-5 w-px bg-linha" />
+            <button
+              onClick={sair}
+              disabled={saindo}
+              className="inline-flex min-h-9 items-center gap-1.5 whitespace-nowrap rounded-lg border border-linha bg-campo px-3 py-1.5 text-xs font-medium text-tinta/70 transition-colors duration-micro ease-entrada hover:bg-casca hover:text-tinta"
+            >
+              <IconeSair className="h-3.5 w-3.5" />
+              Sair
+            </button>
+          </div>
+
+          <div className="ml-auto flex items-center gap-2 lg:hidden">
+            <button
+              type="button"
+              onClick={abrirNovaTarefa}
+              aria-label="Criar nova tarefa"
+              className="botao botao-destaque min-h-9 px-2.5 py-1.5 text-xs"
+            >
+              <IconeMais className="h-3.5 w-3.5" />
+              Nova
+            </button>
+            <button
+              type="button"
+              onClick={() => setGuiaAberto(true)}
+              aria-label="Abrir guia do PI"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-linha bg-campo text-tinta hover:bg-casca"
+            >
+              <IconeAjuda className="h-4 w-4 text-musgo" />
+            </button>
+            <button
+              ref={botaoMovel}
+              onClick={() => setMenuMovel((a) => !a)}
+              aria-expanded={menuMovel}
+              aria-label={menuMovel ? "Fechar mais seções" : "Abrir mais seções"}
+              className="flex h-10 w-10 flex-col items-center justify-center gap-1 rounded-lg border border-linha bg-campo"
+            >
+              <span
+                className={`h-px w-5 bg-tinta transition-transform duration-micro ease-entrada ${menuMovel ? "translate-y-[3px] rotate-45" : ""}`}
+              />
+              <span
+                className={`h-px w-5 bg-tinta transition-opacity duration-micro ease-entrada ${menuMovel ? "opacity-0" : ""}`}
+              />
+              <span
+                className={`h-px w-5 bg-tinta transition-transform duration-micro ease-entrada ${menuMovel ? "-translate-y-[3px] -rotate-45" : ""}`}
+              />
+            </button>
+          </div>
         </div>
 
-        <button
-          ref={botaoMovel}
-          onClick={() => setMenuMovel((a) => !a)}
-          aria-expanded={menuMovel}
-          aria-label={menuMovel ? "Fechar mais seções" : "Abrir mais seções"}
-          className="ml-auto flex h-10 w-10 flex-col items-center justify-center gap-1 border border-linha lg:hidden"
-        >
-          <span
-            className={`h-px w-5 bg-tinta transition-transform duration-micro ease-entrada ${menuMovel ? "translate-y-[3px] rotate-45" : ""}`}
-          />
-          <span
-            className={`h-px w-5 bg-tinta transition-opacity duration-micro ease-entrada ${menuMovel ? "opacity-0" : ""}`}
-          />
-          <span
-            className={`h-px w-5 bg-tinta transition-transform duration-micro ease-entrada ${menuMovel ? "-translate-y-[3px] -rotate-45" : ""}`}
-          />
-        </button>
-      </div>
-
-      <nav
-        aria-label="Navegação diária"
-        className="flex gap-2 overflow-x-auto border-t border-linha px-4 lg:hidden"
-      >
-        {PRIMARIOS.map((d) => (
-          <Link
-            key={d.href}
-            href={d.href}
-            aria-current={
-              caminho === d.href ||
-              (d.href !== "/" && caminho.startsWith(`${d.href}/`))
-                ? "page"
-                : undefined
-            }
-            className={classeDestino(caminho === d.href)}
-          >
-            {d.rotulo}
-          </Link>
-        ))}
-      </nav>
-      {menuMovel && (
         <nav
-          aria-label="Seções do painel"
-          className="flex flex-col border-t border-linha px-4 py-2 text-sm lg:hidden"
+          aria-label="Navegação diária"
+          className="flex gap-1 overflow-x-auto border-t border-linha px-4 pt-1 lg:hidden"
         >
-          {SECUNDARIOS.map((d) => (
-            <Link
-              key={d.href}
-              href={d.href}
-              aria-current={
-                caminho === d.href ||
-                (d.href !== "/" && caminho.startsWith(`${d.href}/`))
-                  ? "page"
-                  : undefined
-              }
-              className={`px-2 py-2.5 ${caminho === d.href ? "font-semibold text-tinta" : "text-tinta/70"}`}
-            >
-              {d.rotulo}
-            </Link>
-          ))}
-          <button
-            onClick={sair}
-            disabled={saindo}
-            className="mt-1 border-t border-linha px-2 py-2.5 text-left text-xs text-tinta/70"
-          >
-            sair
-          </button>
+          {PRIMARIOS.map((d) => {
+            const ativo = ehRotaAtiva(d.href);
+            return (
+              <Link
+                key={d.href}
+                href={d.href}
+                aria-current={ativo ? "page" : undefined}
+                className={classeDestino(ativo)}
+              >
+                <span className={ativo ? "text-musgo" : "text-tinta/70"}>
+                  {d.icone}
+                </span>
+                {d.rotulo}
+              </Link>
+            );
+          })}
         </nav>
-      )}
-    </header>
+
+        {menuMovel && (
+          <nav
+            aria-label="Seções do painel"
+            className="flex flex-col gap-1 border-t border-linha bg-campo/60 px-4 py-3 text-sm lg:hidden"
+          >
+            {SECUNDARIOS.map((d) => {
+              const ativo = ehRotaAtiva(d.href);
+              return (
+                <Link
+                  key={d.href}
+                  href={d.href}
+                  aria-current={ativo ? "page" : undefined}
+                  className={`flex items-start gap-2.5 rounded-lg px-2.5 py-2 ${
+                    ativo
+                      ? "bg-papel font-semibold text-tinta shadow-cartao"
+                      : "text-tinta hover:bg-papel/70"
+                  }`}
+                >
+                  <span className="mt-0.5 text-musgo">{d.icone}</span>
+                  <span>
+                    <span className="block font-semibold">{d.rotulo}</span>
+                    <span className="block text-xs font-normal text-tinta/70">
+                      {d.subtitulo}
+                    </span>
+                  </span>
+                </Link>
+              );
+            })}
+            <button
+              onClick={sair}
+              disabled={saindo}
+              className="mt-2 flex items-center gap-2 border-t border-linha px-2.5 pt-3 text-left text-xs font-medium text-tinta/70"
+            >
+              <IconeSair className="h-3.5 w-3.5" />
+              Sair da conta
+            </button>
+          </nav>
+        )}
+      </header>
+
+      {guiaAberto && <GuiaPIModal aoFechar={() => setGuiaAberto(false)} />}
+    </>
   );
 }

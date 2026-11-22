@@ -7,25 +7,16 @@ import { dataCurta } from "@/lib/datas";
 import { STATUS, responsaveisDe, type Escopo, type Tarefa } from "@/lib/types";
 import ConfirmarAcao from "./ConfirmarAcao";
 import { useToast } from "./ToastProvider";
+import { IconeRetorno } from "./ui/Icones";
 
 /** Quem arquivou e quando, lido de `historico` — não existe coluna pra isso. */
 type Arquivamento = { em: string; autor: string | null };
 
-/**
- * Tarefas arquivadas. Baixa urgência, então linha e não cartão.
- *
- * Tarefa nunca é apagada: não existe policy de DELETE em `tarefas` e não vamos
- * criar. Apagar tiraria a linha de alguém da Trilha, que é a evidência
- * avaliada no PI. Arquivar é esconder das superfícies de trabalho, e é
- * reversível.
- */
 export default function ListaArquivadas({
   escopo,
   aoRestaurar,
   filtrarTarefa,
 }: {
-  /** O eixo de escopo do quadro continua valendo aqui: "arquivadas" é filtro
-   *  de estado, e os dois se combinam em vez de um anular o outro. */
   escopo: Escopo;
   aoRestaurar?: () => void;
   filtrarTarefa?: (tarefa: Tarefa) => boolean;
@@ -62,10 +53,6 @@ export default function ListaArquivadas({
     setTarefas(lista);
     setErro(null);
 
-    // "Quando foi arquivada" e "quem arquivou" não são colunas de `tarefas`.
-    // Vêm de `historico`, onde o trigger grava a ação 'arquivou' com autor e
-    // instante. Uma tarefa pode ter ido e voltado várias vezes, então vale a
-    // linha mais recente.
     if (lista.length > 0) {
       const { data: eventos } = await supabase
         .from("historico")
@@ -117,12 +104,12 @@ export default function ListaArquivadas({
   }
 
   if (carregando) {
-    return <p className="mt-6 text-sm text-tinta/70">carregando arquivadas…</p>;
+    return <p className="mt-6 text-sm text-tinta/70">Carregando arquivadas…</p>;
   }
 
   if (erro) {
     return (
-      <p className="mt-6 border-l-2 border-trigo pl-3 text-sm">
+      <p className="mt-6 rounded-xl border border-trigo bg-trigo/15 px-4 py-3 text-sm text-tinta">
         Não deu pra carregar as arquivadas: {erro}. Recarregue a página.
       </p>
     );
@@ -131,16 +118,16 @@ export default function ListaArquivadas({
   const visiveis = filtrarTarefa ? tarefas.filter(filtrarTarefa) : tarefas;
   if (visiveis.length === 0) {
     return (
-      <p className="mt-6 text-sm text-tinta/70">
+      <div className="cartao mt-6 p-6 text-center text-sm text-tinta/70">
         Nenhuma tarefa {escopo === "frente" ? "de frente" : "individual"}{" "}
         arquivada com estes filtros.
-      </p>
+      </div>
     );
   }
 
   return (
     <>
-      <div className="mt-6 border-t border-linha">
+      <div className="mt-6 space-y-2.5">
         {visiveis.map((t) => {
           const quando = quandoArquivou.get(t.id);
           const nomes = responsaveisDe(t).map((m) => m.nome);
@@ -149,10 +136,12 @@ export default function ListaArquivadas({
           return (
             <div
               key={t.id}
-              className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-linha py-2"
+              className="cartao flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3"
             >
               <div className="min-w-0">
-                <p className="break-words text-sm">{t.titulo}</p>
+                <p className="break-words text-sm font-semibold text-tinta">
+                  {t.titulo}
+                </p>
                 <p className="mt-0.5 text-xs text-tinta/70">
                   {nomes.length > 0 ? nomes.join(", ") : "sem dono"}
                   {t.frentes && <> · frente {t.frentes.nome}</>}
@@ -174,10 +163,12 @@ export default function ListaArquivadas({
                 </p>
               </div>
               <button
+                type="button"
                 onClick={() => setConfirmando(t)}
-                className="shrink-0 border border-linha px-3 py-1 text-xs transition-opacity duration-micro ease-entrada hover:bg-casca focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-musgo"
+                className="botao botao-secundario min-h-8 shrink-0 px-3 py-1 text-xs"
               >
-                restaurar
+                <IconeRetorno className="h-3.5 w-3.5" />
+                Restaurar
               </button>
             </div>
           );

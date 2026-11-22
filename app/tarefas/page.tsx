@@ -15,10 +15,23 @@ import {
 import QuadroTarefas from "@/components/tarefa/QuadroTarefas";
 import LinhaTarefa from "@/components/LinhaTarefa";
 import Botao from "@/components/ui/Botao";
+import CabecalhoPagina from "@/components/ui/CabecalhoPagina";
 import ListaArquivadas from "@/components/ListaArquivadas";
 import ConfirmarAcao from "@/components/ConfirmarAcao";
 import { useNovaTarefa } from "@/components/NovaTarefaProvider";
 import { useToast } from "@/components/ToastProvider";
+import {
+  IconeArquivo,
+  IconeBusca,
+  IconeDica,
+  IconeFiltro,
+  IconeFrentes,
+  IconeLista,
+  IconeLote,
+  IconeMais,
+  IconeQuadro,
+  IconeUsuario,
+} from "@/components/ui/Icones";
 
 const CHAVE_MINHAS = "pi-quadro-somente-minhas";
 const CHAVE_VISAO = "pi-quadro-visao";
@@ -47,27 +60,12 @@ export default function Quadro() {
   const [filtroPrioridade, setFiltroPrioridade] = useState("");
   const [filtroFrente, setFiltroFrente] = useState("");
   const [somenteMinhas, setSomenteMinhas] = useState(false);
-  /** Arquivadas é filtro de ESTADO, eixo diferente do escopo — por isso é um
-   *  controle à parte, e não uma terceira aba do tablist de escopo. */
   const [verArquivadas, setVerArquivadas] = useState(false);
   const [arquivando, setArquivando] = useState<Tarefa | null>(null);
   const [executandoArquivo, setExecutandoArquivo] = useState(false);
 
-  /**
-   * Colunas expandidas ("ver mais"), por chave estável `grupo::status` — nunca
-   * por índice, porque o refetch do realtime reordena e remonta a lista. É o
-   * que impede a coluna de colapsar sozinha embaixo de quem está lendo.
-   */
   const [expandidas, setExpandidas] = useState<Set<string>>(new Set());
 
-  /**
-   * Mudanças de status já aplicadas na tela e ainda não confirmadas pelo
-   * servidor. O realtime refaz a consulta inteira a cada evento — inclusive
-   * eventos de outras pessoas — e uma consulta que parta antes do nosso UPDATE
-   * commitar voltaria com o status antigo e desfaria o que o usuário acabou de
-   * fazer. Reaplicar por cima resolve sem piscar; a entrada morre quando o
-   * servidor concorda ou quando o prazo expira.
-   */
   const otimistas = useRef(new Map<number, { status: Status; ate: number }>());
   const timerRecarga = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -147,9 +145,6 @@ export default function Quadro() {
     if (!verArquivadas) carregar();
   }, [carregar, verArquivadas]);
 
-  // Atualização ao vivo: se um colega mexer, seu quadro acompanha. Uma ação só
-  // pode disparar vários eventos (entregar mexe em tarefas duas vezes por
-  // trigger), então os eventos são juntados numa recarga só.
   useEffect(() => {
     if (verArquivadas) return;
     function agendarRecarga() {
@@ -233,11 +228,10 @@ export default function Quadro() {
     });
   }
 
-  const filtrarTarefa = useCallback(
+  const filtrarPorCampos = useCallback(
     (t: Tarefa) => {
       const buscaLimpa = busca.trim().toLowerCase();
       const responsaveis = responsaveisDe(t);
-      if (t.escopo !== visao) return false;
       if (buscaLimpa && !t.titulo.toLowerCase().includes(buscaLimpa))
         return false;
       if (
@@ -253,7 +247,6 @@ export default function Quadro() {
       return true;
     },
     [
-      visao,
       busca,
       filtroResponsavel,
       filtroPrioridade,
@@ -262,6 +255,22 @@ export default function Quadro() {
       meuId,
     ],
   );
+
+  const filtrarTarefa = useCallback(
+    (t: Tarefa) => t.escopo === visao && filtrarPorCampos(t),
+    [visao, filtrarPorCampos],
+  );
+
+  const contagemPorEscopo = useMemo(() => {
+    let individual = 0;
+    let frente = 0;
+    tarefas.forEach((t) => {
+      if (!filtrarPorCampos(t)) return;
+      if (t.escopo === "individual") individual += 1;
+      else frente += 1;
+    });
+    return { individual, frente };
+  }, [tarefas, filtrarPorCampos]);
 
   const visiveis = useMemo(
     () => tarefas.filter(filtrarTarefa),
@@ -322,130 +331,134 @@ export default function Quadro() {
     document.getElementById(`aba-${proxima}`)?.focus();
   }
 
+  const temFiltrosAtivos = !!(
+    busca ||
+    filtroResponsavel ||
+    filtroPrioridade ||
+    filtroFrente ||
+    somenteMinhas ||
+    verArquivadas
+  );
+
   return (
     <div>
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        {/* Título e volume numa faixa só. A sobrancelha em mono maiúsculo
-            gastava uma faixa para dizer "Quadro", que a navegação já diz. */}
-        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <h1 className="font-display text-3xl font-extrabold tracking-tight">
-            Quadro de tarefas
-          </h1>
-          {!carregando && !verArquivadas && (
-            <p className="text-sm text-tinta/70">
-              <span className="font-mono">{visiveis.length}</span> na visão
-            </p>
-          )}
+      <CabecalhoPagina
+        categoria="Ciclo diário"
+        icone={<IconeQuadro className="h-3.5 w-3.5 text-musgo" />}
+        titulo="Quadro de tarefas"
+        contagem={
+          !carregando && !verArquivadas
+            ? `${visiveis.length} na visão`
+            : undefined
+        }
+        descricao="Organize o trabalho entre tarefas individuais e tarefas conjuntas de cada frente, em tempo real."
+        acoes={
+          <>
+            <Botao variante="destaque" onClick={abrir}>
+              <IconeMais className="h-4 w-4" />
+              Nova tarefa{" "}
+              <kbd className="rounded bg-tinta/15 px-1.5 py-0.5 font-mono text-xs">
+                N
+              </kbd>
+            </Botao>
+            <Link href="/publicar" className="botao botao-secundario">
+              <IconeLote className="h-4 w-4 text-musgo" />
+              Publicar em lote
+            </Link>
+          </>
+        }
+      />
+
+      {/* Seletor de escopo + faixa explicativa dinâmica */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div
+          role="tablist"
+          aria-label="Escopo das tarefas"
+          className="flex w-full gap-1 rounded-xl border border-linha bg-casca p-1 sm:w-fit"
+        >
+          {VISOES.map((v) => {
+            const ativa = visao === v;
+            const total =
+              v === "individual"
+                ? contagemPorEscopo.individual
+                : contagemPorEscopo.frente;
+            return (
+              <button
+                key={v}
+                id={`aba-${v}`}
+                role="tab"
+                aria-selected={ativa}
+                aria-controls="painel-quadro"
+                tabIndex={ativa ? 0 : -1}
+                onClick={() => mudarVisao(v)}
+                onKeyDown={teclasDaAba}
+                className={`inline-flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors duration-micro ease-entrada sm:flex-none ${
+                  ativa
+                    ? "bg-papel text-tinta shadow-cartao"
+                    : "text-tinta/70 hover:bg-papel/50 hover:text-tinta"
+                }`}
+              >
+                {v === "individual" ? (
+                  <IconeUsuario className="h-4 w-4 text-musgo" />
+                ) : (
+                  <IconeFrentes className="h-4 w-4 text-ferro" />
+                )}
+                <span>{v === "individual" ? "Individuais" : "Da frente"}</span>
+                {!carregando && !verArquivadas && (
+                  <span className="rounded-full border border-linha bg-campo px-2 py-0.5 font-mono text-xs text-tinta">
+                    {total}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
-        {/* Criar é ação do quadro, então "em lote" mora aqui e não na
-            navegação: /publicar é a mesma intenção em outro volume. */}
-        <div className="flex items-center gap-3">
-          <Botao onClick={abrir}>
-            + Nova tarefa <kbd className="font-mono text-xs">N</kbd>
-          </Botao>
-          <Link
-            href="/publicar"
-            className="text-sm text-tinta/70 underline underline-offset-4 transition-colors duration-micro ease-entrada hover:text-tinta"
-          >
-            em lote
-          </Link>
-        </div>
       </div>
 
-      <div
-        role="tablist"
-        aria-label="Escopo das tarefas"
-        className="mt-6 flex gap-1 border border-linha bg-casca p-1 sm:w-fit"
-      >
-        {VISOES.map((v) => {
-          const ativa = visao === v;
-          return (
-            <button
-              key={v}
-              id={`aba-${v}`}
-              role="tab"
-              aria-selected={ativa}
-              aria-controls="painel-quadro"
-              tabIndex={ativa ? 0 : -1}
-              onClick={() => mudarVisao(v)}
-              onKeyDown={teclasDaAba}
-              className={`flex-1 px-4 py-1.5 text-sm transition-colors duration-micro ease-entrada sm:flex-none ${
-                ativa
-                  ? "bg-campo font-semibold text-tinta shadow-sm"
-                  : "text-tinta/70 hover:bg-campo/60"
-              }`}
-            >
-              {v === "individual" ? "Individuais" : "Da frente"}
-            </button>
-          );
-        })}
+      <div className="mt-3 rounded-xl border border-linha border-l-4 border-l-musgo bg-papel/85 px-4 py-2.5 text-xs text-tinta/70 shadow-cartao">
+        {visao === "individual" ? (
+          <span>
+            <strong className="text-tinta">Visão Individual:</strong> tarefas
+            com até 1 responsável. A frente (quando escolhida) indica apenas a
+            matéria do PI.
+          </span>
+        ) : (
+          <span>
+            <strong className="text-tinta">Visão Da frente:</strong> tarefas
+            conjuntas em que o banco atribui automaticamente todos os
+            integrantes da frente.
+          </span>
+        )}
       </div>
 
-      {/* Cinco controles com o mesmo peso não dizem por onde começar. Busca
-          fica sozinha na primeira faixa; os quatro filtros descem para a
-          segunda, menores e sem caixa alta. */}
-      <div className="mt-4">
-        <input
-          value={busca}
-          onChange={(e) => setBusca(e.target.value)}
-          placeholder="Buscar por título…"
-          aria-label="Buscar tarefa por título"
-          className="w-full border border-linha bg-casca px-3 py-2 text-sm transition-colors duration-micro ease-entrada focus:border-musgo focus:outline-none"
-        />
-      </div>
+      {/* Busca e filtros rápidos */}
+      <div className="cartao mt-4 p-3.5">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="relative min-w-[220px] flex-1">
+            <IconeBusca className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-tinta/70" />
+            <input
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              placeholder="Buscar tarefa por título…"
+              aria-label="Buscar tarefa por título"
+              className="campo pl-9"
+            />
+          </div>
 
-      <details className="mt-2 border-b border-linha pb-2">
-        <summary className="cursor-pointer py-2 text-sm font-medium">
-          Filtros
-          {filtroResponsavel ||
-          filtroPrioridade ||
-          filtroFrente ||
-          somenteMinhas ||
-          verArquivadas
-            ? " · ativos"
-            : ""}
-        </summary>
-        <div className="flex flex-wrap items-center gap-2 py-2">
-          <select
-            value={filtroResponsavel}
-            onChange={(e) => setFiltroResponsavel(e.target.value)}
-            aria-label="Filtrar por responsável"
-            className="border border-linha bg-casca px-2 py-1.5 text-xs text-tinta/70"
-          >
-            <option value="">Todo mundo</option>
-            {membros.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.nome}
-              </option>
-            ))}
-          </select>
-          <select
-            value={filtroPrioridade}
-            onChange={(e) => setFiltroPrioridade(e.target.value)}
-            aria-label="Filtrar por prioridade"
-            className="border border-linha bg-casca px-2 py-1.5 text-xs text-tinta/70"
-          >
-            <option value="">Toda prioridade</option>
-            {PRIORIDADES.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.nome}
-              </option>
-            ))}
-          </select>
-          <select
-            value={filtroFrente}
-            onChange={(e) => setFiltroFrente(e.target.value)}
-            aria-label="Filtrar por frente"
-            className="border border-linha bg-casca px-2 py-1.5 text-xs text-tinta/70"
-          >
-            <option value="">Toda frente</option>
-            {frentes.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.nome}
-              </option>
-            ))}
-          </select>
           <button
+            type="button"
+            onClick={alternarMinhas}
+            aria-pressed={somenteMinhas}
+            className={`botao min-h-10 px-3 py-1.5 text-xs ${
+              somenteMinhas ? "botao-primario" : "botao-secundario"
+            }`}
+          >
+            <IconeUsuario className="h-3.5 w-3.5" />
+            Minhas tarefas
+          </button>
+
+          <button
+            type="button"
             onClick={() => {
               setVerArquivadas((atual) => {
                 const novo = !atual;
@@ -454,69 +467,136 @@ export default function Quadro() {
               });
             }}
             aria-pressed={verArquivadas}
-            className={`border px-3 py-1.5 text-xs transition-colors duration-micro ease-entrada ${
-              verArquivadas
-                ? "border-tinta bg-tinta text-campo"
-                : "border-linha text-tinta/70 hover:bg-casca"
+            className={`botao min-h-10 px-3 py-1.5 text-xs ${
+              verArquivadas ? "botao-primario" : "botao-secundario"
             }`}
           >
-            arquivadas
+            <IconeArquivo className="h-3.5 w-3.5" />
+            Arquivadas
           </button>
-          <button
-            onClick={alternarMinhas}
-            aria-pressed={somenteMinhas}
-            className={`border px-3 py-1.5 text-xs transition-colors duration-micro ease-entrada ${
-              somenteMinhas
-                ? "border-tinta bg-tinta text-campo"
-                : "border-linha text-tinta/70 hover:bg-casca"
-            }`}
-          >
-            minhas tarefas
-          </button>
+
+          {temFiltrosAtivos && (
+            <Botao
+              variante="discreto"
+              className="text-xs"
+              onClick={() => {
+                setBusca("");
+                setFiltroResponsavel("");
+                setFiltroPrioridade("");
+                setFiltroFrente("");
+                setSomenteMinhas(false);
+                setVerArquivadas(false);
+                localStorage.setItem(CHAVE_ARQUIVADAS, "0");
+                localStorage.setItem(CHAVE_MINHAS, "0");
+              }}
+            >
+              Limpar filtros
+            </Botao>
+          )}
         </div>
-      </details>
-      {(busca ||
-        filtroResponsavel ||
-        filtroPrioridade ||
-        filtroFrente ||
-        somenteMinhas ||
-        verArquivadas) && (
-        <Botao
-          variante="discreto"
-          onClick={() => {
-            setBusca("");
-            setFiltroResponsavel("");
-            setFiltroPrioridade("");
-            setFiltroFrente("");
-            setSomenteMinhas(false);
-            setVerArquivadas(false);
-            localStorage.setItem(CHAVE_ARQUIVADAS, "0");
-            localStorage.setItem(CHAVE_MINHAS, "0");
-          }}
-        >
-          Limpar filtros
-        </Botao>
-      )}
+
+        <details className="mt-2.5 border-t border-linha/80 pt-2">
+          <summary className="inline-flex cursor-pointer items-center gap-1.5 py-1 text-xs font-semibold text-tinta/70 hover:text-tinta">
+            <IconeFiltro className="h-3.5 w-3.5" />
+            Mais filtros (responsável, prioridade, frente)
+            {filtroResponsavel || filtroPrioridade || filtroFrente
+              ? " · ativos"
+              : ""}
+          </summary>
+          <div className="mt-2 grid gap-2 sm:grid-cols-3">
+            <select
+              value={filtroResponsavel}
+              onChange={(e) => setFiltroResponsavel(e.target.value)}
+              aria-label="Filtrar por responsável"
+              className="campo py-2 text-xs"
+            >
+              <option value="">Todo mundo</option>
+              {membros.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.nome}
+                </option>
+              ))}
+            </select>
+            <select
+              value={filtroPrioridade}
+              onChange={(e) => setFiltroPrioridade(e.target.value)}
+              aria-label="Filtrar por prioridade"
+              className="campo py-2 text-xs"
+            >
+              <option value="">Toda prioridade</option>
+              {PRIORIDADES.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.nome}
+                </option>
+              ))}
+            </select>
+            <select
+              value={filtroFrente}
+              onChange={(e) => setFiltroFrente(e.target.value)}
+              aria-label="Filtrar por frente"
+              className="campo py-2 text-xs"
+            >
+              <option value="">Toda frente</option>
+              {frentes.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.nome}
+                </option>
+              ))}
+            </select>
+          </div>
+        </details>
+      </div>
 
       {!verArquivadas && (
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-y border-linha py-2">
-          <div aria-label="Formato das tarefas" className="flex gap-1">
-            {["quadro", "lista"].map((opcao) => (
-              <Botao
-                key={opcao}
-                variante={formato === opcao ? "primario" : "discreto"}
-                aria-pressed={formato === opcao}
-                onClick={() => {
-                  setFormato(opcao);
-                  localStorage.setItem("pi-quadro-formato", opcao);
-                }}
-              >
-                {opcao === "quadro" ? "Quadro" : "Lista"}
-              </Botao>
-            ))}
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-linha bg-papel/85 px-4 py-2.5">
+          <div className="flex flex-wrap items-center gap-3">
+            <div
+              aria-label="Formato das tarefas"
+              className="flex gap-1 rounded-lg border border-linha bg-casca p-0.5"
+            >
+              {[
+                {
+                  id: "quadro",
+                  rotulo: "Quadro",
+                  icone: <IconeQuadro className="h-3.5 w-3.5" />,
+                },
+                {
+                  id: "lista",
+                  rotulo: "Lista",
+                  icone: <IconeLista className="h-3.5 w-3.5" />,
+                },
+              ].map((opcao) => (
+                <button
+                  key={opcao.id}
+                  type="button"
+                  aria-pressed={formato === opcao.id}
+                  onClick={() => {
+                    setFormato(opcao.id);
+                    localStorage.setItem("pi-quadro-formato", opcao.id);
+                  }}
+                  className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-semibold transition-colors duration-micro ease-entrada ${
+                    formato === opcao.id
+                      ? "bg-papel text-tinta shadow-cartao"
+                      : "text-tinta/70 hover:text-tinta"
+                  }`}
+                >
+                  {opcao.icone}
+                  {opcao.rotulo}
+                </button>
+              ))}
+            </div>
+
+            {formato === "quadro" && (
+              <p className="hidden items-center gap-1.5 text-xs text-tinta/70 md:flex">
+                <IconeDica className="h-3.5 w-3.5 text-broto" />
+                Arraste cartões entre colunas ou clique para abrir detalhes,
+                checklist e entrega.
+              </p>
+            )}
           </div>
+
           {formato === "quadro" && (
-            <label className="flex items-center gap-2 text-sm">
+            <label className="flex cursor-pointer items-center gap-2 text-xs font-semibold text-tinta">
               <input
                 type="checkbox"
                 checked={agrupar}
@@ -533,14 +613,19 @@ export default function Quadro() {
           )}
         </div>
       )}
+
       {erroCarga && (
-        <div role="alert" className="mt-4 border-l-2 border-trigo p-3 text-sm">
-          Não foi possível carregar as tarefas.{" "}
+        <div
+          role="alert"
+          className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-trigo bg-trigo/15 p-4 text-sm text-tinta"
+        >
+          <span>Não foi possível carregar as tarefas.</span>
           <Botao variante="secundario" onClick={carregar}>
             Tentar novamente
           </Botao>
         </div>
       )}
+
       <div
         id="painel-quadro"
         role="tabpanel"
@@ -548,30 +633,27 @@ export default function Quadro() {
         tabIndex={-1}
       >
         {verArquivadas ? (
-          // Arquivada não se arrasta entre colunas de status, então aqui o
-          // quadro dá lugar a uma lista. O eixo de escopo do tablist continua
-          // valendo — a lista respeita a aba escolhida.
           <ListaArquivadas
             escopo={visao}
             aoRestaurar={carregar}
             filtrarTarefa={filtrarTarefa}
           />
         ) : carregando ? (
-          <p className="mt-10 text-sm text-tinta/70">carregando…</p>
+          <p className="mt-10 text-sm text-tinta/70">Carregando tarefas…</p>
         ) : erroCarga ? null : grupos.length === 0 ? (
-          <p className="mt-10 text-sm text-tinta/70">
+          <div className="cartao mt-6 p-8 text-center text-sm text-tinta/70">
             {busca ||
             filtroResponsavel ||
             filtroPrioridade ||
             filtroFrente ||
             somenteMinhas
-              ? "Nenhuma tarefa corresponde aos filtros."
+              ? "Nenhuma tarefa corresponde aos filtros escolhidos."
               : visao === "frente"
-                ? "Nenhuma tarefa de frente por aqui."
-                : "Nenhuma tarefa individual por aqui."}
-          </p>
+                ? "Nenhuma tarefa de frente por aqui ainda."
+                : "Nenhuma tarefa individual por aqui ainda."}
+          </div>
         ) : formato === "lista" ? (
-          <div className="mt-4 border-t border-linha">
+          <div className="cartao mt-4 overflow-hidden">
             {visiveis.map((t) => (
               <LinhaTarefa
                 key={t.id}
@@ -591,13 +673,13 @@ export default function Quadro() {
                   id={`grupo-${g.chave}`}
                   className={
                     agrupar
-                      ? "mb-3 font-display text-lg font-semibold"
+                      ? "mb-3 flex items-center gap-2 font-display text-lg font-bold text-tinta"
                       : "sr-only"
                   }
                 >
-                  {g.titulo}
-                  <span className="ml-2 text-xs font-normal text-tinta/70">
-                    · <span className="font-mono">{g.itens.length}</span>
+                  <span>{g.titulo}</span>
+                  <span className="rounded-full border border-linha bg-casca px-2 py-0.5 font-mono text-xs font-semibold text-tinta">
+                    {g.itens.length}
                   </span>
                 </h2>
                 <QuadroTarefas
@@ -617,6 +699,7 @@ export default function Quadro() {
           </div>
         )}
       </div>
+
       {arquivando && (
         <ConfirmarAcao
           titulo="Arquivar esta tarefa?"

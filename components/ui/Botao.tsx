@@ -2,6 +2,7 @@ import type { ButtonHTMLAttributes } from "react";
 
 const CLASSES = {
   primario: "botao-primario",
+  destaque: "botao-destaque",
   secundario: "botao-secundario",
   discreto: "botao-discreto",
 };
@@ -12,7 +13,7 @@ export default function Botao({
   type = "button",
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
-  variante?: "primario" | "secundario" | "discreto";
+  variante?: "primario" | "destaque" | "secundario" | "discreto";
 }) {
   return (
     <button

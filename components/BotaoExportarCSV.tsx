@@ -1,5 +1,7 @@
 "use client";
 
+import { IconeDownload } from "./ui/Icones";
+
 function escapar(v: unknown) {
   return `"${String(v ?? "").replace(/"/g, '""')}"`;
 }
@@ -22,7 +24,9 @@ export default function BotaoExportarCSV({
     ].join("\n");
 
     const bom = String.fromCharCode(0xfeff);
-    const url = URL.createObjectURL(new Blob([bom + csv], { type: "text/csv;charset=utf-8" }));
+    const url = URL.createObjectURL(
+      new Blob([bom + csv], { type: "text/csv;charset=utf-8" }),
+    );
     const a = document.createElement("a");
     a.href = url;
     a.download = nomeArquivo;
@@ -32,10 +36,12 @@ export default function BotaoExportarCSV({
 
   return (
     <button
+      type="button"
       onClick={exportar}
       disabled={linhas.length === 0}
-      className="border border-tinta px-4 py-2 text-sm font-semibold hover:bg-tinta hover:text-campo disabled:opacity-50"
+      className="botao botao-secundario"
     >
+      <IconeDownload className="h-4 w-4 text-musgo" />
       {rotulo}
     </button>
   );

@@ -2,8 +2,9 @@ import { ROTULOS_ATIVIDADE } from "@/lib/atividade";
 import Link from "next/link";
 import { criarClienteServidor } from "@/lib/supabase-server";
 import PainelSemana from "@/components/PainelSemana";
+import { IconeSetaDireita, IconeTrilha } from "@/components/ui/Icones";
 import { dataLocalISO } from "@/lib/datas";
-import type { Registro, Tarefa } from "@/lib/types";
+import { iniciaisDe, type Registro, type Tarefa } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -13,12 +14,19 @@ export default async function Semana() {
   const agora = new Date();
   const hojeIso = dataLocalISO(agora);
   const fimIso = dataLocalISO(new Date(agora.getTime() + 7 * 86_400_000));
+  const dataHoje = agora.toLocaleDateString("pt-BR", {
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+    timeZone: "America/Sao_Paulo",
+  });
 
   const [
     { data: tarefas, error: erroTarefas },
     { data: sessao },
     { data: atividade, error: erroAtividade },
     { data: estados, error: erroEstados },
+    { count: totalConcluidas },
   ] = await Promise.all([
     supabase
       .from("tarefas")
@@ -35,6 +43,11 @@ export default async function Semana() {
       .order("em", { ascending: false })
       .limit(5),
     supabase.from("tarefas_estado_entrega").select("tarefa_id, pendente_git"),
+    supabase
+      .from("tarefas")
+      .select("id", { count: "exact", head: true })
+      .eq("arquivada", false)
+      .eq("status", "concluida"),
   ]);
 
   const lista = (tarefas ?? []) as unknown as Tarefa[];
@@ -51,104 +64,121 @@ export default async function Semana() {
   const depois = lista.filter((t) => !t.prazo || t.prazo > fimIso);
 
   return (
-    <div>
-      {/* Título e data numa faixa só: a sobrancelha em mono maiúsculo acima
-          do display gastava duas faixas para dizer uma coisa. */}
-      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <h1 className="font-display text-3xl font-semibold tracking-tight">
-          Semana
-        </h1>
-        <p className="font-mono text-xs text-tinta/70">
-          {agora.toLocaleDateString("pt-BR", {
-            weekday: "long",
-            day: "2-digit",
-            month: "long",
-            timeZone: "America/Sao_Paulo",
-          })}
-        </p>
-      </div>
-
-      {erroTarefas && (
-        <p role="alert" className="mt-4 border-l-2 border-trigo pl-3 text-sm">
-          Não foi possível carregar as tarefas. Atualize a página para tentar
-          novamente.
-        </p>
-      )}
-      {!erroTarefas && (
-        <div className="mt-6">
-          <PainelSemana
-            atrasadas={atrasadas}
-            daSemana={daSemana}
-            depois={depois}
-            meuId={sessao.user?.id ?? null}
-            revisoesPendentes={revisoesPendentes}
-            erroRevisoes={!!erroEstados}
-          />
+    <div className="space-y-6">
+      {erroTarefas ? (
+        <div className="space-y-4">
+          <div className="rounded-xl border-b-4 border-b-broto bg-tinta p-6 text-campo shadow-destaque">
+            <p className="font-mono text-xs text-campo/85">{dataHoje}</p>
+            <h1 className="mt-2 font-display text-3xl font-extrabold tracking-tight">
+              Semana do Projeto Integrador
+            </h1>
+          </div>
+          <p
+            role="alert"
+            className="rounded-xl border border-trigo bg-trigo/15 px-4 py-3 text-sm text-tinta"
+          >
+            Não foi possível carregar as tarefas. Atualize a página para tentar
+            novamente.
+          </p>
         </div>
+      ) : (
+        <PainelSemana
+          atrasadas={atrasadas}
+          daSemana={daSemana}
+          depois={depois}
+          meuId={sessao.user?.id ?? null}
+          revisoesPendentes={revisoesPendentes}
+          erroRevisoes={!!erroEstados}
+          totalConcluidas={totalConcluidas ?? 0}
+          dataHoje={dataHoje}
+        />
       )}
 
       <section
-        className="mt-6 border-t border-linha pt-4"
+        className="cartao p-4 sm:p-5"
         aria-labelledby="atividade-semana"
       >
-        <div className="flex items-center justify-between gap-2">
-          <h2
-            id="atividade-semana"
-            className="font-display text-lg font-semibold"
-          >
-            Mudanças recentes
-          </h2>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-linha pb-3">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-casca text-musgo">
+              <IconeTrilha className="h-4 w-4" />
+            </span>
+            <div>
+              <h2
+                id="atividade-semana"
+                className="font-display text-lg font-bold text-tinta"
+              >
+                Mudanças recentes
+              </h2>
+              <p className="text-xs text-tinta/70">
+                Últimas ações gravadas automaticamente pelo banco na Trilha.
+              </p>
+            </div>
+          </div>
           <Link
             href="/relatorio"
-            className="text-sm underline underline-offset-4"
+            className="botao botao-secundario min-h-8 px-3 py-1 text-xs"
           >
-            Ver trilha
+            Ver trilha completa
+            <IconeSetaDireita className="h-3.5 w-3.5" />
           </Link>
         </div>
+
         {erroAtividade ? (
-          <p className="mt-2 text-sm text-tinta/70">
+          <p className="mt-3 text-sm text-tinta/70">
             Não foi possível carregar a atividade.
           </p>
         ) : (
-          <ul className="mt-2 divide-y divide-linha">
-            {((atividade ?? []) as Registro[]).map((r, i) => (
-              <li
-                key={`${r.em}-${i}`}
-                className="flex flex-wrap items-baseline justify-between gap-2 py-2 text-sm"
-              >
-                <span>
-                  <strong className="font-medium">{r.autor ?? "Equipe"}</strong>{" "}
-                  · {ROTULOS_ATIVIDADE[r.acao] ?? r.acao} ·{" "}
-                  {r.tarefa ?? "Atividade do projeto"}
-                </span>
-                <time
-                  dateTime={r.em}
-                  className="font-mono text-xs text-tinta/70"
+          <ul className="mt-3 divide-y divide-linha/80">
+            {((atividade ?? []) as Registro[]).map((r, i) => {
+              const autor = r.autor ?? "Equipe";
+              return (
+                <li
+                  key={`${r.em}-${i}`}
+                  className="flex flex-wrap items-center justify-between gap-2 py-2.5 text-sm"
                 >
-                  {new Date(r.em).toLocaleString("pt-BR", {
-                    day: "2-digit",
-                    month: "2-digit",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    timeZone: "America/Sao_Paulo",
-                  })}
-                </time>
-              </li>
-            ))}
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <span
+                      aria-hidden="true"
+                      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-musgo font-mono text-xs font-semibold text-campo"
+                    >
+                      {iniciaisDe(autor)}
+                    </span>
+                    <span className="min-w-0">
+                      <strong className="font-semibold text-tinta">
+                        {autor}
+                      </strong>{" "}
+                      <span className="inline-block rounded-full bg-casca px-2 py-0.5 text-xs font-medium text-tinta">
+                        {ROTULOS_ATIVIDADE[r.acao] ?? r.acao}
+                      </span>{" "}
+                      <span className="text-tinta/70">
+                        {r.tarefa ?? "Atividade do projeto"}
+                      </span>
+                    </span>
+                  </div>
+                  <time
+                    dateTime={r.em}
+                    className="rounded bg-campo px-2 py-0.5 font-mono text-xs text-tinta/70"
+                  >
+                    {new Date(r.em).toLocaleString("pt-BR", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      timeZone: "America/Sao_Paulo",
+                    })}
+                  </time>
+                </li>
+              );
+            })}
           </ul>
         )}
         {!erroAtividade && !atividade?.length && (
-          <p className="mt-2 text-sm text-tinta/70">
-            Nenhuma atividade registrada.
+          <p className="mt-3 text-sm text-tinta/70">
+            Nenhuma atividade registrada ainda.
           </p>
         )}
       </section>
-      <Link
-        href="/tarefas"
-        className="mt-6 inline-block text-sm text-tinta/70 underline underline-offset-4"
-      >
-        Abrir o quadro
-      </Link>
     </div>
   );
 }

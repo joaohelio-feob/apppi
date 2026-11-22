@@ -3,6 +3,7 @@
 import { dataLocalISO, diasEntre, estaAtrasada } from "@/lib/datas";
 import { progressoCriterios } from "@/lib/criterios";
 import {
+  CLASSES_COR_FRENTE_PREENCHIDA,
   CLASSES_PRIORIDADE,
   PRIORIDADES,
   STATUS,
@@ -14,17 +15,9 @@ import {
 import { useDetalheTarefa } from "./DetalheTarefaProvider";
 
 /**
- * Uma tarefa como linha de caderno, para filas onde o cartão pesa demais:
- * quatro itens tranquilos não precisam de quatro caixas iguais. O cartão
- * (CartaoTarefa) continua sendo o tratamento do que é urgente.
- *
+ * Uma tarefa como linha de caderno, para filas onde o cartão pesa demais.
  * Mesma gramática de sinais do cartão e do calendário: prioridade é forma
  * (glifo), atraso soma "!" por cima. Nada aqui depende de cor para ser lido.
- *
- * As três props de exibição existem para a linha servir a duas telas sem
- * virar dois componentes — o que criaria a segunda maneira de mostrar uma
- * tarefa. Todas têm default igual ao comportamento da home, então a home
- * não passa nenhuma delas e o HTML dela não muda.
  */
 export default function LinhaTarefa({
   tarefa,
@@ -39,16 +32,8 @@ export default function LinhaTarefa({
   aoAtualizar?: () => void;
   membros?: Membro[];
   frentes?: Frente[];
-  /**
-   * Ligue onde a consulta NÃO filtra concluídas. Na home ela filtra
-   * (app/page.tsx: .neq("status","concluida")), então o sinal seria ruído;
-   * na /frentes/[id] ela não filtra, e sem isto uma tarefa concluída ficaria
-   * visualmente idêntica a uma pendente.
-   */
   mostrarStatus?: boolean;
-  /** Desligue quando o cabeçalho do grupo já é a pessoa. */
   mostrarQuem?: boolean;
-  /** Desligue quando a tela inteira já é de uma frente só. */
   mostrarFrente?: boolean;
 }) {
   const abrirDetalhe = useDetalheTarefa();
@@ -59,13 +44,12 @@ export default function LinhaTarefa({
   const nomePrio =
     PRIORIDADES.find((p) => p.id === tarefa.prioridade)?.nome ??
     tarefa.prioridade;
-  const nomeStatus =
-    STATUS.find((s) => s.id === tarefa.status)?.nome ?? tarefa.status;
+  const statusObj = STATUS.find((s) => s.id === tarefa.status);
+  const nomeStatus = statusObj?.nome ?? tarefa.status;
   const responsaveis = responsaveisDe(tarefa);
   const progresso = progressoCriterios(tarefa.descricao);
 
   const nomes = responsaveis.map((m) => m.nome);
-  // Duas pessoas por extenso; a partir daí, a primeira e o resto contado.
   const quem =
     nomes.length === 0
       ? "sem dono"
@@ -83,36 +67,18 @@ export default function LinhaTarefa({
           ? "hoje"
           : `${dias}d`;
 
-  /**
-   * Concluída troca o prazo por "✓": dias restantes de tarefa concluída não
-   * informam nada, e a coluna de prazo é a única que existe em toda largura
-   * — a faixa de metadados some abaixo de sm. O título fica no peso normal:
-   * nesta tela o trabalho entregue é o resultado que se quer ver, não algo a
-   * apagar.
-   */
   const concluida = mostrarStatus && tarefa.status === "concluida";
 
-  /**
-   * "A fazer" é o estado default e marcar o normal é ruído; "Concluída" já
-   * está dito pelo ✓. Sobram os dois estados intermediários, por extenso e
-   * sem caixa — do mesmo jeito que "frente" já entra aqui.
-   */
   const palavraStatus =
     mostrarStatus &&
     (tarefa.status === "fazendo" || tarefa.status === "revisao")
       ? nomeStatus.toLowerCase()
       : null;
 
-  // O separador " · " fica colado ao literal de cada parte, e não numa
-  // expressão própria, porque é assim que o HTML da home continua igual ao
-  // de antes destas props — React quebra `{" · "}` num nó de texto separado.
   const temFrente = mostrarFrente && !!tarefa.frentes;
   const antesDaFrente = mostrarQuem || !!palavraStatus;
   const antesDoProgresso = antesDaFrente || temFrente;
 
-  // Tudo que a forma comunica, repetido em palavras — o rótulo não depende
-  // de nenhuma das props acima: quem chega neste botão pelo teclado pode não
-  // ter passado pelo cabeçalho do grupo que tornou o dado redundante.
   const rotulo =
     `${tarefa.titulo} · ${nomeStatus} · prioridade ${nomePrio}` +
     `${atrasada ? " · atrasada" : ""} · ${quem}` +
@@ -122,62 +88,81 @@ export default function LinhaTarefa({
     " · abrir detalhes";
 
   return (
-    <>
-      <button
-        type="button"
-        onClick={() =>
-          abrirDetalhe({
-            tarefa,
-            aoAtualizar,
-            membrosIniciais: membros,
-            frentesIniciais: frentes,
-          })
-        }
-        aria-label={rotulo}
-        className="grid w-full grid-cols-[1.5rem_minmax(0,1fr)_auto] items-baseline gap-x-2 border-b border-linha px-2 py-3 text-left transition-colors duration-micro ease-entrada hover:bg-casca focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-musgo sm:grid-cols-[1.1rem_minmax(0,1fr)_minmax(0,17rem)_auto]"
+    <button
+      type="button"
+      onClick={() =>
+        abrirDetalhe({
+          tarefa,
+          aoAtualizar,
+          membrosIniciais: membros,
+          frentesIniciais: frentes,
+        })
+      }
+      aria-label={rotulo}
+      className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 rounded-lg border-b border-linha/80 px-3 py-3 text-left transition-colors duration-micro ease-entrada last:border-b-0 hover:bg-casca/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-musgo sm:grid-cols-[auto_minmax(0,1fr)_minmax(0,18rem)_auto]"
+    >
+      <span
+        aria-hidden="true"
+        className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 font-mono text-xs ${
+          atrasada
+            ? "border-trigo bg-trigo/20 font-bold text-tinta"
+            : "border-linha bg-campo text-tinta/70"
+        }`}
       >
-        <span aria-hidden="true" className="font-mono text-xs text-tinta/70">
-          {atrasada && <span className="font-semibold text-tinta">! </span>}
-          {prio.glifo}
-        </span>
+        {atrasada && <span>!</span>}
+        <span>{prio.glifo}</span>
+      </span>
 
-        <span className="min-w-0 break-words text-sm">{tarefa.titulo}</span>
+      <span className="min-w-0 break-words text-sm font-medium text-tinta">
+        {tarefa.titulo}
+      </span>
 
-        <span className="col-start-2 row-start-2 min-w-0 break-words text-xs text-tinta/70 sm:col-auto sm:row-auto">
-          {mostrarQuem && quem}
-          {palavraStatus &&
-            (mostrarQuem ? <> · {palavraStatus}</> : palavraStatus)}
-          {temFrente &&
-            (antesDaFrente ? (
-              <> · frente {tarefa.frentes!.nome}</>
-            ) : (
-              <>frente {tarefa.frentes!.nome}</>
-            ))}
-          {progresso && (
-            <>
-              {antesDoProgresso ? " · " : null}
-              <span className="font-mono">
-                {progresso.feitos}/{progresso.total}
-              </span>
-            </>
-          )}
-        </span>
+      <span className="col-start-2 row-start-2 min-w-0 break-words text-xs text-tinta/70 sm:col-auto sm:row-auto">
+        {mostrarQuem && quem}
+        {palavraStatus && (
+          <>
+            {mostrarQuem ? " · " : ""}
+            <span className="rounded bg-casca px-1.5 py-0.5 font-medium text-tinta">
+              {palavraStatus}
+            </span>
+          </>
+        )}
+        {temFrente && (
+          <>
+            {antesDaFrente ? " · " : ""}
+            <span className="inline-flex items-center gap-1">
+              <i
+                aria-hidden="true"
+                className={`inline-block h-1.5 w-1.5 rounded-full ${
+                  CLASSES_COR_FRENTE_PREENCHIDA[tarefa.frentes!.cor ?? "ferro"]
+                }`}
+              />
+              <span>frente {tarefa.frentes!.nome}</span>
+            </span>
+          </>
+        )}
+        {progresso && (
+          <>
+            {antesDoProgresso ? " · " : null}
+            <span className="font-mono font-semibold text-musgo">
+              {progresso.feitos}/{progresso.total}
+            </span>
+          </>
+        )}
+      </span>
 
-        {/* Atraso deixou de ser texto trigo sobre o fundo: 2,42:1 não é
-            legível (o piso é 4,5:1). O trigo vira o FUNDO do marcador, com o
-            texto em tinta — 6,12:1 —, então a cor continua significando
-            atraso e passa a ser lida. Mesmo par que o selo "Fazendo" já usa. */}
-        <span
-          title={concluida ? "Concluída" : undefined}
-          className={`col-start-3 row-start-1 shrink-0 font-mono text-xs tabular-nums sm:col-auto sm:row-auto ${
-            atrasada
-              ? "bg-trigo px-1 font-semibold text-tinta"
-              : "text-tinta/70"
-          }`}
-        >
-          {concluida ? "✓" : prazoCurto}
-        </span>
-      </button>
-    </>
+      <span
+        title={concluida ? "Concluída" : undefined}
+        className={`col-start-3 row-start-1 shrink-0 rounded-md px-2 py-0.5 font-mono text-xs tabular-nums sm:col-auto sm:row-auto ${
+          concluida
+            ? "bg-musgo font-semibold text-campo"
+            : atrasada
+              ? "bg-trigo font-semibold text-tinta"
+              : "bg-casca text-tinta/70"
+        }`}
+      >
+        {concluida ? "✓" : prazoCurto}
+      </span>
+    </button>
   );
 }

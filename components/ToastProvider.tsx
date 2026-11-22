@@ -1,6 +1,13 @@
 "use client";
 
-import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useState,
+  type ReactNode,
+} from "react";
+import { IconeAlerta, IconeCheck } from "./ui/Icones";
 
 type TipoAviso = "erro" | "info";
 type Aviso = { id: number; mensagem: string; tipo: TipoAviso };
@@ -20,7 +27,10 @@ export default function ToastProvider({ children }: { children: ReactNode }) {
   const avisar = useCallback((mensagem: string, tipo: TipoAviso = "erro") => {
     const id = Date.now() + Math.random();
     setAvisos((atual) => [...atual, { id, mensagem, tipo }]);
-    setTimeout(() => setAvisos((atual) => atual.filter((a) => a.id !== id)), 4000);
+    setTimeout(
+      () => setAvisos((atual) => atual.filter((a) => a.id !== id)),
+      4000,
+    );
   }, []);
 
   return (
@@ -31,11 +41,18 @@ export default function ToastProvider({ children }: { children: ReactNode }) {
           <div
             key={a.id}
             role={a.tipo === "erro" ? "alert" : "status"}
-            className={`px-4 py-2 text-sm font-semibold shadow-sm ${
-              a.tipo === "erro" ? "bg-trigo text-tinta" : "bg-tinta text-campo"
+            className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold shadow-destaque ${
+              a.tipo === "erro"
+                ? "border-trigo bg-trigo text-tinta"
+                : "border-musgo bg-tinta text-campo"
             }`}
           >
-            {a.mensagem}
+            {a.tipo === "erro" ? (
+              <IconeAlerta className="h-4 w-4" />
+            ) : (
+              <IconeCheck className="h-4 w-4 text-broto" />
+            )}
+            <span>{a.mensagem}</span>
           </div>
         ))}
       </div>

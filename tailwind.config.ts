@@ -13,7 +13,8 @@ const config: Config = {
     extend: {
       colors: {
         campo:  "#F1F4EE", // fundo
-        casca:  "#E3E8DD", // superfície
+        papel:  "#FAFBF8", // superfície elevada de cartão
+        casca:  "#E3E8DD", // superfície secundária
         linha:  "#CBD3C2", // divisórias
         tinta:  "#10231A", // texto principal
         musgo:  "#2F5D45", // verde de apoio
@@ -22,11 +23,24 @@ const config: Config = {
         ferro:  "#3F6E8C", // revisão
       },
       fontFamily: {
-        display: ["var(--font-corpo)", "system-ui", "sans-serif"],
+        display: ["var(--font-display)", "var(--font-corpo)", "system-ui", "sans-serif"],
         corpo:   ["var(--font-corpo)", "system-ui", "sans-serif"],
         mono:    ["var(--font-mono)", "ui-monospace", "monospace"],
       },
-      borderRadius: { none: "0", sm: "2px", DEFAULT: "3px" },
+      borderRadius: {
+        none: "0",
+        sm: "6px",
+        DEFAULT: "10px",
+        md: "12px",
+        lg: "14px",
+        xl: "18px",
+        full: "9999px",
+      },
+      boxShadow: {
+        cartao: "0 1px 2px rgba(16, 35, 26, 0.05), 0 4px 12px -4px rgba(16, 35, 26, 0.06)",
+        "cartao-hover": "0 6px 18px -4px rgba(16, 35, 26, 0.12), 0 2px 4px rgba(16, 35, 26, 0.05)",
+        destaque: "0 12px 32px -12px rgba(16, 35, 26, 0.20)",
+      },
 
       // ---- Movimento: os tokens vivem só aqui ----------------------------
       // "Adicionar fluidez" sem sistema produz três telas com três durações.

@@ -1,7 +1,6 @@
 "use client";
 
 import { useAtualizacaoTarefas } from "@/lib/useAtualizacaoTarefas";
-
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { criarClienteNavegador } from "@/lib/supabase-browser";
 import { dataLocalISO, estaAtrasada } from "@/lib/datas";
@@ -16,7 +15,9 @@ import {
   type Tarefa,
 } from "@/lib/types";
 import LinhaTarefa from "@/components/LinhaTarefa";
+import CabecalhoPagina from "@/components/ui/CabecalhoPagina";
 import { useDetalheTarefa } from "@/components/DetalheTarefaProvider";
+import { IconeCalendario } from "@/components/ui/Icones";
 
 const DIAS = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
 
@@ -59,9 +60,6 @@ export default function Calendario() {
         .select("id, nome, papel, frente_id")
         .order("nome"),
       supabase.from("frentes").select("id, nome").order("nome"),
-      // "Falta algo" pendente é o único estado derivado que o calendário
-      // precisa (pra sinalizar o bloco vermelho) — vem da mesma view do
-      // Bloco A, não recalculado aqui.
       supabase
         .from("tarefas_estado_entrega")
         .select("tarefa_id, ultimo_resultado, entregue_em, revisado_em"),
@@ -119,10 +117,6 @@ export default function Calendario() {
       if (!t.prazo) return;
       (mapa[t.prazo] ??= []).push(t);
     });
-    // A consulta não ordena, então a ordem dentro do dia era a que o Postgres
-    // devolvesse — e como só as 3 primeiras aparecem, QUAIS 3 era indefinido.
-    // Ordena por urgência: atrasada primeiro, depois prioridade, depois título
-    // pra empate ficar estável entre recarregamentos.
     const PESO: Record<string, number> = { alta: 0, media: 1, baixa: 2 };
     Object.values(mapa).forEach((lista) =>
       lista.sort((a, b) => {
@@ -156,54 +150,105 @@ export default function Calendario() {
   const chave = (dia: number) =>
     `${mes.getFullYear()}-${String(mes.getMonth() + 1).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
 
+  const tituloMes = mes.toLocaleDateString("pt-BR", {
+    month: "long",
+    year: "numeric",
+  });
+  const nomeFiltro = responsavel
+    ? membros.find((m) => m.id === responsavel)?.nome
+    : null;
+
   return (
     <div>
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-sm text-tinta/70">
-            {responsavel
-              ? `Calendário pessoal · ${membros.find((m) => m.id === responsavel)?.nome ?? ""}`
-              : "Calendário geral"}
-          </p>
-          <h1 className="mt-1 font-display text-3xl font-semibold tracking-tight first-letter:uppercase">
-            {mes.toLocaleDateString("pt-BR", {
-              month: "long",
-              year: "numeric",
-            })}
-          </h1>
+      <CabecalhoPagina
+        categoria={
+          nomeFiltro ? `Calendário pessoal · ${nomeFiltro}` : "Calendário geral"
+        }
+        icone={<IconeCalendario className="h-3.5 w-3.5 text-musgo" />}
+        titulo={tituloMes.charAt(0).toUpperCase() + tituloMes.slice(1)}
+        descricao="Prazos distribuídos no mês. Clique em qualquer tarefa para abrir detalhes, checklist ou entregar."
+        acoes={
+          <>
+            <select
+              aria-label="Filtrar calendário por responsável"
+              value={responsavel}
+              onChange={(e) => setResponsavel(e.target.value)}
+              className="campo w-auto py-2 text-xs font-medium"
+            >
+              <option value="">Todo mundo</option>
+              {membros.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.nome}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() =>
+                setMes(new Date(mes.getFullYear(), mes.getMonth() - 1, 1))
+              }
+              className="botao botao-secundario min-h-9 px-3 py-1.5 font-mono text-xs"
+            >
+              ← Anterior
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const agora = new Date();
+                setMes(new Date(agora.getFullYear(), agora.getMonth(), 1));
+              }}
+              className="botao botao-primario min-h-9 px-3 py-1.5 font-mono text-xs"
+            >
+              Hoje
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                setMes(new Date(mes.getFullYear(), mes.getMonth() + 1, 1))
+              }
+              className="botao botao-secundario min-h-9 px-3 py-1.5 font-mono text-xs"
+            >
+              Próximo →
+            </button>
+          </>
+        }
+      />
+
+      {/* Legenda didática acima da grade */}
+      <section
+        aria-label="Legenda do calendário"
+        className="cartao mb-5 flex flex-wrap items-center justify-between gap-3 px-4 py-3"
+      >
+        <div className="flex flex-wrap items-center gap-2 font-mono text-xs">
+          <span className="font-semibold text-tinta">Status:</span>
+          {STATUS.map((s) => (
+            <span
+              key={s.id}
+              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 font-semibold ${s.cor}`}
+            >
+              {s.nome}
+            </span>
+          ))}
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <select
-            aria-label="Filtrar calendário por responsável"
-            value={responsavel}
-            onChange={(e) => setResponsavel(e.target.value)}
-            className="border border-linha bg-casca px-3 py-1.5 text-xs"
-          >
-            <option value="">Todo mundo</option>
-            {membros.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.nome}
-              </option>
-            ))}
-          </select>
-          <button
-            onClick={() =>
-              setMes(new Date(mes.getFullYear(), mes.getMonth() - 1, 1))
-            }
-            className="border border-linha px-3 py-1.5 font-mono text-xs hover:bg-casca"
-          >
-            ← mês anterior
-          </button>
-          <button
-            onClick={() =>
-              setMes(new Date(mes.getFullYear(), mes.getMonth() + 1, 1))
-            }
-            className="border border-linha px-3 py-1.5 font-mono text-xs hover:bg-casca"
-          >
-            próximo mês →
-          </button>
+
+        <div className="flex flex-wrap items-center gap-2 font-mono text-xs text-tinta/70">
+          <span className="font-semibold text-tinta">Sinais:</span>
+          {PRIORIDADES.map((p) => (
+            <span
+              key={p.id}
+              className="rounded-md border border-linha bg-campo px-2 py-0.5"
+            >
+              {CLASSES_PRIORIDADE[p.id].glifo} {p.nome.toLowerCase()}
+            </span>
+          ))}
+          <span className="rounded-md border border-trigo bg-trigo/20 px-2 py-0.5 font-semibold text-tinta">
+            ! atrasada
+          </span>
+          <span className="rounded-md border border-ferro bg-ferro/10 px-2 py-0.5 font-semibold text-tinta">
+            ↩ ajuste pedido
+          </span>
         </div>
-      </div>
+      </section>
 
       {carregando && (
         <p role="status" className="mt-4 text-sm text-tinta/70">
@@ -211,23 +256,31 @@ export default function Calendario() {
         </p>
       )}
       {erro && (
-        <p role="alert" className="mt-4 border-l-2 border-trigo pl-3 text-sm">
+        <p
+          role="alert"
+          className="mt-4 rounded-xl border border-trigo bg-trigo/15 px-4 py-3 text-sm text-tinta"
+        >
           Não foi possível carregar o calendário.{" "}
-          <button className="underline" onClick={carregar}>
+          <button type="button" className="font-semibold underline" onClick={carregar}>
             Tentar novamente
           </button>
         </p>
       )}
-      <div className="mt-6 hidden grid-cols-7 sm:grid gap-px border border-linha bg-linha">
+
+      {/* Grade desktop — preserva rigorosamente atraso > prioridade > status */}
+      <div className="hidden overflow-hidden rounded-xl border border-linha bg-linha shadow-cartao sm:grid sm:grid-cols-7 sm:gap-px">
         {DIAS.map((d) => (
-          <div key={d} className="bg-campo px-2 py-1.5 text-xs text-tinta/70">
+          <div
+            key={d}
+            className="bg-casca px-2.5 py-2 font-mono text-xs font-semibold uppercase tracking-wide text-tinta/70"
+          >
             {d}
           </div>
         ))}
 
         {celulas.map((dia, i) => {
           if (dia === null)
-            return <div key={`v${i}`} className="min-h-[92px] bg-campo/40" />;
+            return <div key={`v${i}`} className="min-h-[104px] bg-campo/60" />;
           const iso = chave(dia);
           const doDia = porDia[iso] ?? [];
           const ehHoje = iso === hojeIso;
@@ -236,14 +289,28 @@ export default function Calendario() {
           return (
             <div
               key={iso}
-              className={`min-h-[92px] bg-campo p-1.5 ${ehHoje ? "ring-2 ring-inset ring-tinta" : ""}`}
+              className={`min-h-[104px] bg-papel p-2 ${
+                ehHoje ? "ring-2 ring-inset ring-musgo" : ""
+              }`}
             >
-              <span
-                className={`font-mono text-xs ${ehHoje ? "font-semibold" : "text-tinta/70"}`}
-              >
-                {String(dia).padStart(2, "0")}
-              </span>
-              <div className="mt-1 space-y-1">
+              <div className="flex items-center justify-between gap-1">
+                <span
+                  className={`inline-flex h-6 min-w-6 items-center justify-center rounded-full px-1.5 font-mono text-xs ${
+                    ehHoje
+                      ? "bg-tinta font-bold text-campo"
+                      : "text-tinta/70"
+                  }`}
+                >
+                  {String(dia).padStart(2, "0")}
+                </span>
+                {ehHoje && (
+                  <span className="font-mono text-xs font-semibold text-musgo">
+                    hoje
+                  </span>
+                )}
+              </div>
+
+              <div className="mt-1.5 space-y-1">
                 {(expandido ? doDia : doDia.slice(0, VISIVEIS_POR_DIA)).map(
                   (t) => {
                     const cor =
@@ -271,11 +338,7 @@ export default function Calendario() {
                             .map((m) => m.nome)
                             .join(", ") || "sem responsável"
                         } · prioridade ${nomePrio}${atrasada ? " · atrasada" : ""}${faltaAlgo ? " · revisor pediu ajuste, veja o detalhe" : ""}`}
-                        // Os sinais ficam numa coluna fixa à esquerda e o título na
-                        // outra: antes eles eram texto no mesmo fluxo, e "falta: " +
-                        // "! " + glifo comiam até 45px dos 145px da célula — num
-                        // chip que já cortava o título pela metade.
-                        className={`grid w-full grid-cols-[auto_minmax(0,1fr)] items-start gap-x-1 px-1 py-0.5 text-left text-xs leading-tight transition-opacity duration-micro ease-entrada hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-tinta ${cor} ${prio.borda} ${
+                        className={`grid w-full grid-cols-[auto_minmax(0,1fr)] items-start gap-x-1 rounded-sm px-1.5 py-1 text-left text-xs leading-tight transition-opacity duration-micro ease-entrada hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-tinta ${cor} ${prio.borda} ${
                           atrasada
                             ? "font-semibold ring-1 ring-inset ring-trigo"
                             : ""
@@ -303,11 +366,11 @@ export default function Calendario() {
                         ? `ver menos no dia ${dia}`
                         : `ver mais ${doDia.length - VISIVEIS_POR_DIA} no dia ${dia}`
                     }
-                    className="w-full px-1 py-0.5 text-left font-mono text-xs text-tinta/70 underline underline-offset-2 transition-opacity duration-micro ease-entrada hover:text-tinta focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-tinta"
+                    className="w-full rounded px-1 py-0.5 text-left font-mono text-xs font-semibold text-musgo underline underline-offset-2 transition-opacity duration-micro ease-entrada hover:text-tinta focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-tinta"
                   >
                     {expandido
                       ? "ver menos"
-                      : `+${doDia.length - VISIVEIS_POR_DIA}`}
+                      : `+${doDia.length - VISIVEIS_POR_DIA} mais`}
                   </button>
                 )}
               </div>
@@ -316,6 +379,7 @@ export default function Calendario() {
         })}
       </div>
 
+      {/* Agenda mobile */}
       <section aria-label="Agenda do mês" className="mt-5 space-y-4 sm:hidden">
         {celulas
           .filter(
@@ -323,9 +387,13 @@ export default function Calendario() {
               dia !== null && !!porDia[chave(dia)]?.length,
           )
           .map((dia) => (
-            <div key={dia}>
+            <div key={dia} className="cartao overflow-hidden">
               <h2
-                className={`border-b border-linha py-2 font-mono text-sm ${chave(dia) === hojeIso ? "font-semibold" : ""}`}
+                className={`border-b border-linha px-4 py-2.5 font-mono text-sm ${
+                  chave(dia) === hojeIso
+                    ? "bg-tinta font-semibold text-campo"
+                    : "bg-casca text-tinta"
+                }`}
               >
                 {String(dia).padStart(2, "0")} ·{" "}
                 {new Date(
@@ -335,55 +403,36 @@ export default function Calendario() {
                 ).toLocaleDateString("pt-BR", { weekday: "long" })}
                 {chave(dia) === hojeIso ? " · Hoje" : ""}
               </h2>
-              {porDia[chave(dia)].map((t) => (
-                <div key={t.id}>
-                  <LinhaTarefa
-                    tarefa={t}
-                    mostrarStatus
-                    membros={membros}
-                    frentes={frentes}
-                    aoAtualizar={carregar}
-                  />
-                  {ajustesPendentes.has(t.id) && (
-                    <p className="px-2 pb-2 text-xs">
-                      ↩ Revisor pediu ajuste — abra os detalhes.
-                    </p>
-                  )}
-                </div>
-              ))}
+              <div className="p-2">
+                {porDia[chave(dia)].map((t) => (
+                  <div key={t.id}>
+                    <LinhaTarefa
+                      tarefa={t}
+                      mostrarStatus
+                      membros={membros}
+                      frentes={frentes}
+                      aoAtualizar={carregar}
+                    />
+                    {ajustesPendentes.has(t.id) && (
+                      <p className="px-3 pb-2 text-xs font-medium text-tinta">
+                        ↩ Revisor pediu ajuste — abra os detalhes.
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           ))}
         {!carregando &&
           !erro &&
           !celulas.some(
             (dia) => dia !== null && porDia[chave(dia)]?.length,
-          ) && <p className="text-sm text-tinta/70">Nenhum prazo neste mês.</p>}
+          ) && (
+            <div className="cartao p-6 text-center text-sm text-tinta/70">
+              Nenhum prazo marcado neste mês.
+            </div>
+          )}
       </section>
-      <div className="mt-4 flex flex-wrap gap-3 font-mono text-xs text-tinta/70">
-        {STATUS.map((s) => (
-          <span key={s.id} className="flex items-center gap-1.5">
-            <i className={`inline-block h-2.5 w-2.5 ${s.cor}`} />
-            {s.nome}
-          </span>
-        ))}
-      </div>
-      <div className="mt-2 flex flex-wrap gap-3 font-mono text-xs text-tinta/70">
-        {PRIORIDADES.map((p) => (
-          <span key={p.id} className="flex items-center gap-1.5">
-            {CLASSES_PRIORIDADE[p.id].glifo} prioridade {p.nome.toLowerCase()}
-          </span>
-        ))}
-        <span className="flex items-center gap-1.5">
-          <span className="font-mono font-semibold ring-1 ring-inset ring-trigo">
-            !
-          </span>{" "}
-          atrasada
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="font-mono font-semibold">↩</span> revisor pediu
-          ajuste — clique pra ver o quê
-        </span>
-      </div>
     </div>
   );
 }
